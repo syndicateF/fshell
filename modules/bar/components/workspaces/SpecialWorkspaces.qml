@@ -31,7 +31,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: Appearance.rounding.full
+            radius: Config.border.rounding
 
             gradient: Gradient {
                 orientation: Gradient.Vertical
@@ -60,7 +60,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
 
-            radius: Appearance.rounding.full
+            radius: Config.border.rounding
             implicitHeight: parent.height / 2
             opacity: view.contentY > 0 ? 0 : 1
 
@@ -74,7 +74,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
 
-            radius: Appearance.rounding.full
+            radius: Config.border.rounding
             implicitHeight: parent.height / 2
             opacity: view.contentY < view.contentHeight - parent.height + Appearance.padding.small ? 0 : 1
 

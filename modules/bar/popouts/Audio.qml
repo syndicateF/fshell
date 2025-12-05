@@ -111,7 +111,7 @@ Item {
             implicitWidth: expandBtn.implicitWidth + Appearance.padding.normal * 2
             implicitHeight: expandBtn.implicitHeight + Appearance.padding.small
 
-            radius: Appearance.rounding.normal
+            radius: Config.border.rounding
             color: Colours.palette.m3primaryContainer
 
             StateLayer {

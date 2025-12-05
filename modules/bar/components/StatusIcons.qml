@@ -18,7 +18,7 @@ StyledRect {
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Config.border.rounding
-
+    
     clip: true
     implicitWidth: Config.bar.sizes.innerWidth
     implicitHeight: iconColumn.implicitHeight + Config.border.thickness * 2 - (Config.bar.status.showLockStatus && !Hypr.capsLock && !Hypr.numLock ? iconColumn.spacing : 0)

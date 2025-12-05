@@ -49,7 +49,7 @@ Column {
             implicitHeight: child.implicitHeight + Appearance.padding.smaller * 2
 
             color: Colours.palette.m3error
-            radius: Appearance.rounding.normal
+            radius: Config.border.rounding
 
             Column {
                 id: child

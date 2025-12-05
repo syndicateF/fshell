@@ -31,7 +31,7 @@ StyledRect {
     implicitHeight: nonAnimHeight
 
     color: Qt.alpha(Colours.tPalette.m3surfaceContainer, Config.bar.tray.background ? Colours.tPalette.m3surfaceContainer.a : 0)
-    radius: Config.border.rounding
+    radius: Appearance.rounding.full
 
     Column {
         id: layout

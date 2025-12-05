@@ -64,7 +64,7 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
 
                 StateLayer {
-                    radius: Appearance.rounding.normal
+                    radius: Config.border.rounding
 
                     function onClicked(): void {
                         root.wrapper.detach("winfo");
