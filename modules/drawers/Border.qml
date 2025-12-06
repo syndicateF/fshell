@@ -15,7 +15,7 @@ Item {
 
     StyledRect {
         anchors.fill: parent
-        color: "transparent"
+        color: "red"
 
         layer.enabled: true
         layer.effect: MultiEffect {

@@ -15,9 +15,9 @@ Item {
     required property PersistentProperties visibilities
     required property BarPopouts.Wrapper popouts
 
-    readonly property int padding: Config.border.thickness
+    // readonly property int padding: Config.border.thickness
     readonly property int floatingSpacing: Config.border.thickness
-    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + 14
+    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + 8
     readonly property int exclusiveZone: Config.bar.persistent || visibilities.bar ? contentWidth : Config.border.thickness
     readonly property bool shouldBeVisible: Config.bar.persistent || visibilities.bar || isHovered
     property bool isHovered
