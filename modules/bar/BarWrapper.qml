@@ -17,7 +17,7 @@ Item {
 
     // readonly property int padding: Config.border.thickness
     readonly property int floatingSpacing: Config.border.thickness
-    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + 8
+    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + 9
     readonly property int exclusiveZone: Config.bar.persistent || visibilities.bar ? contentWidth : Config.border.thickness
     readonly property bool shouldBeVisible: Config.bar.persistent || visibilities.bar || isHovered
     property bool isHovered
@@ -75,14 +75,15 @@ Item {
 
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.right: parent.right
-        anchors.rightMargin: 0
+        // anchors.right: parent.right
+        // anchors.rightMargin: 0
 
         active: root.shouldBeVisible || root.visible
 
         sourceComponent: Bar {
             width: root.contentWidth - root.floatingSpacing
-            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: root.floatingSpacing
             screen: root.screen
             visibilities: root.visibilities
             popouts: root.popouts

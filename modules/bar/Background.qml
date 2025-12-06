@@ -17,7 +17,7 @@ ShapePath {
     fillColor: Colours.palette.m3surface
 
     // Start at top-left after floating spacing and after top-left arc
-    startX: floatingSpacing + rounding
+    startX: floatingSpacing + rounding + 0.2
     startY: Config.border.thickness
 
     // Top edge
