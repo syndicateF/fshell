@@ -12,17 +12,18 @@ ShapePath {
     readonly property real floatingSpacing: Config.border.thickness
     readonly property real barHeight: bar.height - Config.border.thickness * 2
     readonly property real barWidth: bar.implicitWidth
+    readonly property real barX: bar.x
 
     strokeWidth: -1
     fillColor: Colours.palette.m3surface
 
-    // Start at top-left after floating spacing and after top-left arc
-    startX: floatingSpacing + rounding + 0.2
+    // Start at top-left after bar's x position and after top-left arc
+    startX: barX + rounding
     startY: Config.border.thickness
 
     // Top edge
     PathLine {
-        relativeX: barWidth - floatingSpacing - rounding * 2
+        relativeX: barWidth - rounding * 2
         relativeY: 0
     }
 
@@ -52,7 +53,7 @@ ShapePath {
 
     // Bottom edge
     PathLine {
-        relativeX: -(barWidth - floatingSpacing - rounding * 2)
+        relativeX: -(barWidth - rounding * 2)
         relativeY: 0
     }
 

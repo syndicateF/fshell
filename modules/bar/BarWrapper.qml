@@ -17,8 +17,9 @@ Item {
 
     // readonly property int padding: Config.border.thickness
     readonly property int floatingSpacing: Config.border.thickness
-    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + 9
-    readonly property int exclusiveZone: Config.bar.persistent || visibilities.bar ? contentWidth : Config.border.thickness
+    readonly property int hPadding: 8
+    readonly property int contentWidth: Config.bar.sizes.innerWidth + floatingSpacing + hPadding
+    readonly property int exclusiveZone: Config.bar.persistent || visibilities.bar ? contentWidth + floatingSpacing : Config.border.thickness
     readonly property bool shouldBeVisible: Config.bar.persistent || visibilities.bar || isHovered
     property bool isHovered
 
@@ -73,17 +74,13 @@ Item {
     Loader {
         id: content
 
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        // anchors.right: parent.right
-        // anchors.rightMargin: 0
+        anchors.fill: parent
 
         active: root.shouldBeVisible || root.visible
 
         sourceComponent: Bar {
-            width: root.contentWidth - root.floatingSpacing
-            anchors.left: parent.left
-            anchors.leftMargin: root.floatingSpacing
+            width: Config.bar.sizes.innerWidth
+            anchors.horizontalCenter: parent.horizontalCenter
             screen: root.screen
             visibilities: root.visibilities
             popouts: root.popouts

@@ -174,6 +174,8 @@ Variants {
 
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.leftMargin: Config.border.thickness
 
                     screen: scope.modelData
                     visibilities: visibilities

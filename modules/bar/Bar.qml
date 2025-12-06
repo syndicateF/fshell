@@ -15,19 +15,19 @@ ColumnLayout {
     required property ShellScreen screen
     required property PersistentProperties visibilities
     required property BarPopouts.Wrapper popouts
-    readonly property int vPadding: 14
+    readonly property int vPadding: 28
 
     function closeTray(): void {
         if (!Config.bar.tray.compact)
             return;
 
-        for (let i = 0; i < repeater.count; i++) {
-            const item = repeater.itemAt(i);
-            if (item?.enabled && item.id === "tray") {
-                item.item.expanded = false;
+            for (let i = 0; i < repeater.count; i++) {
+                const item = repeater.itemAt(i);
+                if (item?.enabled && item.id === "tray") {
+                    item.item.expanded = false;
+                }
             }
         }
-    }
 
     function checkPopout(y: real): void {
         const ch = childAt(width / 2, y) as WrappedLoader;
