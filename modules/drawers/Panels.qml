@@ -41,7 +41,7 @@ Item {
 
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
-        anchors.rightMargin: session.width + sidebar.width
+        anchors.rightMargin: session.width + sidebar.width - Config.border.thickness
     }
 
     Notifications.Wrapper {
@@ -51,7 +51,9 @@ Item {
         panels: root
 
         anchors.top: parent.top
+        anchors.topMargin: -Config.border.thickness
         anchors.right: parent.right
+        anchors.rightMargin: -Config.border.thickness
     }
 
     Session.Wrapper {
@@ -63,7 +65,7 @@ Item {
 
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right
-        anchors.rightMargin: sidebar.width
+        anchors.rightMargin: sidebar.width - Config.border.thickness
     }
 
     Launcher.Wrapper {
@@ -75,6 +77,7 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
+        anchors.bottomMargin: -Config.border.thickness
     }
 
     Dashboard.Wrapper {
@@ -84,6 +87,7 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
+        anchors.topMargin: -Config.border.thickness
     }
 
     BarPopouts.Wrapper {
@@ -111,7 +115,9 @@ Item {
         sidebar: sidebar
 
         anchors.bottom: parent.bottom
+        anchors.bottomMargin: -Config.border.thickness
         anchors.right: parent.right
+        anchors.rightMargin: -Config.border.thickness
     }
 
     Toasts.Toasts {
@@ -131,5 +137,6 @@ Item {
         anchors.top: notifications.bottom
         anchors.bottom: utilities.top
         anchors.right: parent.right
+        anchors.rightMargin: -Config.border.thickness
     }
 }

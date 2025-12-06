@@ -36,7 +36,7 @@ Item {
         when: root.shouldBeActive
 
         PropertyChanges {
-            root.implicitHeight: content.implicitHeight + Appearance.padding.large * 2
+            root.implicitHeight: content.implicitHeight + Appearance.padding.large * 2 + Config.border.thickness
         }
     }
 
@@ -81,6 +81,8 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: Appearance.padding.large
+        anchors.bottomMargin: Appearance.padding.large + Config.border.thickness
+        anchors.rightMargin: Appearance.padding.large + Config.border.thickness
 
         visible: false
         active: true

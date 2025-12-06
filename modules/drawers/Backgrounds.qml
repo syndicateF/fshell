@@ -25,7 +25,7 @@ Shape {
     Osd.Background {
         wrapper: root.panels.osd
 
-        startX: root.width - root.panels.session.width - root.panels.sidebar.width
+        startX: root.width - root.panels.session.width - root.panels.sidebar.width + Config.border.thickness
         startY: (root.height - wrapper.height) / 2 - rounding
     }
 
@@ -33,14 +33,14 @@ Shape {
         wrapper: root.panels.notifications
         sidebar: sidebar
 
-        startX: root.width
-        startY: 0
+        startX: root.width + Config.border.thickness
+        startY: -Config.border.thickness
     }
 
     Session.Background {
         wrapper: root.panels.session
 
-        startX: root.width - root.panels.sidebar.width
+        startX: root.width - root.panels.sidebar.width + Config.border.thickness
         startY: (root.height - wrapper.height) / 2 - rounding
     }
 
@@ -48,14 +48,14 @@ Shape {
         wrapper: root.panels.launcher
 
         startX: (root.width - wrapper.width) / 2 - rounding
-        startY: root.height
+        startY: root.height + Config.border.thickness
     }
 
     Dashboard.Background {
         wrapper: root.panels.dashboard
 
         startX: (root.width - wrapper.width) / 2 - rounding
-        startY: 0
+        startY: -Config.border.thickness
     }
 
     BarPopouts.Background {
@@ -70,8 +70,8 @@ Shape {
         wrapper: root.panels.utilities
         sidebar: sidebar
 
-        startX: root.width
-        startY: root.height
+        startX: root.width + Config.border.thickness
+        startY: root.height + Config.border.thickness
     }
 
     Sidebar.Background {
@@ -80,7 +80,7 @@ Shape {
         wrapper: root.panels.sidebar
         panels: root.panels
 
-        startX: root.width
+        startX: root.width + Config.border.thickness
         startY: root.panels.notifications.height
     }
 }

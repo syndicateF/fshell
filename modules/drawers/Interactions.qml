@@ -33,15 +33,18 @@ CustomMouseArea {
     }
 
     function inRightPanel(panel: Item, x: real, y: real): bool {
-        return x > bar.implicitWidth + panel.x && withinPanelHeight(panel, x, y);
+        const triggerWidth = Math.max(panel.width, Config.border.thickness);
+        return x > width - triggerWidth - Config.border.rounding && withinPanelHeight(panel, x, y);
     }
 
     function inTopPanel(panel: Item, x: real, y: real): bool {
-        return y < Config.border.thickness + panel.y + panel.height && withinPanelWidth(panel, x, y);
+        const triggerHeight = Math.max(panel.height, Config.border.thickness);
+        return y < Config.border.thickness + panel.y + triggerHeight && withinPanelWidth(panel, x, y);
     }
 
     function inBottomPanel(panel: Item, x: real, y: real): bool {
-        return y > root.height - Config.border.thickness - panel.height - Config.border.rounding && withinPanelWidth(panel, x, y);
+        const triggerHeight = Math.max(panel.height, Config.border.thickness);
+        return y > height - triggerHeight - Config.border.rounding && withinPanelWidth(panel, x, y);
     }
 
     function onWheel(event: WheelEvent): void {
@@ -113,7 +116,7 @@ CustomMouseArea {
                 root.panels.osd.hovered = true;
             }
 
-            const showSidebar = pressed && dragStart.x > bar.implicitWidth + panels.sidebar.x;
+            const showSidebar = pressed && dragStart.x > bar.implicitWidth + panels.sidebar.x - Config.border.thickness;
 
             // Show/hide session on drag
             if (pressed && inRightPanel(panels.session, dragStart.x, dragStart.y) && withinPanelHeight(panels.session, x, y)) {
