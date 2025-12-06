@@ -12,24 +12,26 @@ ShapePath {
     readonly property real rounding: wrapper.isDetached ? Appearance.rounding.normal : Config.border.rounding
     readonly property bool flatten: wrapper.width < rounding * 2
     readonly property real roundingX: flatten ? wrapper.width / 2 : rounding
-    property real ibr: invertBottomRounding ? -1 : 1
 
-    property real sideRounding: startX > 0 ? -1 : 1
+    // Cutout style: sisi kiri punya inverted radius (keluar, bukan ke dalam)
+    property bool cutoutLeft: !wrapper.isDetached
 
     strokeWidth: -1
     fillColor: Colours.palette.m3surface
 
+    // Top-Left corner - CUTOUT style (seperti dashboard)
     PathArc {
         relativeX: root.roundingX
-        relativeY: root.rounding * root.sideRounding
+        relativeY: root.cutoutLeft ? root.rounding : -root.rounding
         radiusX: Math.min(root.rounding, root.wrapper.width)
         radiusY: root.rounding
-        direction: root.sideRounding < 0 ? PathArc.Clockwise : PathArc.Counterclockwise
+        direction: root.cutoutLeft ? PathArc.Counterclockwise : PathArc.Clockwise
     }
     PathLine {
         relativeX: root.wrapper.width - root.roundingX * 2
         relativeY: 0
     }
+    // Top-Right corner - normal rounded
     PathArc {
         relativeX: root.roundingX
         relativeY: root.rounding
@@ -38,36 +40,32 @@ ShapePath {
     }
     PathLine {
         relativeX: 0
-        relativeY: root.wrapper.height - root.rounding * 2
+        // Height adjustment: kalau cutoutLeft, top & bottom arc turun, jadi kurangi 2*rounding
+        // Kalau tidak cutoutLeft (detached), top & bottom arc naik, jadi height tetap wrapper.height - 2*rounding
+        relativeY: root.cutoutLeft ? root.wrapper.height - root.rounding * 2 : root.wrapper.height - root.rounding * 2
     }
+    // Bottom-Right corner - normal rounded
     PathArc {
-        relativeX: -root.roundingX * root.ibr
+        relativeX: -root.roundingX
         relativeY: root.rounding
         radiusX: Math.min(root.rounding, root.wrapper.width)
         radiusY: root.rounding
-        direction: root.ibr < 0 ? PathArc.Counterclockwise : PathArc.Clockwise
+        direction: PathArc.Clockwise
     }
     PathLine {
-        relativeX: -(root.wrapper.width - root.roundingX - root.roundingX * root.ibr)
+        relativeX: -(root.wrapper.width - root.roundingX * 2)
         relativeY: 0
     }
+    // Bottom-Left corner - CUTOUT style (selalu cutout karena popout di-limit tidak mentok bottom)
     PathArc {
         relativeX: -root.roundingX
-        relativeY: root.rounding * root.sideRounding
+        relativeY: root.cutoutLeft ? root.rounding : -root.rounding
         radiusX: Math.min(root.rounding, root.wrapper.width)
         radiusY: root.rounding
-        direction: root.sideRounding < 0 ? PathArc.Clockwise : PathArc.Counterclockwise
+        direction: root.cutoutLeft ? PathArc.Counterclockwise : PathArc.Clockwise
     }
 
     Behavior on fillColor {
         CAnim {}
-    }
-
-    Behavior on ibr {
-        Anim {}
-    }
-
-    Behavior on sideRounding {
-        Anim {}
     }
 }

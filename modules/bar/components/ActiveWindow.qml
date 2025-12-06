@@ -4,6 +4,8 @@ import qs.components
 import qs.services
 import qs.utils
 import qs.config
+import Quickshell
+import Quickshell.Widgets
 import QtQuick
 
 Item {
@@ -11,7 +13,16 @@ Item {
 
     required property var bar
     required property Brightness.Monitor monitor
+    // Dynamic color dari icon
     property color colour: Colours.palette.m3primary
+
+    // Hilangkan animasi color supaya sync dengan icon change
+    // Behavior on colour {
+    //     ColorAnimation {
+    //         duration: 200
+    //         easing.type: Easing.OutCubic
+    //     }
+    // }
 
     readonly property int maxHeight: {
         const otherModules = bar.children.filter(c => c.id && c.item !== this && c.id !== "spacer");
@@ -25,14 +36,95 @@ Item {
     implicitWidth: Math.max(icon.implicitWidth, current.implicitHeight)
     implicitHeight: icon.implicitHeight + current.implicitWidth + current.anchors.topMargin
 
-    MaterialIcon {
+    // Timer untuk delay color extraction
+    Timer {
+        id: colorTimer
+        interval: 16  // 1 frame delay - minimal
+        repeat: false
+        onTriggered: {
+            if (icon.status === Image.Ready && icon.width > 0) {
+                icon.grabToImage(result => {
+                    if (!result) return;
+                    colorCanvas.imageResult = result;
+                    colorCanvas.requestPaint();
+                });
+            }
+        }
+    }
+
+    Canvas {
+        id: colorCanvas
+
+        visible: false
+        width: 24
+        height: 24
+        property var imageResult: null
+
+        onPaint: {
+            if (!imageResult) return;
+            
+            const ctx = getContext("2d");
+            ctx.clearRect(0, 0, width, height);
+            ctx.drawImage(imageResult.url, 0, 0, width, height);
+            
+            // Sample pixels to find dominant color
+            const imgData = ctx.getImageData(0, 0, width, height);
+            const data = imgData.data;
+            
+            let r = 0, g = 0, b = 0, count = 0;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const alpha = data[i + 3];
+                if (alpha < 128) continue;
+                
+                const pr = data[i], pg = data[i + 1], pb = data[i + 2];
+                // Skip near-white and near-black
+                if ((pr > 230 && pg > 230 && pb > 230) || (pr < 25 && pg < 25 && pb < 25)) continue;
+                
+                r += pr;
+                g += pg;
+                b += pb;
+                count++;
+            }
+            
+            if (count > 0) {
+                r = Math.round(r / count);
+                g = Math.round(g / count);
+                b = Math.round(b / count);
+                
+                // Boost brightness for dark colors
+                const lum = (r + g + b) / 3;
+                if (lum < 100) {
+                    const factor = 1.6;
+                    r = Math.min(255, r * factor);
+                    g = Math.min(255, g * factor);
+                    b = Math.min(255, b * factor);
+                }
+                
+                root.colour = Qt.rgba(r / 255, g / 255, b / 255, 1);
+            }
+        }
+    }
+
+    IconImage {
         id: icon
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        animate: true
-        text: Icons.getAppCategoryIcon(Hypr.activeToplevel?.lastIpcObject.class, "desktop_windows")
-        color: root.colour
+        implicitSize: Appearance.font.size.large * 1
+        source: Icons.getAppIcon(Hypr.activeToplevel?.lastIpcObject.class ?? "", "desktop")
+
+        onStatusChanged: {
+            if (status === Image.Ready) {
+                colorTimer.restart();
+            }
+        }
+
+        // Jangan reset color - biar tetap warna lama sampai warna baru siap
+        // onSourceChanged: {
+        //     root.colour = Colours.palette.m3primary;
+        //     colorCanvas.imageResult = null;
+        // }
     }
 
     Title {
@@ -47,8 +139,10 @@ Item {
         id: metrics
 
         text: Hypr.activeToplevel?.title ?? qsTr("Desktop")
-        font.pointSize: Appearance.font.size.smaller
-        font.family: Appearance.font.family.mono
+        // Style lebih clean - pakai sans font bukan mono
+        font.pointSize: Appearance.font.size.small
+        font.family: Appearance.font.family.sans
+        font.weight: Font.Medium
         elide: Qt.ElideRight
         elideWidth: root.maxHeight - icon.height
 
@@ -72,10 +166,11 @@ Item {
 
         anchors.horizontalCenter: icon.horizontalCenter
         anchors.top: icon.bottom
-        anchors.topMargin: Appearance.spacing.small
+        anchors.topMargin: Appearance.spacing.smaller
 
         font.pointSize: metrics.font.pointSize
         font.family: metrics.font.family
+        font.weight: metrics.font.weight
         color: root.colour
         opacity: root.current === this ? 1 : 0
 

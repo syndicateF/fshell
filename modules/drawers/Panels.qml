@@ -101,10 +101,10 @@ Item {
                 return (root.height - nonAnimHeight) / 2;
 
             const off = currentCenter - Config.border.thickness - nonAnimHeight / 2;
-            const diff = root.height - Math.floor(off + nonAnimHeight);
-            if (diff < 0)
-                return off + diff;
-            return Math.max(off, 0);
+            // Limit bottom position - leave space for cutout radius (rounding + spacing)
+            const bottomLimit = root.height - Config.border.rounding - Config.border.thickness;
+            const maxY = bottomLimit - nonAnimHeight;
+            return Math.max(Math.min(off, maxY), 0);
         }
     }
 

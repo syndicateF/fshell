@@ -134,9 +134,9 @@ ColumnLayout {
             DelegateChoice {
                 roleValue: "activeWindow"
                 delegate: WrappedLoader {
-                    sourceComponent: ActiveWindow {
+                    sourceComponent: WindowList {
                         bar: root
-                        monitor: Brightness.getMonitorForScreen(root.screen)
+                        screen: root.screen
                     }
                 }
             }

@@ -60,10 +60,14 @@ Shape {
 
     BarPopouts.Background {
         wrapper: root.panels.popouts
-        invertBottomRounding: wrapper.y + wrapper.height + 1 >= root.height
+        // Cek apakah popout menyentuh/dekat bottom bar (dengan floating margin)
+        invertBottomRounding: wrapper.y + wrapper.height + rounding >= root.height - Config.border.thickness
 
-        startX: wrapper.x
-        startY: wrapper.y - rounding * sideRounding
+        // startX & startY: adjust berdasarkan cutout mode atau detached mode
+        // Cutout: arc top-left turun (+rounding), jadi startY = wrapper.y - rounding
+        // Detached: arc top-left naik (-rounding), jadi startY = wrapper.y + rounding
+        startX: wrapper.isDetached ? wrapper.x : wrapper.x + Config.border.thickness
+        startY: wrapper.isDetached ? wrapper.y + rounding : wrapper.y - rounding
     }
 
     Utilities.Background {

@@ -169,7 +169,7 @@ ColumnLayout {
         implicitWidth: expandBtn.implicitWidth + Appearance.padding.normal * 2
         implicitHeight: expandBtn.implicitHeight + Appearance.padding.small
 
-        radius: Config.border.rounding
+        radius: Appearance.rounding.normal
         color: Colours.palette.m3primaryContainer
 
         StateLayer {
