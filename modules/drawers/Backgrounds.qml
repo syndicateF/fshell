@@ -81,6 +81,6 @@ Shape {
         panels: root.panels
 
         startX: root.width + Config.border.thickness
-        startY: root.panels.notifications.height
+        startY: root.panels.notifications.height - Config.border.thickness
     }
 }

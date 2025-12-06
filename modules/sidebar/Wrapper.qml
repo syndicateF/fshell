@@ -54,6 +54,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.margins: Appearance.padding.large
+        anchors.topMargin: Appearance.padding.large
         anchors.bottomMargin: 0
 
         active: true
