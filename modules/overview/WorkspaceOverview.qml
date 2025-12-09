@@ -572,9 +572,15 @@ FocusScope {
                         }
                         onClicked: (e) => {
                             if (e.button === Qt.LeftButton) {
-                                root.visibilities.setOverviewClickPending()
-                                Hypr.dispatch(`focuswindow address:${winItem.addr}`)
+                                // Left click on window = switch to that workspace (same as clicking workspace background)
+                                const specialWs = root.monitorData?.specialWorkspace?.name ?? ""
+                                if (specialWs !== "" && specialWs.startsWith("special:")) {
+                                    const specialName = specialWs.replace("special:", "")
+                                    Hypr.dispatch(`togglespecialworkspace ${specialName}`)
+                                }
+                                Hypr.dispatch(`workspace ${winItem.wsId}`)
                             } else if (e.button === Qt.MiddleButton) {
+                                // Middle click to close window
                                 Hypr.dispatch(`closewindow address:${winItem.addr}`)
                             }
                         }
