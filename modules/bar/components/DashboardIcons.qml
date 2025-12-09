@@ -42,8 +42,9 @@ StyledRect {
 
             sourceComponent: MaterialIcon {
                 text: "dashboard"
-                color: root.popouts.currentName === "dash" ? 
-                       Colours.palette.m3primary : Colours.palette.m3secondary
+                // color: root.popouts.currentName === "dash" ? 
+                //        Colours.palette.m3primary : Colours.palette.m3secondary
+                color: Colours.palette.m3secondary
             }
         }
 
@@ -53,8 +54,10 @@ StyledRect {
 
             sourceComponent: MaterialIcon {
                 text: "music_note"
-                color: root.popouts.currentName === "media" ? 
-                       Colours.palette.m3primary : Colours.palette.m3secondary
+                // color: root.popouts.currentName === "media" ? 
+                //        Colours.palette.m3primary : Colours.palette.m3secondary
+                color: Colours.palette.m3secondary
+
             }
         }
 
@@ -64,8 +67,7 @@ StyledRect {
 
             sourceComponent: MaterialIcon {
                 text: "monitoring"
-                color: root.popouts.currentName === "performance" ? 
-                       Colours.palette.m3primary : Colours.palette.m3secondary
+                color: Colours.palette.m3secondary
             }
         }
     }

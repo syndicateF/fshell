@@ -65,17 +65,12 @@ FocusScope {
     implicitWidth: overviewBackground.implicitWidth + elevationMargin * 2
     implicitHeight: overviewBackground.implicitHeight + elevationMargin * 2
 
-    // Invisible focusable item to receive keyboard events
-    TextInput {
-        id: keyHandler
-        width: 0
-        height: 0
-        opacity: 0
-        focus: true
-        Keys.onEscapePressed: root.visibilities.overview = false
+    // ESC to close overview
+    Shortcut {
+        enabled: root.visibilities.overview
+        sequence: "Escape"
+        onActivated: root.visibilities.overview = false
     }
-
-    onVisibleChanged: if (visible) keyHandler.forceActiveFocus()
 
     Rectangle {
         id: overviewBackground

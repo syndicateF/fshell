@@ -69,7 +69,9 @@ Scope {
         onReleased: {
             if (!root.launcherInterrupted && !root.hasFullscreen) {
                 const visibilities = Visibilities.getForActive();
-                visibilities.launcher = !visibilities.launcher;
+                const newState = !visibilities.launcher;
+                visibilities.launcher = newState;
+                if (newState) visibilities.launcherShortcutActive = true;
             }
             root.launcherInterrupted = false;
         }

@@ -78,6 +78,9 @@ CustomMouseArea {
             if (!utilitiesShortcutActive)
                 visibilities.utilities = false;
 
+            if (!visibilities.launcherShortcutActive && Config.launcher.showOnHover)
+                visibilities.launcher = false;
+
             if (!overviewShortcutActive)
                 visibilities.overview = false;
 
@@ -172,8 +175,13 @@ CustomMouseArea {
 
         // Show launcher on hover, or show/hide on drag if hover is disabled
         if (Config.launcher.showOnHover) {
-            if (!visibilities.launcher && inBottomPanel(panels.launcher, x, y))
-                visibilities.launcher = true;
+            const showLauncher = inBottomPanel(panels.launcher, x, y);
+            if (!visibilities.launcherShortcutActive) {
+                visibilities.launcher = showLauncher;
+            } else if (showLauncher) {
+                // If hovering over launcher area while in shortcut mode, transition to hover control
+                visibilities.launcherShortcutActive = false;
+            }
         } else if (pressed && inBottomPanel(panels.launcher, dragStart.x, dragStart.y) && withinPanelWidth(panels.launcher, x, y)) {
             if (dragY < -Config.launcher.dragThreshold)
                 visibilities.launcher = true;
