@@ -678,6 +678,19 @@ FocusScope {
                         easing.type: Easing.OutCubic
                     }
                 }
+                
+                // Click anywhere on active workspace to close overview
+                MouseArea {
+                    anchors.fill: parent
+                    // Only intercept clicks on active NORMAL workspace (not special)
+                    // Special workspaces have their own toggle behavior
+                    enabled: !activeBorder.useSpecialPosition
+                    onClicked: {
+                        // Set pending flag to prevent hover from reopening
+                        root.visibilities.setOverviewClickPending()
+                        root.visibilities.overview = false
+                    }
+                }
             }
         }
     }
