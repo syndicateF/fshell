@@ -88,6 +88,15 @@ Item {
             sourceComponent: LockStatus {}
         }
 
+        // Loading popout - untuk animasi yang sama dengan WindowInfo
+        Popout {
+            name: "loading"
+            sourceComponent: LoadingInfo {
+                wsName: root.wrapper.loadingWsName
+                appInfo: root.wrapper.loadingAppInfo
+            }
+        }
+
         Repeater {
             model: ScriptModel {
                 values: [...SystemTray.items.values]
