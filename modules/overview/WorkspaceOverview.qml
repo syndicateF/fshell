@@ -578,6 +578,7 @@ FocusScope {
                         }
                         onClicked: (e) => {
                             if (e.button === Qt.LeftButton) {
+                                root.visibilities.setOverviewClickPending()
                                 Hypr.dispatch(`focuswindow address:${winItem.addr}`)
                             } else if (e.button === Qt.MiddleButton) {
                                 Hypr.dispatch(`closewindow address:${winItem.addr}`)

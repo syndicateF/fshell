@@ -171,6 +171,18 @@ Variants {
                 property bool sidebar
                 property bool overview
                 property bool launcherShortcutActive
+                property bool overviewClickPending: false
+
+                // Timer untuk reset overviewClickPending setelah cursor warp selesai
+                property Timer _overviewClickTimer: Timer {
+                    interval: 500
+                    onTriggered: visibilities.overviewClickPending = false
+                }
+
+                function setOverviewClickPending(): void {
+                    overviewClickPending = true
+                    _overviewClickTimer.restart()
+                }
 
                 Component.onCompleted: Visibilities.load(scope.modelData, this)
             }

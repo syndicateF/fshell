@@ -43,8 +43,21 @@ Item {
 
     visible: height > 0
     implicitHeight: targetImplicitHeight
-    // Pakai content.implicitWidth (dari Loader) untuk width yang benar
-    implicitWidth: content.implicitWidth
+    // Pakai content.implicitWidth, fallback ke calculated width saat belum loaded
+    // Default width = (monitor_width * scale * columns) + padding + spacing
+    // Approximate: 1920 * 0.13 * 5 + 40 + 20 ≈ 1300px
+    implicitWidth: content.implicitWidth > 0 ? content.implicitWidth : defaultOverviewWidth
+    
+    // Calculated default width untuk hover area sebelum content loaded
+    readonly property real defaultOverviewWidth: {
+        const monitorWidth = screen?.width ?? 1920
+        const scale = Config.overview.sizes.scale
+        const columns = 5
+        const spacing = 5
+        const padding = 20
+        // wsWidth * columns + (columns-1) * spacing + padding * 2
+        return (monitorWidth * scale * columns) + ((columns - 1) * spacing) + (padding * 2)
+    }
     
     // Update targetImplicitHeight saat visibility atau content berubah
     onIsVisibleChanged: {

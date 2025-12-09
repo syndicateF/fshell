@@ -81,7 +81,7 @@ CustomMouseArea {
             if (!visibilities.launcherShortcutActive && Config.launcher.showOnHover)
                 visibilities.launcher = false;
 
-            if (!overviewShortcutActive)
+            if (!overviewShortcutActive && !visibilities.overviewClickPending)
                 visibilities.overview = false;
 
             if (!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1) {
@@ -211,7 +211,8 @@ CustomMouseArea {
         // Show overview on hover
         if (Config.overview.showOnHover && Config.overview.enabled) {
             const showOverview = inTopPanel(panels.overview, x, y);
-            if (!overviewShortcutActive) {
+            if (!overviewShortcutActive && !visibilities.overviewClickPending) {
+                // Don't auto-close if click pending (cursor warped by Hyprland)
                 visibilities.overview = showOverview;
             } else if (showOverview) {
                 overviewShortcutActive = false;
