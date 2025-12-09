@@ -72,6 +72,21 @@ ColumnLayout {
             popouts.currentName = id.toLowerCase();
             popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
             popouts.hasCurrent = true;
+        } else if (id === "dashboardIcons") {
+            // Handle dashboard icons hover - similar to statusIcons
+            const items = item.items;
+            const icon = items.childAt(items.width / 2, mapToItem(items, 0, y).y);
+            if (icon && icon.name) {
+                popouts.currentName = icon.name;
+                popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
+                popouts.hasCurrent = true;
+            } else {
+                // Keep showing if already on a dashboard popout
+                const dashPopouts = ["dash", "media", "performance"];
+                if (!dashPopouts.includes(popouts.currentName)) {
+                    popouts.hasCurrent = false;
+                }
+            }
         }
     }
 
@@ -137,6 +152,16 @@ ColumnLayout {
                     sourceComponent: WindowList {
                         bar: root
                         screen: root.screen
+                    }
+                }
+            }
+            DelegateChoice {
+                roleValue: "dashboardIcons"
+                delegate: WrappedLoader {
+                    sourceComponent: DashboardIcons {
+                        bar: root
+                        visibilities: root.visibilities
+                        popouts: root.popouts
                     }
                 }
             }

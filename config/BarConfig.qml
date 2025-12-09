@@ -27,6 +27,10 @@ JsonObject {
             enabled: true
         },
         {
+            id: "dashboardIcons",
+            enabled: true
+        },
+        {
             id: "activeWindow",
             enabled: true
         },

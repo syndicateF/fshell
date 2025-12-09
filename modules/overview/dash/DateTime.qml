@@ -13,7 +13,7 @@ Item {
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
-    implicitWidth: Config.dashboard.sizes.dateTimeWidth
+    implicitWidth: Config.overview.sizes.dateTimeWidth
 
     ColumnLayout {
         anchors.left: parent.left

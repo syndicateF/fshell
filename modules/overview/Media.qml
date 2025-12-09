@@ -17,7 +17,7 @@ import QtQuick.Shapes
 Item {
     id: root
 
-    required property PersistentProperties visibilities
+    property PersistentProperties visibilities: null
 
     property real playerProgress: {
         const active = Players.active;
@@ -37,8 +37,8 @@ Item {
         return `${mins}:${secs}`;
     }
 
-    implicitWidth: cover.implicitWidth + Config.dashboard.sizes.mediaVisualiserSize * 2 + details.implicitWidth + details.anchors.leftMargin + bongocat.implicitWidth + bongocat.anchors.leftMargin * 2 + Appearance.padding.large * 2
-    implicitHeight: Math.max(cover.implicitHeight + Config.dashboard.sizes.mediaVisualiserSize * 2, details.implicitHeight, bongocat.implicitHeight) + Appearance.padding.large * 2
+    implicitWidth: cover.implicitWidth + Config.overview.sizes.mediaVisualiserSize * 2 + details.implicitWidth + details.anchors.leftMargin + bongocat.implicitWidth + bongocat.anchors.leftMargin * 2 + Appearance.padding.large * 2
+    implicitHeight: Math.max(cover.implicitHeight + Config.overview.sizes.mediaVisualiserSize * 2, details.implicitHeight, bongocat.implicitHeight) + Appearance.padding.large * 2
 
     Behavior on playerProgress {
         Anim {
@@ -48,7 +48,7 @@ Item {
 
     Timer {
         running: Players.active?.isPlaying ?? false
-        interval: Config.dashboard.mediaUpdateInterval
+        interval: Config.overview.mediaUpdateInterval
         triggeredOnStart: true
         repeat: true
         onTriggered: Players.active?.positionChanged()
@@ -72,7 +72,7 @@ Item {
         property color colour: Colours.palette.m3primary
 
         anchors.fill: cover
-        anchors.margins: -Config.dashboard.sizes.mediaVisualiserSize
+        anchors.margins: -Config.overview.sizes.mediaVisualiserSize
 
         asynchronous: true
         preferredRendererType: Shape.CurveRenderer
@@ -93,7 +93,7 @@ Item {
             readonly property real value: Math.max(1e-3, Math.min(1, Audio.cava.values[modelData]))
 
             readonly property real angle: modelData * 2 * Math.PI / Config.services.visualiserBars
-            readonly property real magnitude: value * Config.dashboard.sizes.mediaVisualiserSize
+            readonly property real magnitude: value * Config.overview.sizes.mediaVisualiserSize
             readonly property real cos: Math.cos(angle)
             readonly property real sin: Math.sin(angle)
 
@@ -120,10 +120,10 @@ Item {
 
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
-        anchors.leftMargin: Appearance.padding.large + Config.dashboard.sizes.mediaVisualiserSize
+        anchors.leftMargin: Appearance.padding.large + Config.overview.sizes.mediaVisualiserSize
 
-        implicitWidth: Config.dashboard.sizes.mediaCoverArtSize
-        implicitHeight: Config.dashboard.sizes.mediaCoverArtSize
+        implicitWidth: Config.overview.sizes.mediaCoverArtSize
+        implicitHeight: Config.overview.sizes.mediaCoverArtSize
 
         color: Colours.tPalette.m3surfaceContainerHigh
         radius: Infinity
@@ -315,7 +315,7 @@ Item {
                 disabled: !Players.active?.canRaise
                 onClicked: {
                     Players.active?.raise();
-                    root.visibilities.dashboard = false;
+                    root.visibilities.overview = false;
                 }
             }
 

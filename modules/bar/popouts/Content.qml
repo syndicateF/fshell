@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs.components
 import qs.config
+import qs.modules.overview as Overview
 import Quickshell
 import Quickshell.Services.SystemTray
 import QtQuick
@@ -29,6 +30,28 @@ Item {
             sourceComponent: ActiveWindow {
                 wrapper: root.wrapper
             }
+        }
+
+        // Dashboard popouts
+        Popout {
+            name: "dash"
+            sourceComponent: Overview.Dash {
+                visibilities: null
+                state: null
+                facePicker: null
+            }
+        }
+
+        Popout {
+            name: "media"
+            sourceComponent: Overview.Media {
+                visibilities: null
+            }
+        }
+
+        Popout {
+            name: "performance"
+            sourceComponent: Overview.Performance {}
         }
 
         Popout {

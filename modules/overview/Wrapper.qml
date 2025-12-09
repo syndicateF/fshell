@@ -11,6 +11,7 @@ import QtQuick
 Item {
     id: root
 
+    required property ShellScreen screen
     required property PersistentProperties visibilities
     readonly property PersistentProperties dashState: PersistentProperties {
         property int currentTab
@@ -45,7 +46,7 @@ Item {
 
     states: State {
         name: "visible"
-        when: root.visibilities.dashboard && Config.dashboard.enabled
+        when: root.visibilities.overview && Config.overview.enabled
 
         PropertyChanges {
             root.implicitHeight: content.implicitHeight
@@ -82,7 +83,7 @@ Item {
         running: true
         interval: Appearance.anim.durations.extraLarge
         onTriggered: {
-            content.active = Qt.binding(() => (root.visibilities.dashboard && Config.dashboard.enabled) || root.visible);
+            content.active = Qt.binding(() => root.visibilities.overview && Config.overview.enabled);
             content.visible = true;
         }
     }
@@ -94,9 +95,10 @@ Item {
         anchors.bottom: parent.bottom
 
         visible: false
-        active: true
+        active: root.visibilities.overview && Config.overview.enabled
 
         sourceComponent: Content {
+            screen: root.screen
             visibilities: root.visibilities
             state: root.dashState
             facePicker: root.facePicker

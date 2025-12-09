@@ -11,9 +11,9 @@ import QtQuick
 Row {
     id: root
 
-    required property PersistentProperties visibilities
-    required property PersistentProperties state
-    required property FileDialog facePicker
+    property PersistentProperties visibilities: null
+    property PersistentProperties state: null
+    property var facePicker: null
 
     padding: Appearance.padding.large
     spacing: Appearance.spacing.normal
@@ -73,8 +73,10 @@ Row {
                     color: Colours.palette.m3onPrimary
 
                     function onClicked(): void {
-                        root.visibilities.launcher = false;
-                        root.facePicker.open();
+                        if (root.visibilities)
+                            root.visibilities.launcher = false;
+                        if (root.facePicker)
+                            root.facePicker.open();
                     }
                 }
 
@@ -121,7 +123,7 @@ Row {
                 id: icon
 
                 anchors.left: parent.left
-                anchors.leftMargin: (Config.dashboard.sizes.infoIconSize - implicitWidth) / 2
+                anchors.leftMargin: (Config.overview.sizes.infoIconSize - implicitWidth) / 2
 
                 source: SysInfo.osLogo
                 implicitSize: Math.floor(Appearance.font.size.normal * 1.34)
@@ -137,7 +139,7 @@ Row {
                 text: `:  ${SysInfo.osPrettyName || SysInfo.osName}`
                 font.pointSize: Appearance.font.size.normal
 
-                width: Config.dashboard.sizes.infoWidth
+                width: Config.overview.sizes.infoWidth
                 elide: Text.ElideRight
             }
         }
@@ -171,7 +173,7 @@ Row {
             id: icon
 
             anchors.left: parent.left
-            anchors.leftMargin: (Config.dashboard.sizes.infoIconSize - implicitWidth) / 2
+            anchors.leftMargin: (Config.overview.sizes.infoIconSize - implicitWidth) / 2
 
             fill: 1
             text: line.icon
@@ -188,7 +190,7 @@ Row {
             text: `:  ${line.text}`
             font.pointSize: Appearance.font.size.normal
 
-            width: Config.dashboard.sizes.infoWidth
+            width: Config.overview.sizes.infoWidth
             elide: Text.ElideRight
         }
     }

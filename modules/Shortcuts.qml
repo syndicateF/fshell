@@ -19,23 +19,35 @@ Scope {
 
     CustomShortcut {
         name: "showall"
-        description: "Toggle launcher, dashboard and osd"
+        description: "Toggle launcher, overview and osd"
         onPressed: {
             if (root.hasFullscreen)
                 return;
             const v = Visibilities.getForActive();
-            v.launcher = v.dashboard = v.osd = v.utilities = !(v.launcher || v.dashboard || v.osd || v.utilities);
+            v.launcher = v.overview = v.osd = v.utilities = !(v.launcher || v.overview || v.osd || v.utilities);
         }
     }
 
     CustomShortcut {
-        name: "dashboard"
-        description: "Toggle dashboard"
+        name: "overview"
+        description: "Toggle overview"
         onPressed: {
             if (root.hasFullscreen)
                 return;
             const visibilities = Visibilities.getForActive();
-            visibilities.dashboard = !visibilities.dashboard;
+            visibilities.overview = !visibilities.overview;
+        }
+    }
+
+    // Alias for SUPER+TAB binding - same as overview
+    CustomShortcut {
+        name: "workspaceOverview"
+        description: "Toggle workspace overview (SUPER+TAB)"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            visibilities.overview = !visibilities.overview;
         }
     }
 
@@ -74,7 +86,7 @@ Scope {
 
         function toggle(drawer: string): void {
             if (list().split("\n").includes(drawer)) {
-                if (root.hasFullscreen && ["launcher", "session", "dashboard"].includes(drawer))
+                if (root.hasFullscreen && ["launcher", "session", "overview"].includes(drawer))
                     return;
                 const visibilities = Visibilities.getForActive();
                 visibilities[drawer] = !visibilities[drawer];

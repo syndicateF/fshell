@@ -17,32 +17,39 @@ CustomMouseArea {
     property bool dashboardShortcutActive
     property bool osdShortcutActive
     property bool utilitiesShortcutActive
+    property bool overviewShortcutActive
 
     function withinPanelHeight(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         const panelY = Config.border.thickness + panel.y;
         return y >= panelY - Config.border.rounding && y <= panelY + panel.height + Config.border.rounding;
     }
 
     function withinPanelWidth(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         const panelX = bar.implicitWidth + panel.x;
         return x >= panelX - Config.border.rounding && x <= panelX + panel.width + Config.border.rounding;
     }
 
     function inLeftPanel(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         return x < bar.implicitWidth + panel.x + panel.width && withinPanelHeight(panel, x, y);
     }
 
     function inRightPanel(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         const triggerWidth = Math.max(panel.width, Config.border.thickness);
         return x > width - triggerWidth - Config.border.rounding && withinPanelHeight(panel, x, y);
     }
 
     function inTopPanel(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         const triggerHeight = Math.max(panel.height, Config.border.thickness);
         return y < Config.border.thickness + panel.y + triggerHeight && withinPanelWidth(panel, x, y);
     }
 
     function inBottomPanel(panel: Item, x: real, y: real): bool {
+        if (!panel) return false;
         const triggerHeight = Math.max(panel.height, Config.border.thickness);
         return y > height - triggerHeight - Config.border.rounding && withinPanelWidth(panel, x, y);
     }
@@ -70,6 +77,9 @@ CustomMouseArea {
 
             if (!utilitiesShortcutActive)
                 visibilities.utilities = false;
+
+            if (!overviewShortcutActive)
+                visibilities.overview = false;
 
             if (!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1) {
                 popouts.hasCurrent = false;
@@ -190,6 +200,24 @@ CustomMouseArea {
                 visibilities.dashboard = false;
         }
 
+        // Show overview on hover
+        if (Config.overview.showOnHover && Config.overview.enabled) {
+            const showOverview = inTopPanel(panels.overview, x, y);
+            if (!overviewShortcutActive) {
+                visibilities.overview = showOverview;
+            } else if (showOverview) {
+                overviewShortcutActive = false;
+            }
+        }
+
+        // Show/hide overview on drag
+        if (pressed && inTopPanel(panels.overview, dragStart.x, dragStart.y) && withinPanelWidth(panels.overview, x, y)) {
+            if (dragY > Config.overview.dragThreshold)
+                visibilities.overview = true;
+            else if (dragY < -Config.overview.dragThreshold)
+                visibilities.overview = false;
+        }
+
         // Show utilities on hover
         const showUtilities = inBottomPanel(panels.utilities, x, y);
 
@@ -271,6 +299,19 @@ CustomMouseArea {
             } else {
                 // Utilities hidden, clear shortcut flag
                 root.utilitiesShortcutActive = false;
+            }
+        }
+
+        function onOverviewChanged() {
+            if (root.visibilities.overview) {
+                // Overview became visible, immediately check if this should be shortcut mode
+                const inOverviewArea = root.inTopPanel(root.panels.overview, root.mouseX, root.mouseY);
+                if (!inOverviewArea) {
+                    root.overviewShortcutActive = true;
+                }
+            } else {
+                // Overview hidden, clear shortcut flag
+                root.overviewShortcutActive = false;
             }
         }
     }

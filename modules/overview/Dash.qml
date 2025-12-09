@@ -4,14 +4,24 @@ import qs.services
 import qs.config
 import "dash"
 import Quickshell
+import QtQuick
 import QtQuick.Layouts
 
 GridLayout {
     id: root
 
-    required property PersistentProperties visibilities
-    required property PersistentProperties state
-    required property FileDialog facePicker
+    property PersistentProperties visibilities: null
+    property PersistentProperties state: null
+    property var facePicker: null
+
+    // Fallback state for when state is null (e.g., from popout)
+    readonly property QtObject effectiveState: state ?? fallbackState
+
+    QtObject {
+        id: fallbackState
+        property date currentDate: new Date()
+        property int currentTab: 0
+    }
 
     rowSpacing: Appearance.spacing.normal
     columnSpacing: Appearance.spacing.normal
@@ -26,7 +36,7 @@ GridLayout {
             id: user
 
             visibilities: root.visibilities
-            state: root.state
+            state: root.effectiveState
             facePicker: root.facePicker
         }
     }
@@ -34,7 +44,7 @@ GridLayout {
     Rect {
         Layout.row: 0
         Layout.columnSpan: 2
-        Layout.preferredWidth: Config.dashboard.sizes.weatherWidth
+        Layout.preferredWidth: Config.overview.sizes.weatherWidth
         Layout.fillHeight: true
 
         Weather {}
@@ -60,7 +70,7 @@ GridLayout {
         Calendar {
             id: calendar
 
-            state: root.state
+            state: root.effectiveState
         }
     }
 

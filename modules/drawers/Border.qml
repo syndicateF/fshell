@@ -22,7 +22,7 @@ Item {
             maskSource: mask
             maskEnabled: true
             maskInverted: true
-            maskThresholdMin: 0.5
+            maskThresholdMin: 0.6
             maskSpreadAtMin: 1
         }
     }

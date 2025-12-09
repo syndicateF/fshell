@@ -55,10 +55,10 @@ Item {
         id: indicator
 
         anchors.top: bar.bottom
-        anchors.topMargin: Config.dashboard.sizes.tabIndicatorSpacing
+        anchors.topMargin: Config.overview.sizes.tabIndicatorSpacing
 
         implicitWidth: bar.currentItem.implicitWidth
-        implicitHeight: Config.dashboard.sizes.tabIndicatorHeight
+        implicitHeight: Config.overview.sizes.tabIndicatorHeight
 
         x: {
             const tab = bar.currentItem;
@@ -180,7 +180,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                implicitHeight: parent.height + Config.dashboard.sizes.tabIndicatorSpacing * 2
+                implicitHeight: parent.height + Config.overview.sizes.tabIndicatorSpacing * 2
 
                 color: "transparent"
                 radius: Appearance.rounding.small

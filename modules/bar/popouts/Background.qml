@@ -19,7 +19,7 @@ ShapePath {
     strokeWidth: -1
     fillColor: Colours.palette.m3surface
 
-    // Top-Left corner - CUTOUT style (seperti dashboard)
+    // Top-Left corner - CUTOUT style (seperti overview)
     PathArc {
         relativeX: root.roundingX
         relativeY: root.cutoutLeft ? root.rounding : -root.rounding

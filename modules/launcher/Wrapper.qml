@@ -17,8 +17,8 @@ Item {
 
     readonly property real maxHeight: {
         let max = screen.height - Config.border.thickness * 2 - Appearance.spacing.large;
-        if (visibilities.dashboard)
-            max -= panels.dashboard.nonAnimHeight;
+        if (visibilities.overview)
+            max -= panels.overview.nonAnimHeight;
         return max;
     }
 

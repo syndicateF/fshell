@@ -3,7 +3,7 @@ import qs.modules.osd as Osd
 import qs.modules.notifications as Notifications
 import qs.modules.session as Session
 import qs.modules.launcher as Launcher
-import qs.modules.dashboard as Dashboard
+import qs.modules.overview as Overview
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities as Utilities
 import qs.modules.utilities.toasts as Toasts
@@ -22,7 +22,7 @@ Item {
     readonly property alias notifications: notifications
     readonly property alias session: session
     readonly property alias launcher: launcher
-    readonly property alias dashboard: dashboard
+    readonly property alias overview: overview
     readonly property alias popouts: popouts
     readonly property alias utilities: utilities
     readonly property alias toasts: toasts
@@ -80,9 +80,10 @@ Item {
         anchors.bottomMargin: -Config.border.thickness
     }
 
-    Dashboard.Wrapper {
-        id: dashboard
+    Overview.Wrapper {
+        id: overview
 
+        screen: root.screen
         visibilities: root.visibilities
 
         anchors.horizontalCenter: parent.horizontalCenter
@@ -102,9 +103,10 @@ Item {
 
             const off = currentCenter - Config.border.thickness - nonAnimHeight / 2;
             // Limit bottom position - leave space for cutout radius (rounding + spacing)
+            const maxTop = Config.border.rounding + Config.border.thickness;
             const bottomLimit = root.height - Config.border.rounding - Config.border.thickness;
-            const maxY = bottomLimit - nonAnimHeight;
-            return Math.max(Math.min(off, maxY), 0);
+            const maxBot = bottomLimit - nonAnimHeight;
+            return Math.max(Math.min(off, maxBot), maxTop);
         }
     }
 

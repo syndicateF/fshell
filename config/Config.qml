@@ -13,6 +13,7 @@ Singleton {
     property alias background: adapter.background
     property alias bar: adapter.bar
     property alias border: adapter.border
+    property alias overview: adapter.overview
     property alias dashboard: adapter.dashboard
     property alias controlCenter: adapter.controlCenter
     property alias launcher: adapter.launcher
@@ -60,6 +61,7 @@ Singleton {
             property BackgroundConfig background: BackgroundConfig {}
             property BarConfig bar: BarConfig {}
             property BorderConfig border: BorderConfig {}
+            property OverviewConfig overview: OverviewConfig {}
             property DashboardConfig dashboard: DashboardConfig {}
             property ControlCenterConfig controlCenter: ControlCenterConfig {}
             property LauncherConfig launcher: LauncherConfig {}

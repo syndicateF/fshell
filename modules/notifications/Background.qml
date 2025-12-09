@@ -31,10 +31,10 @@ ShapePath {
         relativeY: root.wrapper.height - root.roundingY * 2
     }
     PathArc {
-        relativeX: root.sidebar.notifsRoundingX
-        relativeY: root.roundingY
-        radiusX: root.sidebar.notifsRoundingX
-        radiusY: Math.min(root.rounding, root.wrapper.height)
+        relativeX: rounding
+        relativeY: roundingY
+        radiusX: rounding
+        radiusY: roundingY
         direction: PathArc.Counterclockwise
     }
     PathLine {

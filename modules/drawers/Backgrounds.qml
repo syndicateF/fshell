@@ -4,7 +4,7 @@ import qs.modules.osd as Osd
 import qs.modules.notifications as Notifications
 import qs.modules.session as Session
 import qs.modules.launcher as Launcher
-import qs.modules.dashboard as Dashboard
+import qs.modules.overview as Overview
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities as Utilities
 import qs.modules.sidebar as Sidebar
@@ -51,8 +51,8 @@ Shape {
         startY: root.height + Config.border.thickness
     }
 
-    Dashboard.Background {
-        wrapper: root.panels.dashboard
+    Overview.Background {
+        wrapper: root.panels.overview
 
         startX: (root.width - wrapper.width) / 2 - rounding
         startY: -Config.border.thickness
