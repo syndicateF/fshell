@@ -55,6 +55,7 @@ StyledRect {
 
                         text: "keyboard_capslock_badge"
                         color: root.colour
+                        font.pointSize: Config.bar.sizes.materialIconSize
 
                         Behavior on opacity {
                             Anim {}
@@ -86,6 +87,7 @@ StyledRect {
 
                         text: "looks_one"
                         color: root.colour
+                        font.pointSize: Config.bar.sizes.materialIconSize
 
                         Behavior on opacity {
                             Anim {}
@@ -112,6 +114,7 @@ StyledRect {
                 animate: true
                 text: Icons.getVolumeIcon(Audio.volume, Audio.muted)
                 color: root.colour
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -124,6 +127,7 @@ StyledRect {
                 animate: true
                 text: Icons.getMicVolumeIcon(Audio.sourceVolume, Audio.sourceMuted)
                 color: root.colour
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -137,6 +141,7 @@ StyledRect {
                 text: Hypr.kbLayout
                 color: root.colour
                 font.family: Appearance.font.family.mono
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -149,6 +154,7 @@ StyledRect {
                 animate: true
                 text: Network.active ? Icons.getNetworkIcon(Network.active.strength ?? 0) : "wifi_off"
                 color: root.colour
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -173,6 +179,7 @@ StyledRect {
                         return "bluetooth";
                     }
                     color: root.colour
+                    font.pointSize: Config.bar.sizes.materialIconSize
                 }
 
                 // Connected bluetooth devices
@@ -190,6 +197,7 @@ StyledRect {
                         text: Icons.getBluetoothIcon(modelData?.icon)
                         color: root.colour
                         fill: 1
+                        font.pointSize: Config.bar.sizes.materialIconSize
 
                         SequentialAnimation on opacity {
                             running: device.modelData?.state !== BluetoothDeviceState.Connected
@@ -245,6 +253,7 @@ StyledRect {
                 }
                 color: !UPower.onBattery || UPower.displayDevice.percentage > 0.2 ? root.colour : Colours.palette.m3error
                 fill: 1
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
     }

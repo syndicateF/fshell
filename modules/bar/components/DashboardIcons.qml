@@ -45,6 +45,7 @@ StyledRect {
                 // color: root.popouts.currentName === "dash" ? 
                 //        Colours.palette.m3primary : Colours.palette.m3secondary
                 color: Colours.palette.m3secondary
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -57,7 +58,7 @@ StyledRect {
                 // color: root.popouts.currentName === "media" ? 
                 //        Colours.palette.m3primary : Colours.palette.m3secondary
                 color: Colours.palette.m3secondary
-
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
 
@@ -68,6 +69,7 @@ StyledRect {
             sourceComponent: MaterialIcon {
                 text: "monitoring"
                 color: Colours.palette.m3secondary
+                font.pointSize: Config.bar.sizes.materialIconSize
             }
         }
     }

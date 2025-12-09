@@ -10,10 +10,10 @@ JsonObject {
     // Special workspaces config
     property var specialWorkspaces: ["sysmon", "music", "communication", "todo"]
     property var specialWorkspaceApps: ({
-        "sysmon": { "icon": "utilities-system-monitor", "command": "resources" },
-        "music": { "icon": "spotify", "command": "spotify" },
-        "communication": { "icon": "discord", "command": "discord" },
-        "todo": { "icon": "todoist", "command": "todoist" }
+        "sysmon": { "icon": "net.nokyan.Resources", "command": "resources", "app": "Resources" },
+        "music": { "icon": "spotify", "command": "spotify", "app": "Spotify" },
+        "communication": { "icon": "discord", "command": "discord", "app": "Discord" },
+        "todo": { "icon": "io.elementary.tasks", "command": "todoist", "app": "Todoist" }
     })
 
     component Sizes: JsonObject {

@@ -39,7 +39,7 @@ Item {
     readonly property bool hasWindows: workspaceWindows.length > 0
     
     // Size for empty state icon
-    readonly property real emptyIconSize: Appearance.font.size.large * 1.8
+    readonly property real emptyIconSize: Config.bar.sizes.iconSize * 1.5
 
     clip: true
     implicitWidth: hasWindows ? windowColumn.implicitWidth : emptyState.implicitWidth
@@ -332,7 +332,7 @@ Item {
                 id: icon
 
                 anchors.centerIn: parent
-                implicitSize: Appearance.font.size.large * 1.8
+                implicitSize: Config.bar.sizes.iconSize
                 source: Icons.getAppIcon(windowItem.window.lastIpcObject.class ?? "", "application-x-executable")
 
                 // Opacity: active = full, inactive = dimmed

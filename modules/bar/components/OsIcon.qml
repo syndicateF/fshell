@@ -5,6 +5,6 @@ import qs.utils
 
 ColouredIcon {
     source: SysInfo.osLogo
-    implicitSize: Appearance.font.size.large * 1.4
+    implicitSize: Config.bar.sizes.iconSize
     colour: Colours.palette.m3tertiary
 }

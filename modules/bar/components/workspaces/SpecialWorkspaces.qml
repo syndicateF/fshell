@@ -7,6 +7,7 @@ import qs.utils
 import qs.config
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 
@@ -177,6 +178,7 @@ Item {
                         fill: 1
                         text: ws.icon
                         verticalAlignment: Qt.AlignVCenter
+                        font.pointSize: Config.bar.sizes.materialIconSize
                     }
                 }
 
@@ -229,12 +231,49 @@ Item {
                             values: Hypr.toplevels.values.filter(c => c.workspace?.id === ws.wsId)
                         }
 
-                        MaterialIcon {
+                        Loader {
+                            id: specialWindowIconLoader
                             required property var modelData
-
-                            grade: 0
-                            text: Icons.getAppCategoryIcon(modelData.lastIpcObject.class, "terminal")
-                            color: Colours.palette.m3onSurfaceVariant
+                            
+                            property string appClass: modelData.lastIpcObject.class
+                            
+                            sourceComponent: {
+                                switch (Config.bar.workspaces.windowIconStyle) {
+                                    case "icon": return appIconComp
+                                    case "category": return categoryComp
+                                    case "custom": return customComp
+                                    default: return appIconComp
+                                }
+                            }
+                            
+                            Component {
+                                id: categoryComp
+                                MaterialIcon {
+                                    grade: 0
+                                    text: Icons.getAppCategoryIcon(specialWindowIconLoader.appClass, "terminal")
+                                    color: Colours.palette.m3onSurfaceVariant
+                                    font.pointSize: Config.bar.sizes.materialIconSize
+                                }
+                            }
+                            
+                            Component {
+                                id: customComp
+                                StyledText {
+                                    text: Config.bar.workspaces.windowIconCustomSymbol
+                                    color: Colours.palette.m3onSurfaceVariant
+                                    font.pointSize: Config.bar.sizes.materialIconSize
+                                    horizontalAlignment: Text.AlignHCenter
+                                    width: contentWidth
+                                }
+                            }
+                            
+                            Component {
+                                id: appIconComp
+                                IconImage {
+                                    source: Icons.getAppIcon(specialWindowIconLoader.appClass)
+                                    implicitSize: Config.bar.sizes.materialIconSize
+                                }
+                            }
                         }
                     }
                 }

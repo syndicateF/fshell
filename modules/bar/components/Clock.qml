@@ -22,6 +22,7 @@ Column {
         sourceComponent: MaterialIcon {
             text: "calendar_month"
             color: root.colour
+            font.pointSize: Config.bar.sizes.materialIconSize
         }
     }
 

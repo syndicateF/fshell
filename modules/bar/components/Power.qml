@@ -35,6 +35,6 @@ Item {
         text: "power_settings_new"
         color: Colours.palette.m3error
         font.bold: true
-        font.pointSize: Appearance.font.size.normal
+        font.pointSize: Config.bar.sizes.materialIconSize
     }
 }

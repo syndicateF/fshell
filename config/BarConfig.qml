@@ -74,11 +74,13 @@ JsonObject {
         property bool occupiedBg: false
         property bool showWindows: true
         property bool showWindowsOnSpecialWorkspaces: showWindows
-        property bool activeTrail: false
+        property string windowIconStyle: "custom"  // "icon" = app icons, "category" = category symbols, "custom" = custom symbol
+        property string windowIconCustomSymbol: "•"  //"⚫"  // custom symbol when windowIconStyle is "custom"
+        property bool activeTrail: true
         property bool perMonitorWorkspaces: true
-        property string label: "  " // if empty, will show workspace name's first letter
-        property string occupiedLabel: "󰮯"
-        property string activeLabel: "󰮯"
+        property string label: "⚫"//"•"//"●" // if empty, will show workspace name's first letter
+        property string occupiedLabel: "󰮯" //"󰮯"
+        property string activeLabel: "󰮯"  //"󰮯"
         property string capitalisation: "preserve" // upper, lower, or preserve - relevant only if label is empty
         property list<var> specialWorkspaceIcons: []
     }
@@ -110,6 +112,8 @@ JsonObject {
 
     component Sizes: JsonObject {
         property int innerWidth: 40
+        property int iconSize: 22  // Icon size for app icons (pixelSize)
+        property int materialIconSize: 15  // Material icon size (pointSize) - same as Appearance.font.size.larger
         property int windowPreviewSize: 400
         property int trayMenuWidth: 300
         property int batteryWidth: 250

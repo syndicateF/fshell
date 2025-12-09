@@ -210,62 +210,46 @@ FocusScope {
                             width: root.wsWidth
                             height: root.wsHeight
                             radius: root.uniformRadius
-                            color: isActive ? Qt.alpha(Colours.palette.m3primary, 0.15) : Colours.palette.m3surfaceContainer
+                            color: isActive ? Qt.alpha(Colours.palette.m3primary, 0.12) : Colours.palette.m3surfaceContainer
                             
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on color { ColorAnimation { duration: Appearance.anim.durations.small } }
                             
                             // Content when no windows - icon + info
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 6
+                                spacing: Appearance.spacing.small
                                 visible: !specialWsRect.hasWindows
                                 z: 0
                                 
-                                // App icon (colored, clean)
+                                // App icon
                                 CachingIconImage {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     source: Icons.getAppIcon(specialWsRect.appInfo.icon ?? "", "application-x-executable")
-                                    implicitSize: Math.min(specialWsRect.width, specialWsRect.height) * 0.28
+                                    implicitSize: Math.min(specialWsRect.width, specialWsRect.height) * 0.25
                                 }
                                 
-                                // Workspace name
+                                // App name (main text)
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: specialWsRect.appInfo.app ?? specialWsRect.wsName
+                                    font.pixelSize: Appearance.font.size.smaller
+                                    font.weight: Font.DemiBold
+                                    font.family: Appearance.font.family.sans
+                                    color: specialWsRect.isActive ? Colours.palette.m3primary : Colours.palette.m3onSurface
+                                    
+                                    Behavior on color { ColorAnimation { duration: Appearance.anim.durations.small } }
+                                }
+                                
+                                // Workspace category label
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: specialWsRect.wsName
-                                    font.pixelSize: 10
-                                    font.weight: Font.DemiBold
-                                    font.capitalization: Font.Capitalize
-                                    color: Colours.palette.m3onSurface
-                                }
-                                
-                                // Shortcut hint
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: `Super + ${specialWsRect.index + 1}`
-                                    font.pixelSize: 8
-                                    font.family: Appearance.font.family.mono
-                                    color: Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.6)
-                                }
-                                
-                                // Status indicator
-                                Row {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    spacing: 4
-                                    
-                                    Rectangle {
-                                        width: 6
-                                        height: 6
-                                        radius: 3
-                                        color: specialWsRect.isActive ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3outline, 0.4)
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    
-                                    Text {
-                                        text: specialWsRect.isActive ? "active" : "click to launch"
-                                        font.pixelSize: 7
-                                        color: specialWsRect.isActive ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.5)
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
+                                    font.pixelSize: Appearance.font.size.small
+                                    font.weight: Font.Normal
+                                    font.family: Appearance.font.family.sans
+                                    font.capitalization: Font.AllUppercase
+                                    color: Colours.palette.m3onSurfaceVariant
+                                    opacity: 0.7
                                 }
                             }
                             
