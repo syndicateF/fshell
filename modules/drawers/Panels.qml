@@ -85,6 +85,7 @@ Item {
 
         screen: root.screen
         visibilities: root.visibilities
+        popouts: popouts
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top

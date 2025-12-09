@@ -13,6 +13,7 @@ Item {
 
     required property ShellScreen screen
     required property PersistentProperties visibilities
+    required property var popouts
     readonly property PersistentProperties dashState: PersistentProperties {
         property int currentTab
         property date currentDate: new Date()
@@ -100,6 +101,7 @@ Item {
         sourceComponent: Content {
             screen: root.screen
             visibilities: root.visibilities
+            popouts: root.popouts
             state: root.dashState
             facePicker: root.facePicker
         }

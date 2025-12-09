@@ -16,10 +16,15 @@ Item {
     required property var bar
     required property ShellScreen screen
 
-    // Windows di workspace aktif saja, urutan creation (default dari Hyprland)
+    // Windows di workspace aktif (including special workspace)
     readonly property var workspaceWindows: {
         const mon = Hypr.monitorFor(screen);
-        const wsId = mon?.activeWorkspace?.id ?? Hypr.activeWsId;
+        if (!mon) return [];
+        
+        // Check if we're in a special workspace first
+        const special = mon.lastIpcObject.specialWorkspace;
+        const wsId = special.name ? special.id : (mon.activeWorkspace?.id ?? Hypr.activeWsId);
+        
         return Hypr.toplevels.values.filter(c => c.workspace?.id === wsId);
     }
 

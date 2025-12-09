@@ -103,6 +103,23 @@ Variants {
                 }
             }
 
+            // Timer-based detection for special workspace app ready (less overhead than event-based)
+            Timer {
+                id: loadingCheckTimer
+                interval: 200
+                repeat: true
+                running: panels.popouts.detachedMode === "loading"
+                onTriggered: {
+                    const wsName = panels.popouts.loadingWsName;
+                    if (!wsName) return;
+                    
+                    const specialWs = Hypr.workspaces.values.find(ws => ws.name === `special:${wsName}`);
+                    if (specialWs?.lastIpcObject?.windows > 0) {
+                        panels.popouts.closeLoading();
+                    }
+                }
+            }
+
             StyledRect {
                 anchors.fill: parent
                 opacity: visibilities.session && Config.session.enabled ? 0.5 : 0

@@ -10,6 +10,7 @@ Item {
 
     required property ShellScreen screen
     required property PersistentProperties visibilities
+    required property var popouts
     required property PersistentProperties state
     required property var facePicker
 
@@ -26,5 +27,6 @@ Item {
 
         screen: root.screen
         visibilities: root.visibilities
+        popouts: root.popouts
     }
 }

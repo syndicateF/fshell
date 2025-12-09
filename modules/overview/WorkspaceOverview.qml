@@ -2,8 +2,10 @@ pragma ComponentBehavior: Bound
 
 import qs.components
 import qs.components.effects
+import qs.components.images
 import qs.services
 import qs.config
+import qs.utils
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
@@ -15,6 +17,7 @@ FocusScope {
 
     required property PersistentProperties visibilities
     required property ShellScreen screen
+    required property var popouts
 
     readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
     readonly property int workspacesShown: overviewRows * overviewColumns
@@ -45,6 +48,12 @@ FocusScope {
     
     // Special workspaces config
     property var specialWorkspaces: ["sysmon", "music", "communication", "todo"]
+    
+    // App info for each special workspace: { icon, command }
+    function getSpecialAppInfo(wsName) {
+        const apps = Config.overview.specialWorkspaceApps
+        return apps[wsName] ?? { icon: "application-x-executable", command: "" }
+    }
     
     // Drag state
     property int draggingFromWorkspace: -1
@@ -192,20 +201,75 @@ FocusScope {
                             
                             property string wsName: modelData
                             property bool isActive: root.monitorData?.specialWorkspace?.name === `special:${wsName}`
+                            property var appInfo: root.getSpecialAppInfo(wsName)
+                            property bool hasWindows: {
+                                const ws = Hypr.workspaces.values.find(w => w.name === `special:${wsName}`)
+                                return ws?.lastIpcObject?.windows > 0 ?? false
+                            }
                             
                             width: root.wsWidth
                             height: root.wsHeight
                             radius: root.uniformRadius
-                            color: Colours.palette.m3surfaceContainer
+                            color: isActive ? Qt.alpha(Colours.palette.m3primary, 0.15) : Colours.palette.m3surfaceContainer
+                            border.width: isActive ? 2 : 0
+                            border.color: Colours.palette.m3primary
                             
-                            // Workspace name (behind windows)
-                            Text {
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.width { NumberAnimation { duration: 150 } }
+                            
+                            // Content when no windows - icon + info
+                            Column {
                                 anchors.centerIn: parent
-                                text: specialWsRect.wsName
-                                font.pixelSize: 16
-                                font.weight: Font.Bold
-                                color: Qt.rgba(1, 1, 1, 0.1)
+                                spacing: 6
+                                visible: !specialWsRect.hasWindows
                                 z: 0
+                                
+                                // App icon (colored, clean)
+                                CachingIconImage {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    source: Icons.getAppIcon(specialWsRect.appInfo.icon ?? "", "application-x-executable")
+                                    implicitSize: Math.min(specialWsRect.width, specialWsRect.height) * 0.28
+                                }
+                                
+                                // Workspace name
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: specialWsRect.wsName
+                                    font.pixelSize: 10
+                                    font.weight: Font.DemiBold
+                                    font.capitalization: Font.Capitalize
+                                    color: Colours.palette.m3onSurface
+                                }
+                                
+                                // Shortcut hint
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: `Super + ${specialWsRect.index + 1}`
+                                    font.pixelSize: 8
+                                    font.family: Appearance.font.family.mono
+                                    color: Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.6)
+                                }
+                                
+                                // Status indicator
+                                Row {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 4
+                                    
+                                    Rectangle {
+                                        width: 6
+                                        height: 6
+                                        radius: 3
+                                        color: specialWsRect.isActive ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3outline, 0.4)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                    
+                                    Text {
+                                        text: specialWsRect.isActive ? "active" : "click to launch"
+                                        font.pixelSize: 7
+                                        color: specialWsRect.isActive ? Colours.palette.m3primary : Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.5)
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
                             }
                             
                             // Window previews for this special workspace
@@ -270,7 +334,25 @@ FocusScope {
                                 anchors.fill: parent
                                 z: 2
                                 onClicked: {
+                                    // Check if special workspace has windows
+                                    const specialWsData = Hypr.workspaces.values.find(ws => ws.name === `special:${specialWsRect.wsName}`)
+                                    const hasWindows = specialWsData?.lastIpcObject?.windows > 0 ?? false
+                                    
+                                    // Always toggle the workspace first
                                     Hypr.dispatch(`togglespecialworkspace ${specialWsRect.wsName}`)
+                                    
+                                    if (!hasWindows) {
+                                        // No windows - trigger loading animation and launch app
+                                        const appInfo = root.getSpecialAppInfo(specialWsRect.wsName)
+                                        root.popouts.loadingWsName = specialWsRect.wsName
+                                        root.popouts.loadingAppInfo = appInfo
+                                        root.popouts.detach("loading")
+                                        
+                                        // Launch the app
+                                        if (appInfo.command) {
+                                            Hypr.dispatch(`exec [workspace special:${specialWsRect.wsName} silent] ${appInfo.command}`)
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -27,6 +27,12 @@ Item {
     property string queuedMode
     readonly property bool isDetached: detachedMode.length > 0
 
+    // Loading state
+    property string loadingWsName: ""
+    property var loadingAppInfo: ({})
+    property bool loadingMinDurationMet: false
+    property bool loadingAppReady: false
+
     property int animLength: Appearance.anim.durations.normal
     property list<real> animCurve: Appearance.anim.curves.emphasized
 
@@ -34,6 +40,12 @@ Item {
         animLength = Appearance.anim.durations.large;
         if (mode === "winfo") {
             detachedMode = mode;
+        } else if (mode === "loading") {
+            detachedMode = mode;
+            loadingMinDurationMet = false;
+            loadingAppReady = false;
+            currentCenter = QsWindow.window.height / 2;
+            minDurationTimer.restart();
         } else {
             detachedMode = "any";
             queuedMode = mode;
@@ -41,12 +53,32 @@ Item {
         focus = true;
     }
 
+    function closeLoading(): void {
+        if (detachedMode === "loading") {
+            loadingAppReady = true;
+            if (loadingMinDurationMet) {
+                close();
+            }
+        }
+    }
+
     function close(): void {
         hasCurrent = false;
         animCurve = Appearance.anim.curves.emphasizedAccel;
         animLength = Appearance.anim.durations.normal;
         detachedMode = "";
+        loadingWsName = "";
+        loadingAppInfo = {};
         animCurve = Appearance.anim.curves.emphasized;
+    }
+
+    Timer {
+        id: minDurationTimer
+        interval: 2000
+        onTriggered: {
+            root.loadingMinDurationMet = true;
+            if (root.loadingAppReady) root.close();
+        }
     }
 
     visible: width > 0 && height > 0
@@ -92,6 +124,17 @@ Item {
         sourceComponent: WindowInfo {
             screen: root.screen
             client: Hypr.activeToplevel
+        }
+    }
+
+    Comp {
+        shouldBeActive: root.detachedMode === "loading"
+        asynchronous: true
+        anchors.centerIn: parent
+
+        sourceComponent: LoadingInfo {
+            wsName: root.loadingWsName
+            appInfo: root.loadingAppInfo
         }
     }
 

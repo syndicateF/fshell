@@ -6,6 +6,15 @@ JsonObject {
     property int mediaUpdateInterval: 500
     property int dragThreshold: 50
     property Sizes sizes: Sizes {}
+    
+    // Special workspaces config
+    property var specialWorkspaces: ["sysmon", "music", "communication", "todo"]
+    property var specialWorkspaceApps: ({
+        "sysmon": { "icon": "utilities-system-monitor", "command": "resources" },
+        "music": { "icon": "spotify", "command": "spotify" },
+        "communication": { "icon": "discord", "command": "discord" },
+        "todo": { "icon": "todoist", "command": "todoist" }
+    })
 
     component Sizes: JsonObject {
         property real scale: 0.13  // Scale for workspace overview thumbnails
