@@ -15,8 +15,25 @@ Item {
 
     required property ShellScreen screen
 
-    readonly property real nonAnimWidth: x > 0 || hasCurrent ? children.find(c => c.shouldBeActive)?.implicitWidth ?? content.implicitWidth : 0
-    readonly property real nonAnimHeight: children.find(c => c.shouldBeActive)?.implicitHeight ?? content.implicitHeight
+    readonly property real nonAnimWidth: {
+        // For loading, use loadingComp's item size
+        if (loadingActive && loadingComp.item) {
+            return loadingComp.item.implicitWidth;
+        }
+        // Normal logic - return width when there's something to show
+        if (x > 0 || hasCurrent) {
+            return children.find(c => c.shouldBeActive)?.implicitWidth ?? content.implicitWidth;
+        }
+        return 0;
+    }
+    readonly property real nonAnimHeight: {
+        // For loading, use loadingComp's item size
+        if (loadingActive && loadingComp.item) {
+            return loadingComp.item.implicitHeight;
+        }
+        // Normal logic
+        return children.find(c => c.shouldBeActive)?.implicitHeight ?? content.implicitHeight;
+    }
     readonly property Item current: content.item?.current ?? null
 
     property string currentName
@@ -32,6 +49,7 @@ Item {
     property var loadingAppInfo: ({})
     property bool loadingMinDurationMet: false
     property bool loadingAppReady: false
+    property bool loadingActive: false  // True while loading is visible (open -> close animation complete)
 
     property int animLength: Appearance.anim.durations.normal
     property list<real> animCurve: Appearance.anim.curves.emphasized
@@ -41,11 +59,16 @@ Item {
         if (mode === "winfo") {
             detachedMode = mode;
         } else if (mode === "loading") {
-            detachedMode = mode;
+            // Single duration for all loading animation
+            animLength = Appearance.anim.durations.extraLarge;
+            loadingActive = true;
+            hasCurrent = true;
+            currentCenter = QsWindow.window.height / 2;
             loadingMinDurationMet = false;
             loadingAppReady = false;
-            currentCenter = QsWindow.window.height / 2;
             minDurationTimer.restart();
+            // Long delay to test - stay at bar first
+            loadingDetachTimer.start();
         } else {
             detachedMode = "any";
             queuedMode = mode;
@@ -63,13 +86,44 @@ Item {
     }
 
     function close(): void {
-        hasCurrent = false;
         animCurve = Appearance.anim.curves.emphasizedAccel;
-        animLength = Appearance.anim.durations.normal;
-        detachedMode = "";
-        loadingWsName = "";
-        loadingAppInfo = {};
-        animCurve = Appearance.anim.curves.emphasized;
+        animLength = Appearance.anim.durations.large;
+        
+        // For loading mode, we need to animate back to bar first before clearing
+        if (detachedMode === "loading") {
+            // First, keep hasCurrent true but clear detachedMode
+            // This makes x go back to 0 (bar position) while keeping width
+            detachedMode = "";
+            // Then after animation, clear everything
+            loadingCloseTimer.start();
+        } else {
+            // Normal close for other modes
+            hasCurrent = false;
+            detachedMode = "";
+            loadingWsName = "";
+            loadingAppInfo = {};
+            animCurve = Appearance.anim.curves.emphasized;
+        }
+    }
+
+    Timer {
+        id: loadingCloseTimer
+        interval: Appearance.anim.durations.large
+        onTriggered: {
+            root.hasCurrent = false;
+            root.loadingActive = false;
+            root.loadingWsName = "";
+            root.loadingAppInfo = {};
+            root.animCurve = Appearance.anim.curves.emphasized;
+        }
+    }
+
+    Timer {
+        id: loadingDetachTimer
+        interval: 2000  // 2 detik delay di bar sebelum animate ke tengah - TESTING
+        onTriggered: {
+            root.detachedMode = "loading";
+        }
     }
 
     Timer {
@@ -127,9 +181,19 @@ Item {
         }
     }
 
-    Comp {
-        shouldBeActive: root.detachedMode === "loading"
-        asynchronous: true
+    // Loading uses Loader directly (not Comp) to avoid opacity fade animation
+    // Animation is purely from position (x) and size (width/height)
+    Loader {
+        id: loadingComp
+        
+        property bool shouldBeActive: root.loadingActive
+        
+        // Return the actual content size for nonAnimWidth/Height calculation
+        readonly property real contentWidth: item?.implicitWidth ?? 0
+        readonly property real contentHeight: item?.implicitHeight ?? 0
+
+        active: shouldBeActive
+        asynchronous: false  // Load synchronously so width is available immediately
         anchors.centerIn: parent
 
         sourceComponent: LoadingInfo {

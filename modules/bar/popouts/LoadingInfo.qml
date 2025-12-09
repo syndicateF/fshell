@@ -1,5 +1,6 @@
 import qs.components
 import qs.components.effects
+import qs.components.images
 import qs.services
 import qs.utils
 import qs.config
@@ -28,10 +29,10 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: Appearance.spacing.large
 
-            ColouredIcon {
+            CachingIconImage {
                 source: Icons.getAppIcon(root.appInfo.icon ?? "", "application-x-executable")
-                implicitSize: 72
-                colour: Colours.palette.m3primary
+                implicitWidth: 72
+                implicitHeight: 72
                 anchors.verticalCenter: parent.verticalCenter
             }
 
