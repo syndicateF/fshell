@@ -32,51 +32,55 @@ Item {
         }
     }
 
-    readonly property real nonAnimHeight: state === "visible" ? (content.item?.nonAnimHeight ?? 0) : 0
+    readonly property real nonAnimHeight: isVisible ? (content.item?.nonAnimHeight ?? 0) : 0
+    
+    // Track visibility tanpa State untuk hindari binding loop
+    readonly property bool isVisible: visibilities.overview && Config.overview.enabled
+    property real targetImplicitHeight: 0
+    
+    // Track apakah sedang opening atau closing untuk animasi yang benar
+    property bool isOpening: false
 
     visible: height > 0
-    implicitHeight: 0
+    implicitHeight: targetImplicitHeight
+    // Pakai content.implicitWidth (dari Loader) untuk width yang benar
     implicitWidth: content.implicitWidth
-
-    onStateChanged: {
-        if (state === "visible" && timer.running) {
-            timer.triggered();
-            timer.stop();
+    
+    // Update targetImplicitHeight saat visibility atau content berubah
+    onIsVisibleChanged: {
+        if (isVisible) {
+            isOpening = true
+            // Delay sedikit untuk pastikan content sudah loaded
+            Qt.callLater(() => {
+                targetImplicitHeight = content.item?.implicitHeight ?? 0
+            })
+            if (timer.running) {
+                timer.triggered();
+                timer.stop();
+            }
+        } else {
+            isOpening = false
+            targetImplicitHeight = 0
         }
     }
-
-    states: State {
-        name: "visible"
-        when: root.visibilities.overview && Config.overview.enabled
-
-        PropertyChanges {
-            root.implicitHeight: content.implicitHeight
+    
+    // Update height saat content height berubah (saat visible)
+    Connections {
+        target: content.item
+        enabled: root.isVisible
+        function onImplicitHeightChanged() {
+            root.targetImplicitHeight = content.item?.implicitHeight ?? 0
         }
     }
-
-    transitions: [
-        Transition {
-            from: ""
-            to: "visible"
-
-            Anim {
-                target: root
-                property: "implicitHeight"
-                duration: Appearance.anim.durations.expressiveDefaultSpatial
-                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
-            }
-        },
-        Transition {
-            from: "visible"
-            to: ""
-
-            Anim {
-                target: root
-                property: "implicitHeight"
-                easing.bezierCurve: Appearance.anim.curves.emphasized
-            }
+    
+    // Behavior untuk animate implicitHeight
+    Behavior on implicitHeight {
+        Anim {
+            // Opening: pakai expressiveDefaultSpatial, Closing: pakai emphasized
+            duration: root.isOpening ? Appearance.anim.durations.expressiveDefaultSpatial : Appearance.anim.durations.normal
+            easing.bezierCurve: root.isOpening ? Appearance.anim.curves.expressiveDefaultSpatial : Appearance.anim.curves.emphasized
         }
-    ]
+    }
 
     Timer {
         id: timer
