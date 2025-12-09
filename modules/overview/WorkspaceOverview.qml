@@ -40,8 +40,8 @@ FocusScope {
     property real wsHeight: (monitor.height / monitor.scale - reserved[1] - reserved[3]) * scale
     
     property real workspaceSpacing: 5
-    property real elevationMargin: 24
-    property real wsBorderWidth: 2  // Workspace border width for padding
+    // property real elevationMargin: 24
+    property real windowPadding: 4  // Gap between windows in same workspace
     
     // Drag state
     property int draggingFromWorkspace: -1
@@ -62,8 +62,10 @@ FocusScope {
         return (Date.now() - ts) < 500
     }
     
-    implicitWidth: overviewBackground.implicitWidth + elevationMargin * 2
-    implicitHeight: overviewBackground.implicitHeight + elevationMargin * 2
+    // implicitWidth: overviewContainer.implicitWidth + elevationMargin * 2
+    // implicitHeight: overviewContainer.implicitHeight + elevationMargin * 2
+    implicitWidth: overviewContainer.implicitWidth
+    implicitHeight: overviewContainer.implicitHeight
 
     // ESC to close overview
     Shortcut {
@@ -72,26 +74,17 @@ FocusScope {
         onActivated: root.visibilities.overview = false
     }
 
-    Rectangle {
-        id: overviewBackground
-        property real padding: 10
+    // Main container - NO background, just layout
+    Item {
+        id: overviewContainer
+        property real padding: 20
         
-        anchors.fill: parent
-        anchors.margins: root.elevationMargin
-        
-        Elevation {
-            anchors.fill: parent
-            radius: parent.radius
-            z: -1
-            level: 3
-        }
+        anchors.centerIn: parent
         
         implicitWidth: wsGrid.implicitWidth + padding * 2
         implicitHeight: wsGrid.implicitHeight + padding * 2
-        radius: root.uniformRadius
-        color: Colours.palette.m3surfaceContainer
 
-        // Workspace grid
+        // Workspace grid with individual backgrounds
         Column {
             id: wsGrid
             anchors.centerIn: parent
@@ -108,6 +101,7 @@ FocusScope {
                     Repeater {
                         model: root.overviewColumns
                         
+                        // Each workspace has its own background
                         Rectangle {
                             id: wsRect
                             required property int index
@@ -118,9 +112,15 @@ FocusScope {
                             width: root.wsWidth
                             height: root.wsHeight
                             radius: root.uniformRadius
-                            color: dropHover ? Qt.lighter(Colours.palette.m3surfaceContainer, 1.15) : Qt.lighter(Colours.palette.m3surfaceContainer, 1.05)
-                            border.width: 2
-                            border.color: dropHover ? Colours.palette.m3tertiary : "transparent"
+                            color: Colours.palette.m3surfaceContainer
+                            
+                            // Elevation shadow per workspace
+                            // Elevation {
+                            //     anchors.fill: parent
+                            //     radius: parent.radius
+                            //     z: -1
+                            //     level: 2
+                            // }
                             
                             // Workspace number
                             Text {
@@ -128,7 +128,7 @@ FocusScope {
                                 text: wsRect.wsNum
                                 font.pixelSize: 20
                                 font.weight: Font.Bold
-                                color: Qt.rgba(1, 1, 1, 0.15)
+                                color: Qt.rgba(1, 1, 1, 0.1)
                             }
                             
                             MouseArea {
@@ -161,6 +161,7 @@ FocusScope {
             anchors.centerIn: parent
             width: wsGrid.implicitWidth
             height: wsGrid.implicitHeight
+            z: 1
             
             Repeater {
                 model: ScriptModel {
@@ -194,27 +195,21 @@ FocusScope {
                     property int col: (wsIdInGroup - 1) % root.overviewColumns
                     property int row: Math.floor((wsIdInGroup - 1) / root.overviewColumns)
                     
-                    // Offset to workspace cell (include border padding)
-                    property real cellX: col * (root.wsWidth + root.workspaceSpacing) + root.wsBorderWidth
-                    property real cellY: row * (root.wsHeight + root.workspaceSpacing) + root.wsBorderWidth
+                    // Offset to workspace cell
+                    property real cellX: col * (root.wsWidth + root.workspaceSpacing)
+                    property real cellY: row * (root.wsHeight + root.workspaceSpacing)
                     
-                    // Usable area inside workspace (minus border on both sides)
-                    property real usableWsWidth: root.wsWidth - root.wsBorderWidth * 2
-                    property real usableWsHeight: root.wsHeight - root.wsBorderWidth * 2
-                    
-                    // Scale factor to fit windows within usable area
-                    property real innerScale: usableWsWidth / root.wsWidth
-                    
-                    // Window position WITHIN the cell (scaled to fit inside border)
+                    // Window position WITHIN the cell (scaled)
                     // SUBTRACT reserved to get position relative to workspace area (not monitor)
-                    property real localX: Math.max((ipc?.at?.[0] ?? 0) - root.reserved[0], 0) * root.scale * innerScale
-                    property real localY: Math.max((ipc?.at?.[1] ?? 0) - root.reserved[1], 0) * root.scale * innerScale
-                    property real targetW: (ipc?.size?.[0] ?? 100) * root.scale * innerScale
-                    property real targetH: (ipc?.size?.[1] ?? 100) * root.scale * innerScale
+                    property real localX: Math.max((ipc?.at?.[0] ?? 0) - root.reserved[0], 0) * root.scale
+                    property real localY: Math.max((ipc?.at?.[1] ?? 0) - root.reserved[1], 0) * root.scale
+                    // Reduce size slightly for gap between windows, add half to position to center
+                    property real targetW: Math.max((ipc?.size?.[0] ?? 100) * root.scale - root.windowPadding, 10)
+                    property real targetH: Math.max((ipc?.size?.[1] ?? 100) * root.scale - root.windowPadding, 10)
                     
-                    // Target position
-                    property real targetX: cellX + localX
-                    property real targetY: cellY + localY
+                    // Target position (add half padding to center the reduced-size window)
+                    property real targetX: cellX + localX + root.windowPadding / 2
+                    property real targetY: cellY + localY + root.windowPadding / 2
                     
                     // Simple bindings for position and size
                     x: targetX
@@ -256,13 +251,13 @@ FocusScope {
                     }
                     Behavior on width {
                         NumberAnimation {
-                            duration: 100  // Fast resize
+                            duration: 0  // Fast resize
                             easing.type: Easing.OutCubic
                         }
                     }
                     Behavior on height {
                         NumberAnimation {
-                            duration: 100  // Fast resize
+                            duration: 0  // Fast resize
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -276,7 +271,13 @@ FocusScope {
                         radius: root.uniformRadius
                         color: "transparent"
                         
+                        // GPU layer for better performance
+                        layer.enabled: true
+                        layer.smooth: false
+                        layer.mipmap: false
+                        
                         ScreencopyView {
+                            id: screenCopy
                             anchors.fill: parent
                             captureSource: root.visibilities.overview ? winItem.modelData.wayland : null
                             live: true
@@ -286,8 +287,7 @@ FocusScope {
                             anchors.fill: parent
                             radius: root.uniformRadius
                             color: winItem.prs ? Qt.rgba(1,1,1,0.2) : winItem.hov ? Qt.rgba(1,1,1,0.1) : "transparent"
-                            border.width: 1
-                            border.color: Qt.rgba(1,1,1,0.1)
+                            border.width: 0
                         }
                     }
                     
@@ -309,15 +309,14 @@ FocusScope {
                             winItem.prs = false
                             winItem.dragging = false
                             const target = root.draggingTargetWorkspace
-                            root.draggingFromWorkspace = -1
                             
                             if (target !== -1 && target !== winItem.wsId) {
                                 // DIFFERENT workspace: animate first, dispatch later
                                 const targetWsIdInGroup = target - root.workspaceGroup * root.workspacesShown
                                 const targetCol = (targetWsIdInGroup - 1) % root.overviewColumns
                                 const targetRow = Math.floor((targetWsIdInGroup - 1) / root.overviewColumns)
-                                const targetCellX = targetCol * (root.wsWidth + root.workspaceSpacing) + root.wsBorderWidth
-                                const targetCellY = targetRow * (root.wsHeight + root.workspaceSpacing) + root.wsBorderWidth
+                                const targetCellX = targetCol * (root.wsWidth + root.workspaceSpacing)
+                                const targetCellY = targetRow * (root.wsHeight + root.workspaceSpacing)
                                 
                                 // Window position within target workspace (same local position)
                                 const finalX = targetCellX + winItem.localX
@@ -345,6 +344,8 @@ FocusScope {
                                 // Same workspace or no target: snap back to original position
                                 winItem.x = winItem.targetX
                                 winItem.y = winItem.targetY
+                                // Reset drag state immediately for same workspace
+                                root.draggingFromWorkspace = -1
                             }
                         }
                         
@@ -352,10 +353,17 @@ FocusScope {
                             id: dispatchTimer
                             property int targetWs: -1
                             property string addr: ""
-                            interval: 50  // Dispatch quickly - don't wait for animation
+                            interval: 100
                             onTriggered: {
                                 Hypr.dispatch(`movetoworkspacesilent ${targetWs}, address:${addr}`)
+                                resetDragTimer.start()
                             }
+                        }
+                        
+                        Timer {
+                            id: resetDragTimer
+                            interval: 200
+                            onTriggered: root.draggingFromWorkspace = -1
                         }
                         onClicked: (e) => {
                             if (e.button === Qt.LeftButton) {
@@ -366,6 +374,34 @@ FocusScope {
                         }
                     }
                 }
+            }
+        }
+
+        // Active border & drop indicator layer (z: 10) - always on top
+        Item {
+            id: bordersLayer
+            anchors.centerIn: parent
+            width: wsGrid.implicitWidth
+            height: wsGrid.implicitHeight
+            z: 10
+
+            // Drop target indicator
+            Rectangle {
+                id: dropIndicator
+                visible: root.draggingTargetWorkspace !== -1 && root.draggingFromWorkspace !== root.draggingTargetWorkspace
+                
+                property int targetInGroup: root.draggingTargetWorkspace - root.workspaceGroup * root.workspacesShown
+                property int c: (targetInGroup - 1) % root.overviewColumns
+                property int r: Math.floor((targetInGroup - 1) / root.overviewColumns)
+                
+                x: c * (root.wsWidth + root.workspaceSpacing)
+                y: r * (root.wsHeight + root.workspaceSpacing)
+                width: root.wsWidth
+                height: root.wsHeight
+                color: "transparent"
+                radius: root.uniformRadius
+                border.width: 2
+                border.color: Colours.palette.m3tertiary
             }
 
             // Active workspace border
