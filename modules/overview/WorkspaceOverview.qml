@@ -101,7 +101,7 @@ FocusScope {
         Column {
             id: mainColumn
             anchors.centerIn: parent
-            spacing: root.workspaceSpacing + 15
+            spacing: 0  // No spacing, divider handles visual separation
 
             // Workspace grid with individual backgrounds
             Column {
@@ -176,14 +176,14 @@ FocusScope {
             Column {
                 id: specialWsRow
                 visible: root.specialWorkspaces.length > 0
-                spacing: 8
+                spacing: 10
+                topPadding: 10  // Space above divider
                 
-                // Label
-                Text {
-                    text: "Special"
-                    font.pixelSize: 12
-                    font.weight: Font.Medium
-                    color: Qt.rgba(1, 1, 1, 0.5)
+                // Divider (same style as WindowList divider)
+                Rectangle {
+                    width: wsGrid.implicitWidth
+                    height: 1
+                    color: Colours.palette.m3outlineVariant
                 }
                 
                 // Special workspaces
@@ -211,11 +211,8 @@ FocusScope {
                             height: root.wsHeight
                             radius: root.uniformRadius
                             color: isActive ? Qt.alpha(Colours.palette.m3primary, 0.15) : Colours.palette.m3surfaceContainer
-                            border.width: isActive ? 2 : 0
-                            border.color: Colours.palette.m3primary
                             
                             Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.width { NumberAnimation { duration: 150 } }
                             
                             // Content when no windows - icon + info
                             Column {
@@ -638,12 +635,11 @@ FocusScope {
                 property real normalY: normalRow * (root.wsHeight + root.workspaceSpacing)
                 
                 // Position for special workspace
-                // specialWsRow Y = wsGrid height + mainColumn.spacing (workspaceSpacing + 15)
-                // Then inside specialWsRow: label (height ~16) + spacing (8) + content
-                property real specialRowLabelHeight: 16 + 8  // "Special" label + spacing
-                property real specialRowTopY: wsGrid.implicitHeight + root.workspaceSpacing + 15  // mainColumn spacing
+                // specialWsRow has: topPadding (10) + divider (1) + spacing (10) + content
+                // So offset from wsGrid bottom = topPadding + divider height + spacing = 10 + 1 + 10 = 21
+                property real specialRowTopY: wsGrid.implicitHeight + specialWsRow.topPadding + 1 + specialWsRow.spacing
                 property real specialX: specialIndex >= 0 ? specialIndex * (root.wsWidth + root.workspaceSpacing) : 0
-                property real specialY: specialIndex >= 0 ? specialRowTopY + specialRowLabelHeight : 0
+                property real specialY: specialIndex >= 0 ? specialRowTopY : 0
                 
                 // Determine which position to use
                 // Use special position ONLY if special is active AND the special ws is in our list
