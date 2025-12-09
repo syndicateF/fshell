@@ -40,8 +40,11 @@ FocusScope {
     property real wsHeight: (monitor.height / monitor.scale - reserved[1] - reserved[3]) * scale
     
     property real workspaceSpacing: 5
-    // property real elevationMargin: 24
+    property real elevationMargin: 24
     property real windowPadding: 4  // Gap between windows in same workspace
+    
+    // Special workspaces config
+    property var specialWorkspaces: ["sysmon", "music", "communication", "todo"]
     
     // Drag state
     property int draggingFromWorkspace: -1
@@ -78,75 +81,196 @@ FocusScope {
     Item {
         id: overviewContainer
         property real padding: 20
+        property real specialRowHeight: specialWsRow.visible ? specialWsRow.implicitHeight + root.workspaceSpacing + 20 : 0
         
         anchors.centerIn: parent
         
-        implicitWidth: wsGrid.implicitWidth + padding * 2
-        implicitHeight: wsGrid.implicitHeight + padding * 2
+        implicitWidth: Math.max(wsGrid.implicitWidth, specialWsRow.implicitWidth) + padding * 2
+        implicitHeight: wsGrid.implicitHeight + specialRowHeight + padding * 2
 
-        // Workspace grid with individual backgrounds
+        // Main content column
         Column {
-            id: wsGrid
+            id: mainColumn
             anchors.centerIn: parent
-            spacing: root.workspaceSpacing
-            
-            Repeater {
-                model: root.overviewRows
+            spacing: root.workspaceSpacing + 15
+
+            // Workspace grid with individual backgrounds
+            Column {
+                id: wsGrid
+                spacing: root.workspaceSpacing
                 
+                Repeater {
+                    model: root.overviewRows
+                    
+                    Row {
+                        id: wsRow
+                        required property int index
+                        spacing: root.workspaceSpacing
+                        
+                        Repeater {
+                            model: root.overviewColumns
+                            
+                            // Each workspace has its own background
+                            Rectangle {
+                                id: wsRect
+                                required property int index
+                                
+                                property int wsNum: root.workspaceGroup * root.workspacesShown + wsRow.index * root.overviewColumns + index + 1
+                                property bool dropHover: false
+                                
+                                width: root.wsWidth
+                                height: root.wsHeight
+                                radius: root.uniformRadius
+                                color: Colours.palette.m3surfaceContainer
+                                
+                                // Workspace number
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: wsRect.wsNum
+                                    font.pixelSize: 20
+                                    font.weight: Font.Bold
+                                    color: Qt.rgba(1, 1, 1, 0.1)
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        // If special workspace is active, close it first then switch
+                                        const specialWs = root.monitorData?.specialWorkspace?.name ?? ""
+                                        if (specialWs !== "" && specialWs.startsWith("special:")) {
+                                            // Close the special workspace first, then switch
+                                            const specialName = specialWs.replace("special:", "")
+                                            Hypr.dispatch(`togglespecialworkspace ${specialName}`)
+                                        }
+                                        Hypr.dispatch(`workspace ${wsRect.wsNum}`)
+                                    }
+                                }
+                                
+                                DropArea {
+                                    anchors.fill: parent
+                                    onEntered: {
+                                        root.draggingTargetWorkspace = wsRect.wsNum
+                                        if (root.draggingFromWorkspace !== wsRect.wsNum) dropHover = true
+                                    }
+                                    onExited: {
+                                        dropHover = false
+                                        if (root.draggingTargetWorkspace === wsRect.wsNum) root.draggingTargetWorkspace = -1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Special workspaces row
+            Column {
+                id: specialWsRow
+                visible: root.specialWorkspaces.length > 0
+                spacing: 8
+                
+                // Label
+                Text {
+                    text: "Special"
+                    font.pixelSize: 12
+                    font.weight: Font.Medium
+                    color: Qt.rgba(1, 1, 1, 0.5)
+                }
+                
+                // Special workspaces
                 Row {
-                    id: wsRow
-                    required property int index
+                    id: specialWsRowContent
                     spacing: root.workspaceSpacing
                     
                     Repeater {
-                        model: root.overviewColumns
+                        model: root.specialWorkspaces
                         
-                        // Each workspace has its own background
                         Rectangle {
-                            id: wsRect
+                            id: specialWsRect
+                            required property string modelData
                             required property int index
                             
-                            property int wsNum: root.workspaceGroup * root.workspacesShown + wsRow.index * root.overviewColumns + index + 1
-                            property bool dropHover: false
+                            property string wsName: modelData
+                            property bool isActive: root.monitorData?.specialWorkspace?.name === `special:${wsName}`
                             
                             width: root.wsWidth
                             height: root.wsHeight
                             radius: root.uniformRadius
                             color: Colours.palette.m3surfaceContainer
                             
-                            // Elevation shadow per workspace
-                            // Elevation {
-                            //     anchors.fill: parent
-                            //     radius: parent.radius
-                            //     z: -1
-                            //     level: 2
-                            // }
-                            
-                            // Workspace number
+                            // Workspace name (behind windows)
                             Text {
                                 anchors.centerIn: parent
-                                text: wsRect.wsNum
-                                font.pixelSize: 20
+                                text: specialWsRect.wsName
+                                font.pixelSize: 16
                                 font.weight: Font.Bold
                                 color: Qt.rgba(1, 1, 1, 0.1)
+                                z: 0
+                            }
+                            
+                            // Window previews for this special workspace
+                            Item {
+                                anchors.fill: parent
+                                z: 1
+                                
+                                Repeater {
+                                    model: ScriptModel {
+                                        values: {
+                                            let arr = [];
+                                            for (const ws of Hypr.workspaces.values) {
+                                                if (ws.name === `special:${specialWsRect.wsName}`) {
+                                                    for (const tl of ws.toplevels.values) arr.push(tl);
+                                                }
+                                            }
+                                            return arr.reverse();
+                                        }
+                                    }
+                                    
+                                    Item {
+                                        id: specialWinItem
+                                        required property var modelData
+                                        
+                                        property var ipc: modelData.lastIpcObject
+                                        
+                                        // Window position scaled
+                                        property real localX: Math.max((ipc?.at?.[0] ?? 0) - root.reserved[0], 0) * root.scale
+                                        property real localY: Math.max((ipc?.at?.[1] ?? 0) - root.reserved[1], 0) * root.scale
+                                        property real targetW: Math.max((ipc?.size?.[0] ?? 100) * root.scale - root.windowPadding, 10)
+                                        property real targetH: Math.max((ipc?.size?.[1] ?? 100) * root.scale - root.windowPadding, 10)
+                                        
+                                        x: localX + root.windowPadding / 2
+                                        y: localY + root.windowPadding / 2
+                                        width: targetW
+                                        height: targetH
+                                        
+                                        ClippingRectangle {
+                                            anchors.fill: parent
+                                            radius: root.uniformRadius
+                                            color: "transparent"
+                                            
+                                            ScreencopyView {
+                                                anchors.fill: parent
+                                                captureSource: root.visibilities.overview ? specialWinItem.modelData.wayland : null
+                                                live: true
+                                            }
+                                            
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                radius: root.uniformRadius
+                                                color: "transparent"
+                                                border.width: 1
+                                                border.color: Qt.rgba(1, 1, 1, 0.1)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                             
                             MouseArea {
                                 anchors.fill: parent
+                                z: 2
                                 onClicked: {
-                                    Hypr.dispatch(`workspace ${wsRect.wsNum}`)
-                                }
-                            }
-                            
-                            DropArea {
-                                anchors.fill: parent
-                                onEntered: {
-                                    root.draggingTargetWorkspace = wsRect.wsNum
-                                    if (root.draggingFromWorkspace !== wsRect.wsNum) dropHover = true
-                                }
-                                onExited: {
-                                    dropHover = false
-                                    if (root.draggingTargetWorkspace === wsRect.wsNum) root.draggingTargetWorkspace = -1
+                                    Hypr.dispatch(`togglespecialworkspace ${specialWsRect.wsName}`)
                                 }
                             }
                         }
@@ -155,13 +279,18 @@ FocusScope {
             }
         }
 
-        // Windows layer
+        // Windows layer - positioned relative to wsGrid
+        // This layer should NOT intercept mouse events on empty areas
         Item {
             id: windowsLayer
-            anchors.centerIn: parent
+            x: mainColumn.x + (mainColumn.width - wsGrid.implicitWidth) / 2
+            y: mainColumn.y
             width: wsGrid.implicitWidth
             height: wsGrid.implicitHeight
             z: 1
+            
+            // IMPORTANT: Don't accept mouse events on empty areas
+            // Only child items (windows) should receive events
             
             Repeater {
                 model: ScriptModel {
@@ -380,9 +509,10 @@ FocusScope {
         // Active border & drop indicator layer (z: 10) - always on top
         Item {
             id: bordersLayer
-            anchors.centerIn: parent
-            width: wsGrid.implicitWidth
-            height: wsGrid.implicitHeight
+            x: mainColumn.x + (mainColumn.width - wsGrid.implicitWidth) / 2
+            y: mainColumn.y
+            width: Math.max(wsGrid.implicitWidth, specialWsRowContent.implicitWidth)
+            height: mainColumn.implicitHeight
             z: 10
 
             // Drop target indicator
@@ -404,22 +534,54 @@ FocusScope {
                 border.color: Colours.palette.m3tertiary
             }
 
-            // Active workspace border
+            // Active workspace border - supports both normal and special workspaces
             Rectangle {
                 id: activeBorder
+                
+                // Check if special workspace is active on this monitor
+                // specialWorkspace.name will be empty string "" when no special workspace is active
+                property var specialWsObj: root.monitorData?.specialWorkspace ?? null
+                property string activeSpecialName: specialWsObj?.name ?? ""
+                property bool isSpecialActive: activeSpecialName !== "" && activeSpecialName.startsWith("special:")
+                property string specialName: isSpecialActive ? activeSpecialName.replace("special:", "") : ""
+                property int specialIndex: isSpecialActive ? root.specialWorkspaces.indexOf(specialName) : -1
+                
+                // Normal workspace calculation - always calculate this regardless of special state
                 property int aws: root.monitor.activeWorkspace?.id ?? 1
                 property int awsInGroup: aws - root.workspaceGroup * root.workspacesShown
-                property int c: (awsInGroup - 1) % root.overviewColumns
-                property int r: Math.floor((awsInGroup - 1) / root.overviewColumns)
+                property bool awsInRange: awsInGroup >= 1 && awsInGroup <= root.workspacesShown
+                property int normalCol: awsInRange ? (awsInGroup - 1) % root.overviewColumns : 0
+                property int normalRow: awsInRange ? Math.floor((awsInGroup - 1) / root.overviewColumns) : 0
                 
-                x: c * (root.wsWidth + root.workspaceSpacing)
-                y: r * (root.wsHeight + root.workspaceSpacing)
+                // Position for normal workspace
+                property real normalX: normalCol * (root.wsWidth + root.workspaceSpacing)
+                property real normalY: normalRow * (root.wsHeight + root.workspaceSpacing)
+                
+                // Position for special workspace
+                // specialWsRow Y = wsGrid height + mainColumn.spacing (workspaceSpacing + 15)
+                // Then inside specialWsRow: label (height ~16) + spacing (8) + content
+                property real specialRowLabelHeight: 16 + 8  // "Special" label + spacing
+                property real specialRowTopY: wsGrid.implicitHeight + root.workspaceSpacing + 15  // mainColumn spacing
+                property real specialX: specialIndex >= 0 ? specialIndex * (root.wsWidth + root.workspaceSpacing) : 0
+                property real specialY: specialIndex >= 0 ? specialRowTopY + specialRowLabelHeight : 0
+                
+                // Determine which position to use
+                // Use special position ONLY if special is active AND the special ws is in our list
+                property bool useSpecialPosition: isSpecialActive && specialIndex >= 0
+                
+                // Final position
+                x: useSpecialPosition ? specialX : normalX
+                y: useSpecialPosition ? specialY : normalY
                 width: root.wsWidth
                 height: root.wsHeight
                 color: "transparent"
                 radius: root.uniformRadius
                 border.width: 2
                 border.color: root.activeBorderColor
+                
+                // Always visible for normal workspaces in range
+                // For special: only visible if it's in our specialWorkspaces list
+                visible: useSpecialPosition || (!isSpecialActive && awsInRange)
                 
                 Behavior on x {
                     NumberAnimation {
