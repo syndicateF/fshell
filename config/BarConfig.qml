@@ -14,9 +14,9 @@ JsonObject {
     property Sizes sizes: Sizes {}
 
     // Bar layout dengan 3 section: top (anchored ke atas), center (anchored ke tengah), bottom (anchored ke bawah)
+    // NOTE: workspaces dipindahkan ke TopWorkspacesPanel (horizontal, top center screen)
     property list<var> topEntries: [
-        { id: "logo", enabled: true },
-        { id: "workspaces", enabled: true }
+        { id: "logo", enabled: true }
     ]
     
     property list<var> centerEntries: [
@@ -44,7 +44,11 @@ JsonObject {
     }
 
     component Workspaces: JsonObject {
-        property int shown: 5
+        property int shown: 10
+        property int topWorkspacesHeight: 31  // Height untuk occupied bg dan active indicator
+        property int topWorkspacesContainerHeight: 40  // Height untuk container/content
+        property int topWorkspacesSpacing: 5  // Horizontal spacing antar workspace items
+        property int topWorkspacesHPadding: 6  // Horizontal padding kiri-kanan container
         property bool activeIndicator: true
         property bool occupiedBg: false
         property bool showWindows: true

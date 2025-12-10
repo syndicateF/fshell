@@ -136,10 +136,9 @@ StyledRect {
         id: metrics
 
         text: Hypr.activeToplevel?.title ?? qsTr("Desktop")
-        // Style lebih clean - pakai sans font bukan mono
-        font.pointSize: Appearance.font.size.small
+        // Style sesuai ii - pakai pixelSize dan main font (sans)
+        font.pixelSize: 15
         font.family: Appearance.font.family.sans
-        font.weight: Font.Medium
         elide: Qt.ElideRight
         elideWidth: root.maxHeight - icon.height
 
@@ -158,18 +157,22 @@ StyledRect {
         }
     }
 
-    component Title: StyledText {
+    component Title: Text {
         id: text
 
         anchors.horizontalCenter: icon.horizontalCenter
         anchors.top: icon.bottom
         anchors.topMargin: Appearance.spacing.smaller
 
-        font.pointSize: metrics.font.pointSize
+        // Style persis ii StyledText dengan variable font axes
+        font.pixelSize: metrics.font.pixelSize
         font.family: metrics.font.family
-        font.weight: metrics.font.weight
+        font.hintingPreference: Font.PreferDefaultHinting
+        font.variableAxes: ({ "wght": 450, "wdth": 100 })
         color: root.colour
         opacity: root.current === this ? 1 : 0
+        renderType: Text.NativeRendering
+        verticalAlignment: Text.AlignVCenter
 
         transform: [
             Translate {

@@ -14,10 +14,9 @@ Item {
     readonly property Popout currentPopout: content.children.find(c => c.shouldBeActive) ?? null
     readonly property Item current: currentPopout?.item ?? null
 
-    anchors.left: parent.left
-    anchors.verticalCenter: parent.verticalCenter
+    anchors.centerIn: parent
 
-    implicitWidth: (currentPopout?.implicitWidth ?? 0) + Appearance.padding.large * 2
+    implicitWidth: (currentPopout?.implicitWidth ?? 0) + Appearance.padding.large * 2 + Config.border.thickness
     implicitHeight: (currentPopout?.implicitHeight ?? 0) + Appearance.padding.large * 2
 
     Item {

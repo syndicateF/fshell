@@ -126,7 +126,7 @@ Item {
 
         shouldBeActive: root.hasCurrent && !root.detachedMode
         asynchronous: true
-        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
         sourceComponent: Content {

@@ -8,6 +8,7 @@ import qs.modules.overview as Overview
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities as Utilities
 import qs.modules.sidebar as Sidebar
+import qs.modules.topworkspaces as TopWorkspaces
 import QtQuick
 import QtQuick.Shapes
 
@@ -58,15 +59,21 @@ Shape {
         startY: -Config.border.thickness
     }
 
+    TopWorkspaces.Background {
+        wrapper: root.panels.topworkspaces
+
+        startX: (root.width - wrapper.width) / 2 - rounding
+        startY: -Config.border.thickness
+    }
+
     BarPopouts.Background {
         wrapper: root.panels.popouts
         // Cek apakah popout menyentuh/dekat bottom bar (dengan floating margin)
         invertBottomRounding: wrapper.y + wrapper.height + rounding >= root.height - Config.border.thickness
 
-        // startX & startY: adjust berdasarkan cutout mode atau detached mode
-        // Cutout: arc top-left turun (+rounding), jadi startY = wrapper.y - rounding
-        // Detached: arc top-left naik (-rounding), jadi startY = wrapper.y + rounding
-        startX: wrapper.isDetached ? wrapper.x : wrapper.x + Config.border.thickness // - 0.4  // -1 fix subpixel gap
+        // startX & startY: wrapper.x sudah dalam coordinate yang sama dengan Backgrounds
+        // Cutout arc dimulai di wrapper.x, lalu curve ke kanan
+        startX: wrapper.isDetached ? wrapper.x : wrapper.x + Config.border.thickness
         startY: wrapper.isDetached ? wrapper.y + rounding : wrapper.y - rounding
     }
 

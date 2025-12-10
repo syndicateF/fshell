@@ -8,6 +8,7 @@ import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities as Utilities
 import qs.modules.utilities.toasts as Toasts
 import qs.modules.sidebar as Sidebar
+import qs.modules.topworkspaces as TopWorkspaces
 import Quickshell
 import QtQuick
 
@@ -27,10 +28,11 @@ Item {
     readonly property alias utilities: utilities
     readonly property alias toasts: toasts
     readonly property alias sidebar: sidebar
+    readonly property alias topworkspaces: topworkspaces
 
     anchors.fill: parent
     anchors.margins: Config.border.thickness
-    anchors.leftMargin: Config.border.thickness + bar.implicitWidth
+    anchors.leftMargin: bar.implicitWidth
 
     Osd.Wrapper {
         id: osd
@@ -86,6 +88,17 @@ Item {
         screen: root.screen
         visibilities: root.visibilities
         popouts: popouts
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: -Config.border.thickness
+    }
+
+    TopWorkspaces.Wrapper {
+        id: topworkspaces
+
+        screen: root.screen
+        visibilities: root.visibilities
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top

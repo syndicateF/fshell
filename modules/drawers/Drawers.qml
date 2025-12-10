@@ -170,6 +170,7 @@ Variants {
                 property bool utilities
                 property bool sidebar
                 property bool overview
+                property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
 
