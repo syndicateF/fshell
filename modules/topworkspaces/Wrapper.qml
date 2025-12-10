@@ -140,7 +140,6 @@ Item {
                 id: layout
 
                 anchors.centerIn: parent
-                anchors.margins: Appearance.padding.normal
                 spacing: Config.bar.workspaces.topWorkspacesSpacing
 
                 Repeater {

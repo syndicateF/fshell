@@ -176,14 +176,16 @@ FocusScope {
             Column {
                 id: specialWsRow
                 visible: root.specialWorkspaces.length > 0
-                spacing: 10
-                topPadding: 10  // Space above divider
+                spacing: 8
+                topPadding: 8  // Space above divider
                 
                 // Divider (same style as WindowList divider)
                 Rectangle {
                     width: wsGrid.implicitWidth
                     height: 1
-                    color: Colours.palette.m3outlineVariant
+                    // color: Colours.palette.m3outlineVariant
+                    color: Qt.rgba(1, 1, 1, 0.1)
+                    opacity: 0.5
                 }
                 
                 // Special workspaces

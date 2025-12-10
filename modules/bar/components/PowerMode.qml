@@ -21,7 +21,8 @@ StyledRect {
         
         if (charging) return "#34C759";  // Green when charging
         if (pct <= 20) return "#FF3B30";  // Red (critical)
-        if (pct <= 50) return "#FF9500";  // Orange (low)
+        if (pct <= 100) return "#FF9500";  // Orange (low)
+        // if (pct <= 100) return '#62ff00';  // Orange (low)
         return Colours.palette.m3onSurface;  // Neutral white/gray (discharge normal)
     }
 
