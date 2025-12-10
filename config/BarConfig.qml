@@ -13,47 +13,22 @@ JsonObject {
     property Clock clock: Clock {}
     property Sizes sizes: Sizes {}
 
-    property list<var> entries: [
-        {
-            id: "logo",
-            enabled: true
-        },
-        {
-            id: "workspaces",
-            enabled: true
-        },
-        {
-            id: "spacer",
-            enabled: true
-        },
-        {
-            id: "dashboardIcons",
-            enabled: true
-        },
-        {
-            id: "activeWindow",
-            enabled: true
-        },
-        {
-            id: "spacer",
-            enabled: true
-        },
-        {
-            id: "tray",
-            enabled: true
-        },
-        {
-            id: "clock",
-            enabled: true
-        },
-        {
-            id: "statusIcons",
-            enabled: true
-        },
-        {
-            id: "power",
-            enabled: true
-        }
+    // Bar layout dengan 3 section: top (anchored ke atas), center (anchored ke tengah), bottom (anchored ke bawah)
+    property list<var> topEntries: [
+        { id: "logo", enabled: true },
+        { id: "workspaces", enabled: true }
+    ]
+    
+    property list<var> centerEntries: [
+        { id: "dashboardIcons", enabled: true },
+        { id: "activeWindow", enabled: true },
+        { id: "clock", enabled: true }
+    ]
+    
+    property list<var> bottomEntries: [
+        { id: "tray", enabled: true },
+        { id: "statusIcons", enabled: true },
+        { id: "power", enabled: true }
     ]
 
     component ScrollActions: JsonObject {
@@ -112,6 +87,7 @@ JsonObject {
 
     component Sizes: JsonObject {
         property int innerWidth: 40
+        property int itemPadding: 10  // Vertical padding untuk items (kecuali workspaces)
         property int iconSize: 22  // Icon size for app icons (pixelSize)
         property int materialIconSize: 15  // Material icon size (pointSize) - same as Appearance.font.size.larger
         property int windowPreviewSize: 400

@@ -10,11 +10,14 @@ import Quickshell.Hyprland
 import Quickshell.Widgets
 import QtQuick
 
-Item {
+StyledRect {
     id: root
 
     required property var bar
     required property ShellScreen screen
+
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
 
     // Windows di workspace aktif (including special workspace)
     readonly property var workspaceWindows: {
@@ -42,12 +45,13 @@ Item {
     readonly property real emptyIconSize: Config.bar.sizes.iconSize * 1.5
 
     clip: true
-    implicitWidth: hasWindows ? windowColumn.implicitWidth : emptyState.implicitWidth
-    implicitHeight: hasWindows ? windowColumn.implicitHeight : emptyState.implicitHeight
+    implicitWidth: Config.bar.sizes.innerWidth
+    implicitHeight: (hasWindows ? windowColumn.implicitHeight : emptyState.implicitHeight) + Config.bar.sizes.itemPadding * 2
 
     // Empty state - no windows in workspace
     Item {
         id: emptyState
+        anchors.centerIn: parent
         visible: !root.hasWindows
         opacity: visible ? 1 : 0
         
@@ -129,6 +133,7 @@ Item {
 
     Column {
         id: windowColumn
+        anchors.centerIn: parent
         visible: root.hasWindows
 
         spacing: Appearance.spacing.small

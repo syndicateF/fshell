@@ -5,36 +5,45 @@ import qs.services
 import qs.config
 import QtQuick
 
-Column {
+StyledRect {
     id: root
 
     property color colour: Colours.palette.m3tertiary
 
-    spacing: Appearance.spacing.small
+    implicitWidth: Config.bar.sizes.innerWidth
+    implicitHeight: content.implicitHeight + Config.bar.sizes.itemPadding * 2
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
 
-    Loader {
-        anchors.horizontalCenter: parent.horizontalCenter
+    Column {
+        id: content
+        anchors.centerIn: parent
+        spacing: Appearance.spacing.small
 
-        active: Config.bar.clock.showIcon
-        visible: active
-        asynchronous: true
+        Loader {
+            anchors.horizontalCenter: parent.horizontalCenter
 
-        sourceComponent: MaterialIcon {
-            text: "calendar_month"
-            color: root.colour
-            font.pointSize: Config.bar.sizes.materialIconSize
+            active: Config.bar.clock.showIcon
+            visible: active
+            asynchronous: true
+
+            sourceComponent: MaterialIcon {
+                text: "calendar_month"
+                color: root.colour
+                font.pointSize: Config.bar.sizes.materialIconSize
+            }
         }
-    }
 
-    StyledText {
-        id: text
+        StyledText {
+            id: text
 
-        anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenter: parent.horizontalCenter
 
-        horizontalAlignment: StyledText.AlignHCenter
-        text: Time.format(Config.services.useTwelveHourClock ? "hh\nmm\nA" : "hh\nmm")
-        font.pointSize: Appearance.font.size.smaller
-        font.family: Appearance.font.family.mono
-        color: root.colour
+            horizontalAlignment: StyledText.AlignHCenter
+            text: Time.format(Config.services.useTwelveHourClock ? "hh\nmm\nA" : "hh\nmm")
+            font.pointSize: Appearance.font.size.smaller
+            font.family: Appearance.font.family.mono
+            color: root.colour
+        }
     }
 }

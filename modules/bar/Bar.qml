@@ -9,7 +9,7 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
-ColumnLayout {
+Item {
     id: root
 
     required property ShellScreen screen
@@ -17,22 +17,42 @@ ColumnLayout {
     required property BarPopouts.Wrapper popouts
     readonly property int vPadding: 28
 
+    // Expose repeaters untuk checkPopout
+    readonly property var allRepeaters: [topRepeater, centerRepeater, bottomRepeater]
+
     function closeTray(): void {
         if (!Config.bar.tray.compact)
             return;
 
-            for (let i = 0; i < repeater.count; i++) {
-                const item = repeater.itemAt(i);
-                if (item?.enabled && item.id === "tray") {
+        for (const rep of allRepeaters) {
+            for (let i = 0; i < rep.count; i++) {
+                const item = rep.itemAt(i);
+                if (item?.enabled && item.entryId === "tray") {
                     item.item.expanded = false;
                 }
             }
         }
+    }
+
+    function findItemAtY(y: real): Item {
+        // Check semua section untuk cari item di posisi y
+        const sections = [topSection, centerSection, bottomSection];
+        for (const section of sections) {
+            const localY = mapToItem(section, 0, y).y;
+            if (localY >= 0 && localY <= section.height) {
+                const child = section.childAt(section.width / 2, localY);
+                if (child && child.entryId !== undefined) {
+                    return child;
+                }
+            }
+        }
+        return null;
+    }
 
     function checkPopout(y: real): void {
-        const ch = childAt(width / 2, y) as WrappedLoader;
+        const ch = findItemAtY(y);
 
-        if (ch?.id !== "tray")
+        if (ch?.entryId !== "tray")
             closeTray();
 
         if (!ch) {
@@ -40,8 +60,8 @@ ColumnLayout {
             return;
         }
 
-        const id = ch.id;
-        const top = ch.y;
+        const id = ch.entryId;
+        const top = ch.mapToItem(root, 0, 0).y;
         const item = ch.item;
         const itemHeight = item.implicitHeight;
 
@@ -73,7 +93,6 @@ ColumnLayout {
             popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
             popouts.hasCurrent = true;
         } else if (id === "dashboardIcons") {
-            // Handle dashboard icons hover - similar to statusIcons
             const items = item.items;
             const icon = items.childAt(items.width / 2, mapToItem(items, 0, y).y);
             if (icon && icon.name) {
@@ -81,7 +100,6 @@ ColumnLayout {
                 popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
                 popouts.hasCurrent = true;
             } else {
-                // Keep showing if already on a dashboard popout
                 const dashPopouts = ["dash", "media", "performance"];
                 if (!dashPopouts.includes(popouts.currentName)) {
                     popouts.hasCurrent = false;
@@ -91,9 +109,8 @@ ColumnLayout {
     }
 
     function handleWheel(y: real, angleDelta: point): void {
-        const ch = childAt(width / 2, y) as WrappedLoader;
-        if (ch?.id === "workspaces" && Config.bar.scrollActions.workspaces) {
-            // Workspace scroll
+        const ch = findItemAtY(y);
+        if (ch?.entryId === "workspaces" && Config.bar.scrollActions.workspaces) {
             const mon = (Config.bar.workspaces.perMonitorWorkspaces ? Hypr.monitorFor(screen) : Hypr.focusedMonitor);
             const specialWs = mon?.lastIpcObject.specialWorkspace.name;
             if (specialWs?.length > 0)
@@ -101,13 +118,11 @@ ColumnLayout {
             else if (angleDelta.y < 0 || (Config.bar.workspaces.perMonitorWorkspaces ? mon.activeWorkspace?.id : Hypr.activeWsId) > 1)
                 Hypr.dispatch(`workspace r${angleDelta.y > 0 ? "-" : "+"}1`);
         } else if (y < screen.height / 2 && Config.bar.scrollActions.volume) {
-            // Volume scroll on top half
             if (angleDelta.y > 0)
                 Audio.incrementVolume();
             else if (angleDelta.y < 0)
                 Audio.decrementVolume();
         } else if (Config.bar.scrollActions.brightness) {
-            // Brightness scroll on bottom half
             const monitor = Brightness.getMonitorForScreen(screen);
             if (angleDelta.y > 0)
                 monitor.setBrightness(monitor.brightness + 0.1);
@@ -116,115 +131,131 @@ ColumnLayout {
         }
     }
 
-    spacing: Appearance.spacing.normal
+    // TOP SECTION - anchored ke atas
+    ColumnLayout {
+        id: topSection
+        anchors.top: parent.top
+        anchors.topMargin: root.vPadding
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: Appearance.spacing.normal
 
-    Repeater {
-        id: repeater
+        Repeater {
+            id: topRepeater
+            model: Config.bar.topEntries
+            delegate: entryDelegate
+        }
+    }
 
-        model: Config.bar.entries
+    // CENTER SECTION - anchored ke tengah
+    ColumnLayout {
+        id: centerSection
+        anchors.centerIn: parent
+        spacing: Appearance.spacing.normal
 
-        DelegateChooser {
-            role: "id"
+        Repeater {
+            id: centerRepeater
+            model: Config.bar.centerEntries
+            delegate: entryDelegate
+        }
+    }
 
-            DelegateChoice {
-                roleValue: "spacer"
-                delegate: WrappedLoader {
-                    Layout.fillHeight: enabled
-                }
-            }
-            DelegateChoice {
-                roleValue: "logo"
-                delegate: WrappedLoader {
-                    sourceComponent: OsIcon {}
-                }
-            }
-            DelegateChoice {
-                roleValue: "workspaces"
-                delegate: WrappedLoader {
-                    sourceComponent: Workspaces {
-                        screen: root.screen
-                    }
-                }
-            }
-            DelegateChoice {
-                roleValue: "activeWindow"
-                delegate: WrappedLoader {
-                    sourceComponent: WindowList {
-                        bar: root
-                        screen: root.screen
-                    }
-                }
-            }
-            DelegateChoice {
-                roleValue: "dashboardIcons"
-                delegate: WrappedLoader {
-                    sourceComponent: DashboardIcons {
-                        bar: root
-                        visibilities: root.visibilities
-                        popouts: root.popouts
-                    }
-                }
-            }
-            DelegateChoice {
-                roleValue: "tray"
-                delegate: WrappedLoader {
-                    sourceComponent: Tray {}
-                }
-            }
-            DelegateChoice {
-                roleValue: "clock"
-                delegate: WrappedLoader {
-                    sourceComponent: Clock {}
-                }
-            }
-            DelegateChoice {
-                roleValue: "statusIcons"
-                delegate: WrappedLoader {
-                    sourceComponent: StatusIcons {}
-                }
-            }
-            DelegateChoice {
-                roleValue: "power"
-                delegate: WrappedLoader {
-                    sourceComponent: Power {
-                        visibilities: root.visibilities
-                    }
+    // BOTTOM SECTION - anchored ke bawah
+    ColumnLayout {
+        id: bottomSection
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: root.vPadding
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: Appearance.spacing.normal
+
+        Repeater {
+            id: bottomRepeater
+            model: Config.bar.bottomEntries
+            delegate: entryDelegate
+        }
+    }
+
+    // Shared delegate component
+    Component {
+        id: entryDelegate
+
+        Loader {
+            id: entryLoader
+
+            required property var modelData
+            required property int index
+
+            readonly property bool enabled: modelData.enabled
+            readonly property string entryId: modelData.id
+
+            Layout.alignment: Qt.AlignHCenter
+            visible: enabled
+            active: enabled
+
+            sourceComponent: {
+                switch (entryId) {
+                    case "logo": return logoComp
+                    case "workspaces": return workspacesComp
+                    case "activeWindow": return activeWindowComp
+                    case "dashboardIcons": return dashboardIconsComp
+                    case "tray": return trayComp
+                    case "clock": return clockComp
+                    case "statusIcons": return statusIconsComp
+                    case "power": return powerComp
+                    default: return null
                 }
             }
         }
     }
 
-    component WrappedLoader: Loader {
-        required property bool enabled
-        required property string id
-        required property int index
+    // Component definitions
+    Component {
+        id: logoComp
+        OsIcon {}
+    }
 
-        function findFirstEnabled(): Item {
-            const count = repeater.count;
-            for (let i = 0; i < count; i++) {
-                const item = repeater.itemAt(i);
-                if (item?.enabled)
-                    return item;
-            }
-            return null;
+    Component {
+        id: workspacesComp
+        Workspaces {
+            screen: root.screen
         }
+    }
 
-        function findLastEnabled(): Item {
-            for (let i = repeater.count - 1; i >= 0; i--) {
-                const item = repeater.itemAt(i);
-                if (item?.enabled)
-                    return item;
-            }
-            return null;
+    Component {
+        id: activeWindowComp
+        WindowList {
+            bar: root
+            screen: root.screen
         }
+    }
 
-        Layout.alignment: Qt.AlignHCenter
+    Component {
+        id: dashboardIconsComp
+        DashboardIcons {
+            bar: root
+            visibilities: root.visibilities
+            popouts: root.popouts
+        }
+    }
 
-        // Cursed ahh thing to add padding to first and last enabled components
-        Layout.topMargin: findFirstEnabled() === this ? root.vPadding : 0
-        Layout.bottomMargin: findLastEnabled() === this ? root.vPadding : 0
+    Component {
+        id: trayComp
+        Tray {}
+    }
 
-        visible: enabled
-        active: enabled
+    Component {
+        id: clockComp
+        Clock {}
+    }
+
+    Component {
+        id: statusIconsComp
+        StatusIcons {}
+    }
+
+    Component {
+        id: powerComp
+        Power {
+            visibilities: root.visibilities
+        }
     }
 }

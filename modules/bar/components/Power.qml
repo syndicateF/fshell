@@ -9,7 +9,7 @@ Item {
 
     required property PersistentProperties visibilities
 
-    implicitWidth: icon.implicitHeight + Appearance.padding.small * 2
+    implicitWidth: icon.implicitHeight + Config.bar.sizes.itemPadding * 2
     implicitHeight: icon.implicitHeight
 
     StateLayer {
@@ -17,7 +17,7 @@ Item {
         anchors.fill: undefined
         anchors.centerIn: parent
         implicitWidth: implicitHeight
-        implicitHeight: icon.implicitHeight + Appearance.padding.small * 2
+        implicitHeight: icon.implicitHeight + Config.bar.sizes.itemPadding * 2
 
         radius: Appearance.rounding.full
 

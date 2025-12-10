@@ -66,7 +66,7 @@ Shape {
         // startX & startY: adjust berdasarkan cutout mode atau detached mode
         // Cutout: arc top-left turun (+rounding), jadi startY = wrapper.y - rounding
         // Detached: arc top-left naik (-rounding), jadi startY = wrapper.y + rounding
-        startX: wrapper.isDetached ? wrapper.x : wrapper.x + Config.border.thickness
+        startX: wrapper.isDetached ? wrapper.x : wrapper.x + Config.border.thickness // - 0.4  // -1 fix subpixel gap
         startY: wrapper.isDetached ? wrapper.y + rounding : wrapper.y - rounding
     }
 

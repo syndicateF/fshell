@@ -24,7 +24,7 @@ StyledRect {
     
     clip: true
     implicitWidth: Config.bar.sizes.innerWidth
-    implicitHeight: iconsColumn.implicitHeight + Config.border.thickness * 2
+    implicitHeight: iconsColumn.implicitHeight + Config.bar.sizes.itemPadding * 2
 
     ColumnLayout {
         id: iconsColumn
@@ -32,7 +32,7 @@ StyledRect {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Config.border.thickness
+        anchors.bottomMargin: Config.bar.sizes.itemPadding
 
         spacing: Appearance.spacing.smaller / 2
 

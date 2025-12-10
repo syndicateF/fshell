@@ -8,7 +8,7 @@ import Quickshell
 import Quickshell.Widgets
 import QtQuick
 
-Item {
+StyledRect {
     id: root
 
     required property var bar
@@ -16,13 +16,8 @@ Item {
     // Dynamic color dari icon
     property color colour: Colours.palette.m3primary
 
-    // Hilangkan animasi color supaya sync dengan icon change
-    // Behavior on colour {
-    //     ColorAnimation {
-    //         duration: 200
-    //         easing.type: Easing.OutCubic
-    //     }
-    // }
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
 
     readonly property int maxHeight: {
         const otherModules = bar.children.filter(c => c.id && c.item !== this && c.id !== "spacer");
@@ -33,8 +28,8 @@ Item {
     property Title current: text1
 
     clip: true
-    implicitWidth: Math.max(icon.implicitWidth, current.implicitHeight)
-    implicitHeight: icon.implicitHeight + current.implicitWidth + current.anchors.topMargin
+    implicitWidth: Math.max(icon.implicitWidth, current.implicitHeight) + Config.bar.sizes.itemPadding * 2
+    implicitHeight: icon.implicitHeight + current.implicitWidth + current.anchors.topMargin + Config.bar.sizes.itemPadding * 2
 
     // Timer untuk delay color extraction
     Timer {
@@ -110,6 +105,8 @@ Item {
         id: icon
 
         anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: Config.bar.sizes.itemPadding
 
         implicitSize: Appearance.font.size.large * 1
         source: Icons.getAppIcon(Hypr.activeToplevel?.lastIpcObject.class ?? "", "desktop")
