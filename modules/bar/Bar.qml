@@ -100,11 +100,37 @@ Item {
                 popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
                 popouts.hasCurrent = true;
             } else {
-                const dashPopouts = ["dash", "media", "performance"];
+                const dashPopouts = ["dash", "media", "performance", "bluetooth"];
                 if (!dashPopouts.includes(popouts.currentName)) {
                     popouts.hasCurrent = false;
                 }
             }
+        } else if ((id === "networkIcon" || id === "networkTraffic") && Config.bar.popouts.statusIcons) {
+            // Network icon + traffic indicator - both trigger network popout
+            // Find the combined center between networkTraffic and networkIcon
+            let combinedTop = Infinity;
+            let combinedBottom = 0;
+            
+            for (const rep of allRepeaters) {
+                for (let i = 0; i < rep.count; i++) {
+                    const entry = rep.itemAt(i);
+                    if (entry?.enabled && (entry.entryId === "networkIcon" || entry.entryId === "networkTraffic")) {
+                        const entryTop = entry.item.mapToItem(root, 0, 0).y;
+                        const entryBottom = entryTop + entry.item.implicitHeight;
+                        combinedTop = Math.min(combinedTop, entryTop);
+                        combinedBottom = Math.max(combinedBottom, entryBottom);
+                    }
+                }
+            }
+            
+            popouts.currentName = "network";
+            popouts.currentCenter = (combinedTop + combinedBottom) / 2;
+            popouts.hasCurrent = true;
+        } else if (id === "powerMode" && Config.bar.popouts.statusIcons) {
+            // PowerMode popout
+            popouts.currentName = "powermode";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
         }
     }
 
@@ -201,6 +227,10 @@ Item {
                     case "clock": return clockComp
                     case "statusIcons": return statusIconsComp
                     case "power": return powerComp
+                    case "networkIcon": return networkIconComp
+                    case "networkTraffic": return networkTrafficComp
+                    case "batteryIcon": return batteryIconComp
+                    case "powerMode": return powerModeComp
                     default: return null
                 }
             }
@@ -257,5 +287,25 @@ Item {
         Power {
             visibilities: root.visibilities
         }
+    }
+
+    Component {
+        id: networkIconComp
+        NetworkIcon {}
+    }
+
+    Component {
+        id: networkTrafficComp
+        NetworkTraffic {}
+    }
+
+    Component {
+        id: batteryIconComp
+        BatteryIcon {}
+    }
+
+    Component {
+        id: powerModeComp
+        PowerMode {}
     }
 }

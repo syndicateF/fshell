@@ -6,15 +6,16 @@ import qs.config
 import Quickshell.Services.SystemTray
 import QtQuick
 
-StyledRect {
+// Tray - tanpa background
+Item {
     id: root
 
     readonly property alias layout: layout
     readonly property alias items: items
     readonly property alias expandIcon: expandIcon
 
-    readonly property int padding: Config.bar.tray.background ? Appearance.padding.normal : Appearance.padding.small
-    readonly property int spacing: Config.bar.tray.background ? Appearance.spacing.small : 0
+    readonly property int padding: Appearance.padding.small
+    readonly property int spacing: 0
 
     property bool expanded
 
@@ -29,9 +30,6 @@ StyledRect {
 
     implicitWidth: Config.bar.sizes.innerWidth
     implicitHeight: nonAnimHeight
-
-    color: Qt.alpha(Colours.tPalette.m3surfaceContainer, Config.bar.tray.background ? Colours.tPalette.m3surfaceContainer.a : 0)
-    radius: Appearance.rounding.full
 
     Column {
         id: layout
@@ -93,16 +91,12 @@ StyledRect {
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: Config.bar.tray.background ? Appearance.padding.small : -Appearance.padding.small
+                anchors.bottomMargin: -Appearance.padding.small
                 text: "expand_less"
                 font.pointSize: Appearance.font.size.large
                 rotation: root.expanded ? 180 : 0
 
                 Behavior on rotation {
-                    Anim {}
-                }
-
-                Behavior on anchors.bottomMargin {
                     Anim {}
                 }
             }

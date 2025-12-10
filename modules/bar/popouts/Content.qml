@@ -72,6 +72,11 @@ Item {
         }
 
         Popout {
+            name: "powermode"
+            sourceComponent: PowerMode {}
+        }
+
+        Popout {
             name: "audio"
             sourceComponent: Audio {
                 wrapper: root.wrapper

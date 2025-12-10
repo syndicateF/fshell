@@ -14,7 +14,7 @@ StyledRect {
     property color colour: Colours.palette.m3tertiary
     
     // Time format sesuai ii - DEFAULT "hh:mm" tanpa AM/PM
-    property string timeString: Time.format(Config.services.useTwelveHourClock ? "hh:mm:AP" : "hh:mm")
+    property string timeString: Time.format(Config.services.useTwelveHourClock ? "hh:mm" : "hh:mm")
     
     // Date format sesuai ii (dd/MM lalu di-split)
     property string shortDate: Time.format("dd/MM")
@@ -29,7 +29,7 @@ StyledRect {
     ColumnLayout {
         id: content
         anchors.centerIn: parent
-        spacing: 12
+        spacing: Appearance.spacing.smaller
 
         // Clock section - persis kayak ii VerticalClockWidget
         ColumnLayout {
@@ -58,8 +58,8 @@ StyledRect {
         // HorizontalBarSeparator - divider antara clock dan date
         Rectangle {
             Layout.fillWidth: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 8
+            // Layout.leftMargin: 8
+            // Layout.rightMargin: 8
             implicitHeight: 1
             color: root.colour
             opacity: 0.5
@@ -99,9 +99,9 @@ StyledRect {
                     left: parent.left
                 }
                 font.pixelSize: 13
-                font.family: Appearance.font.family.clock
+                font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
-                font.variableAxes: ({ "wght": 450 })
+                font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
                 color: root.colour
                 text: root.dayOfMonth
                 renderType: Text.NativeRendering
@@ -114,9 +114,9 @@ StyledRect {
                     right: parent.right
                 }
                 font.pixelSize: 13
-                font.family: Appearance.font.family.clock
+                font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
-                font.variableAxes: ({ "wght": 450 })
+                font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
                 color: root.colour
                 text: root.monthOfYear
                 renderType: Text.NativeRendering

@@ -12,6 +12,33 @@ Singleton {
     property bool wifiEnabled: true
     readonly property bool scanning: rescanProc.running
 
+    // Network traffic monitoring
+    property real downloadSpeed: 0  // bytes per second
+    property real uploadSpeed: 0    // bytes per second
+    property real lastRxBytes: 0
+    property real lastTxBytes: 0
+    property string networkInterface: ""
+    
+    // Format bytes to human readable
+    function formatSpeed(bytesPerSec: real): string {
+        if (bytesPerSec >= 1024 * 1024) {
+            return (bytesPerSec / (1024 * 1024)).toFixed(1) + " MB/s"
+        } else if (bytesPerSec >= 1024) {
+            return (bytesPerSec / 1024).toFixed(1) + " KB/s"
+        } else {
+            return bytesPerSec.toFixed(0) + " B/s"
+        }
+    }
+    
+    // Opacity based on speed (faster = more opaque)
+    function speedOpacity(bytesPerSec: real): real {
+        // Min opacity 0.3, max 1.0
+        // Scale: 0 B/s = 0.3, 1+ MB/s = 1.0
+        const maxSpeed = 1024 * 1024 // 1 MB/s as "full speed"
+        const ratio = Math.min(bytesPerSec / maxSpeed, 1.0)
+        return 0.3 + (ratio * 0.7)
+    }
+
     function enableWifi(enabled: bool): void {
         const cmd = enabled ? "on" : "off";
         enableWifiProc.exec(["nmcli", "radio", "wifi", cmd]);
@@ -39,6 +66,63 @@ Singleton {
 
     function getWifiStatus(): void {
         wifiStatusProc.running = true;
+    }
+
+    // Network traffic monitoring timer
+    Timer {
+        id: trafficTimer
+        interval: 1000  // Update every second
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: {
+            getInterfaceProc.running = true
+        }
+    }
+    
+    // Get active network interface
+    Process {
+        id: getInterfaceProc
+        command: ["sh", "-c", "ip route | grep default | awk '{print $5}' | head -1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const iface = text.trim()
+                if (iface && iface.length > 0) {
+                    root.networkInterface = iface
+                    trafficStats.reload()
+                }
+            }
+        }
+    }
+    
+    // Read network traffic from /proc/net/dev
+    FileView {
+        id: trafficStats
+        path: "/proc/net/dev"
+        onLoaded: {
+            if (!root.networkInterface) return
+            
+            const lines = text().split("\n")
+            for (const line of lines) {
+                if (line.includes(root.networkInterface + ":")) {
+                    // Format: Interface: rx_bytes rx_packets ... tx_bytes tx_packets ...
+                    const parts = line.trim().split(/\s+/)
+                    if (parts.length >= 10) {
+                        const rxBytes = parseInt(parts[1], 10) || 0
+                        const txBytes = parseInt(parts[9], 10) || 0
+                        
+                        if (root.lastRxBytes > 0 && root.lastTxBytes > 0) {
+                            root.downloadSpeed = Math.max(0, rxBytes - root.lastRxBytes)
+                            root.uploadSpeed = Math.max(0, txBytes - root.lastTxBytes)
+                        }
+                        
+                        root.lastRxBytes = rxBytes
+                        root.lastTxBytes = txBytes
+                        break
+                    }
+                }
+            }
+        }
     }
 
     Process {

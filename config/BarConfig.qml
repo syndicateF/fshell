@@ -16,7 +16,8 @@ JsonObject {
     // Bar layout dengan 3 section: top (anchored ke atas), center (anchored ke tengah), bottom (anchored ke bawah)
     // NOTE: workspaces dipindahkan ke TopWorkspacesPanel (horizontal, top center screen)
     property list<var> topEntries: [
-        { id: "logo", enabled: true }
+        { id: "batteryIcon", enabled: true },
+        { id: "powerMode", enabled: true }
     ]
     
     property list<var> centerEntries: [
@@ -28,7 +29,9 @@ JsonObject {
     property list<var> bottomEntries: [
         { id: "tray", enabled: true },
         { id: "statusIcons", enabled: true },
-        { id: "power", enabled: true }
+        { id: "networkTraffic", enabled: true },
+        { id: "networkIcon", enabled: true },
+        { id: "power", enabled: false }
     ]
 
     component ScrollActions: JsonObject {
@@ -50,16 +53,16 @@ JsonObject {
         property int topWorkspacesSpacing: 5  // Horizontal spacing antar workspace items
         property int topWorkspacesHPadding: 6  // Horizontal padding kiri-kanan container
         property bool activeIndicator: true
-        property bool occupiedBg: false
+        property bool occupiedBg: true
         property bool showWindows: true
         property bool showWindowsOnSpecialWorkspaces: showWindows
-        property string windowIconStyle: "custom"  // "icon" = app icons, "category" = category symbols, "custom" = custom symbol
+        property string windowIconStyle: "icon"  // "icon" = app icons, "category" = category symbols, "custom" = custom symbol
         property string windowIconCustomSymbol: "•"  //"⚫"  // custom symbol when windowIconStyle is "custom"
         property bool activeTrail: true
         property bool perMonitorWorkspaces: true
-        property string label: "⚫"//"•"//"●" // if empty, will show workspace name's first letter
-        property string occupiedLabel: "󰮯" //"󰮯"
-        property string activeLabel: "󰮯"  //"󰮯"
+        property string label: ""//"⚫"//"•"//"●" // if empty, will show workspace name's first letter
+        property string occupiedLabel: "" //"󰮯"
+        property string activeLabel: ""  //"󰮯"
         property string capitalisation: "preserve" // upper, lower, or preserve - relevant only if label is empty
         property list<var> specialWorkspaceIcons: []
     }
@@ -98,5 +101,10 @@ JsonObject {
         property int trayMenuWidth: 300
         property int batteryWidth: 250
         property int networkWidth: 320
+        
+        // Bar text style (PowerMode style) - untuk semua teks di bar
+        property int textPixelSize: 15  // font.pixelSize
+        property int textWeight: 450    // font.variableAxes wght
+        property int textWidth: 100     // font.variableAxes wdth
     }
 }
