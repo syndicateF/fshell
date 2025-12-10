@@ -28,21 +28,22 @@ Item {
     // Normal label width
     readonly property real labelWidth: Config.bar.sizes.innerWidth - Appearance.padding.small * 2
     
-    // Minimum width untuk workspace (konsisten dengan label width)
-    readonly property real minWidth: labelWidth
+    // Icons width from loader
+    readonly property real iconsWidth: windows.item ? windows.item.implicitWidth : 0
+    
+    // Overlap amount (icons overlap ke kiri label)
+    readonly property real overlap: Config.bar.sizes.innerWidth / 10
     
     // Calculate size based on label visibility
     // Unanimated prop for others to use as reference (horizontal version uses width)
     readonly property int size: {
-        if (shouldHideLabel && hasWindows) {
-            // Label hidden: gunakan minimum width agar konsisten
-            // Atau icons width + padding jika lebih besar
-            const iconsWidth = windows.item ? windows.item.implicitWidth : 0
-            return Math.max(iconsWidth + Appearance.padding.small * 2, minWidth)
+        if (shouldHideLabel) {
+            // Label hidden: icons centered, use max of icons width or label width for consistency
+            return Math.max(iconsWidth + Appearance.padding.normal * 2, labelWidth)
         } else if (hasWindows) {
-            // Label visible dengan windows: label + icons (dengan overlap)
-            const iconsWidth = windows.item ? windows.item.implicitWidth : 0
-            return labelWidth + iconsWidth - Config.bar.sizes.innerWidth / 10 + Appearance.padding.small
+            // Label visible dengan windows: label + icons (dengan overlap di kiri, padding di kanan)
+            // labelWidth + iconsWidth - overlap + rightPadding
+            return labelWidth + iconsWidth - overlap + Appearance.padding.normal
         } else {
             // Tidak ada windows: hanya label
             return labelWidth
@@ -103,12 +104,11 @@ Item {
         // Saat label visible: posisi di kanan label (dengan overlap)
         x: {
             if (root.shouldHideLabel) {
-                // Center in parent
-                const iconsWidth = item ? item.implicitWidth : 0
-                return (parent.width - iconsWidth) / 2
+                // Center in parent - use root.iconsWidth for accurate centering
+                return (root.width - root.iconsWidth) / 2
             } else {
                 // Position after label with overlap
-                return indicator.width - Config.bar.sizes.innerWidth / 10
+                return root.labelWidth - root.overlap
             }
         }
         anchors.verticalCenter: parent.verticalCenter
@@ -200,7 +200,7 @@ Item {
         }
     }
 
-    Behavior on Layout.preferredWidth {
+    Behavior on implicitWidth {
         Anim {}
     }
 }
