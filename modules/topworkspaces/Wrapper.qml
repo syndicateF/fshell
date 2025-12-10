@@ -29,16 +29,34 @@ Item {
     property bool isOpening: false
     property real blur: onSpecial ? 1 : 0
 
+    // Auto-close topworkspaces saat overview tutup
+    Connections {
+        target: root.visibilities
+        
+        function onOverviewChanged() {
+            if (!root.visibilities.overview) {
+                // Overview tutup, topworkspaces juga tutup
+                root.visibilities.topworkspaces = false;
+            }
+        }
+    }
+
     // Trigger visibility saat workspace berubah (normal atau special)
+    // TAPI hanya kalau overview TIDAK aktif
     onActiveWsIdChanged: {
-        visibilities.topworkspaces = true
-        hideTimer.restart()
+        if (!visibilities.overview) {
+            visibilities.topworkspaces = true
+            hideTimer.restart()
+        }
     }
 
     // Trigger visibility saat special workspace toggle
+    // TAPI hanya kalau overview TIDAK aktif
     onOnSpecialChanged: {
-        visibilities.topworkspaces = true
-        hideTimer.restart()
+        if (!visibilities.overview) {
+            visibilities.topworkspaces = true
+            hideTimer.restart()
+        }
     }
 
     Timer {
@@ -151,13 +169,56 @@ Item {
             }
 
             MouseArea {
+                id: workspaceMouseArea
+                
+                property point dragStart
+                property bool isDragging: false
+                property bool isDraggingUp: false
+                
                 anchors.fill: layout
-                onClicked: event => {
-                    const ws = layout.childAt(event.x, event.y).ws;
-                    if (Hypr.activeWsId !== ws)
-                        Hypr.dispatch(`workspace ${ws}`);
-                    else
-                        Hypr.dispatch("togglespecialworkspace special");
+                
+                onPressed: event => {
+                    dragStart = Qt.point(event.x, event.y);
+                    isDragging = false;
+                    isDraggingUp = false;
+                }
+                
+                onPositionChanged: event => {
+                    const dragY = event.y - dragStart.y;
+                    // Jika drag ke bawah cukup jauh, set flag dragging (untuk open overview)
+                    if (dragY > Config.overview.dragThreshold) {
+                        isDragging = true;
+                        isDraggingUp = false;
+                    }
+                    // Jika drag ke atas cukup jauh, set flag dragging up (untuk close topworkspaces)
+                    else if (dragY < -Config.overview.dragThreshold) {
+                        isDraggingUp = true;
+                        isDragging = false;
+                    }
+                }
+                
+                onReleased: event => {
+                    if (isDragging) {
+                        // Drag ke bawah - trigger overview (hanya saat overview belum aktif)
+                        if (!root.visibilities.overview) {
+                            root.visibilities.overview = true;
+                        }
+                    } else if (isDraggingUp) {
+                        // Drag ke atas - tutup topworkspaces
+                        root.visibilities.topworkspaces = false;
+                    } else {
+                        // Click detected - pindah workspace
+                        const child = layout.childAt(event.x, event.y);
+                        if (child && child.ws !== undefined) {
+                            const ws = child.ws;
+                            if (Hypr.activeWsId !== ws)
+                                Hypr.dispatch(`workspace ${ws}`);
+                            else
+                                Hypr.dispatch("togglespecialworkspace special");
+                        }
+                    }
+                    isDragging = false;
+                    isDraggingUp = false;
                 }
             }
 

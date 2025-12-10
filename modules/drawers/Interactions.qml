@@ -18,6 +18,7 @@ CustomMouseArea {
     property bool osdShortcutActive
     property bool utilitiesShortcutActive
     property bool overviewShortcutActive
+    property bool topworkspacesShortcutActive
 
     function withinPanelHeight(panel: Item, x: real, y: real): bool {
         if (!panel) return false;
@@ -83,6 +84,10 @@ CustomMouseArea {
 
             if (!overviewShortcutActive && !visibilities.overviewClickPending)
                 visibilities.overview = false;
+
+            // Hide topworkspaces on mouse leave (jika bukan dari shortcut/workspace change)
+            if (!topworkspacesShortcutActive)
+                visibilities.topworkspaces = false;
 
             if (!popouts.currentName.startsWith("traymenu") || (popouts.current?.depth ?? 0) <= 1) {
                 popouts.hasCurrent = false;
@@ -208,23 +213,71 @@ CustomMouseArea {
                 visibilities.dashboard = false;
         }
 
-        // Show overview on hover
-        if (Config.overview.showOnHover && Config.overview.enabled) {
-            const showOverview = inTopPanel(panels.overview, x, y);
-            if (!overviewShortcutActive && !visibilities.overviewClickPending) {
-                // Don't auto-close if click pending (cursor warped by Hyprland)
-                visibilities.overview = showOverview;
-            } else if (showOverview) {
-                overviewShortcutActive = false;
+        // Show topworkspaces on hover (ganti dari overview) - HANYA saat overview TIDAK aktif
+        if (Config.overview.showOnHover && Config.overview.enabled && !visibilities.overview) {
+            const showTopWorkspaces = inTopPanel(panels.topworkspaces, x, y);
+            if (!topworkspacesShortcutActive) {
+                visibilities.topworkspaces = showTopWorkspaces;
+            } else if (showTopWorkspaces) {
+                topworkspacesShortcutActive = false;
             }
         }
 
-        // Show/hide overview on drag
-        if (pressed && inTopPanel(panels.overview, dragStart.x, dragStart.y) && withinPanelWidth(panels.overview, x, y)) {
-            if (dragY > Config.overview.dragThreshold)
-                visibilities.overview = true;
-            else if (dragY < -Config.overview.dragThreshold)
-                visibilities.overview = false;
+        // Show/hide overview on drag dari area topworkspaces (termasuk content)
+        // Click tetap bisa pindah workspace karena dragThreshold
+        if (pressed && !visibilities.overview) {
+            // Gunakan posisi actual dari topworkspaces panel
+            const twX = bar.implicitWidth + panels.topworkspaces.x;
+            const twWidth = Math.max(panels.topworkspaces.width, 200);  // Minimum width untuk edge trigger
+            const inTwHorizontal = dragStart.x >= twX - Config.border.rounding && 
+                                   dragStart.x <= twX + twWidth + Config.border.rounding;
+            
+            // Area dari top edge (0) sampai bawah topworkspaces content
+            const twHeight = Math.max(panels.topworkspaces.height, Config.border.thickness);
+            const twBottomY = Config.border.thickness + panels.topworkspaces.y + twHeight + Config.border.rounding;
+            const inTwVertical = dragStart.y >= 0 && dragStart.y <= twBottomY;
+            
+            if (inTwHorizontal && inTwVertical) {
+                // Hanya trigger kalau benar-benar DRAG (bukan click)
+                if (dragY > Config.overview.dragThreshold)
+                    visibilities.overview = true;
+            }
+        }
+
+        // Saat overview AKTIF: drag untuk show/hide topworkspaces
+        // Bisa dari area bawah overview ATAU dari area topworkspaces sendiri
+        if (pressed && visibilities.overview) {
+            const ovX = bar.implicitWidth + panels.overview.x;
+            const ovWidth = panels.overview.width;
+            const inOvHorizontal = dragStart.x >= ovX - Config.border.rounding && 
+                                   dragStart.x <= ovX + ovWidth + Config.border.rounding;
+            
+            // Area bawah overview
+            const ovBottomY = Config.border.thickness + panels.overview.y + panels.overview.height;
+            const inOvBottom = dragStart.y >= ovBottomY - Config.border.rounding * 2 && 
+                               dragStart.y <= ovBottomY + Config.border.rounding * 2;
+            
+            // Area topworkspaces (untuk drag tutup)
+            const twX = bar.implicitWidth + panels.topworkspaces.x;
+            const twY = Config.border.thickness + panels.topworkspaces.y + panels.overview.height;
+            const twHeight = panels.topworkspaces.height;
+            const inTwHorizontal = dragStart.x >= twX - Config.border.rounding && 
+                                   dragStart.x <= twX + panels.topworkspaces.width + Config.border.rounding;
+            const inTwVertical = dragStart.y >= twY - Config.border.rounding && 
+                                 dragStart.y <= twY + twHeight + Config.border.rounding;
+            const inTopWorkspaces = inTwHorizontal && inTwVertical;
+            
+            // Drag dari area bawah overview untuk OPEN topworkspaces
+            if (inOvHorizontal && inOvBottom) {
+                if (dragY > Config.overview.dragThreshold)
+                    visibilities.topworkspaces = true;
+            }
+            
+            // Drag dari area topworkspaces atau bawah overview untuk CLOSE topworkspaces
+            if (inTopWorkspaces || (inOvHorizontal && inOvBottom)) {
+                if (dragY < -Config.overview.dragThreshold)
+                    visibilities.topworkspaces = false;
+            }
         }
 
         // Show utilities on hover
@@ -321,6 +374,19 @@ CustomMouseArea {
             } else {
                 // Overview hidden, clear shortcut flag
                 root.overviewShortcutActive = false;
+            }
+        }
+
+        function onTopworkspacesChanged() {
+            if (root.visibilities.topworkspaces) {
+                // Topworkspaces became visible, check if this should be shortcut mode
+                const inTopWorkspacesArea = root.inTopPanel(root.panels.topworkspaces, root.mouseX, root.mouseY);
+                if (!inTopWorkspacesArea) {
+                    root.topworkspacesShortcutActive = true;
+                }
+            } else {
+                // Topworkspaces hidden, clear shortcut flag
+                root.topworkspacesShortcutActive = false;
             }
         }
     }

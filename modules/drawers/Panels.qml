@@ -97,12 +97,16 @@ Item {
     TopWorkspaces.Wrapper {
         id: topworkspaces
 
+        // Clip saat overview aktif (seperti OSD clip saat session aktif)
+        clip: overview.height > 0
+
         screen: root.screen
         visibilities: root.visibilities
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: -Config.border.thickness
+        // Nempel di bawah overview saat overview aktif - overlap 1px untuk fix anti-aliasing gap
+        anchors.topMargin: overview.height > 0 ? overview.height - Config.border.thickness - 0.4 : -Config.border.thickness
     }
 
     BarPopouts.Wrapper {

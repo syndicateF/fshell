@@ -63,7 +63,8 @@ Shape {
         wrapper: root.panels.topworkspaces
 
         startX: (root.width - wrapper.width) / 2 - rounding
-        startY: -Config.border.thickness
+        // Nempel di bawah overview saat overview aktif - overlap 1px untuk fix anti-aliasing gap
+        startY: root.panels.overview.height > 0 ? root.panels.overview.height - Config.border.thickness - 0.4 : -Config.border.thickness
     }
 
     BarPopouts.Background {
