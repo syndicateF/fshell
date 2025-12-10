@@ -7,7 +7,7 @@ import Quickshell.Widgets
 import QtQuick
 import QtQuick.Layouts
 
-RowLayout {
+Item {
     id: root
 
     required property int index
@@ -16,25 +16,65 @@ RowLayout {
     required property int groupOffset
 
     readonly property bool isWorkspace: true // Flag for finding workspace children
-    // Unanimated prop for others to use as reference (horizontal version uses width)
-    readonly property int size: implicitWidth + (hasWindows ? Appearance.padding.small : 0)
-
     readonly property int ws: groupOffset + index + 1
     readonly property bool isOccupied: occupied[ws] ?? false
     readonly property bool hasWindows: isOccupied && Config.bar.workspaces.showWindows
+    readonly property bool isActive: activeWsId === ws
+    
+    // Hide label jika hideActiveLabel enabled DAN workspace punya windows
+    // Berlaku untuk SEMUA workspace (active maupun inactive) yang punya windows
+    readonly property bool shouldHideLabel: Config.bar.workspaces.hideActiveLabel && hasWindows
+    
+    // Normal label width
+    readonly property real labelWidth: Config.bar.sizes.innerWidth - Appearance.padding.small * 2
+    
+    // Minimum width untuk workspace (konsisten dengan label width)
+    readonly property real minWidth: labelWidth
+    
+    // Calculate size based on label visibility
+    // Unanimated prop for others to use as reference (horizontal version uses width)
+    readonly property int size: {
+        if (shouldHideLabel && hasWindows) {
+            // Label hidden: gunakan minimum width agar konsisten
+            // Atau icons width + padding jika lebih besar
+            const iconsWidth = windows.item ? windows.item.implicitWidth : 0
+            return Math.max(iconsWidth + Appearance.padding.small * 2, minWidth)
+        } else if (hasWindows) {
+            // Label visible dengan windows: label + icons (dengan overlap)
+            const iconsWidth = windows.item ? windows.item.implicitWidth : 0
+            return labelWidth + iconsWidth - Config.bar.sizes.innerWidth / 10 + Appearance.padding.small
+        } else {
+            // Tidak ada windows: hanya label
+            return labelWidth
+        }
+    }
 
-    Layout.alignment: Qt.AlignVCenter
-    Layout.preferredWidth: size
-    // Height dari config
+    implicitWidth: size
     implicitHeight: Config.bar.workspaces.topWorkspacesHeight
 
-    spacing: 0
-
+    // Label - visible saat tidak shouldHideLabel
     StyledText {
         id: indicator
 
-        Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-        Layout.preferredWidth: Config.bar.sizes.innerWidth - Appearance.padding.small * 2
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        
+        width: root.shouldHideLabel ? 0 : root.labelWidth
+        clip: true
+        opacity: root.shouldHideLabel ? 0 : 1
+        
+        Behavior on width {
+            Anim {
+                duration: Appearance.anim.durations.normal
+                easing.bezierCurve: Appearance.anim.curves.emphasized
+            }
+        }
+        
+        Behavior on opacity {
+            Anim {
+                duration: Appearance.anim.durations.small
+            }
+        }
 
         animate: true
         text: {
@@ -57,10 +97,28 @@ RowLayout {
 
     Loader {
         id: windows
-
-        Layout.alignment: Qt.AlignVCenter
-        Layout.fillWidth: true
-        Layout.leftMargin: -Config.bar.sizes.innerWidth / 10
+        
+        // Calculate x position based on label visibility
+        // Saat label hidden: center icons dalam parent
+        // Saat label visible: posisi di kanan label (dengan overlap)
+        x: {
+            if (root.shouldHideLabel) {
+                // Center in parent
+                const iconsWidth = item ? item.implicitWidth : 0
+                return (parent.width - iconsWidth) / 2
+            } else {
+                // Position after label with overlap
+                return indicator.width - Config.bar.sizes.innerWidth / 10
+            }
+        }
+        anchors.verticalCenter: parent.verticalCenter
+        
+        Behavior on x {
+            Anim {
+                duration: Appearance.anim.durations.normal
+                easing.bezierCurve: Appearance.anim.curves.emphasized
+            }
+        }
 
         visible: active
         active: root.hasWindows

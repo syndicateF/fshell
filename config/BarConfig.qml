@@ -54,6 +54,7 @@ JsonObject {
         property int topWorkspacesHPadding: 6  // Horizontal padding kiri-kanan container
         property bool activeIndicator: true
         property bool occupiedBg: true
+        property bool hideActiveLabel: true  // Hide label untuk workspace yang aktif
         property bool showWindows: true
         property bool showWindowsOnSpecialWorkspaces: showWindows
         property string windowIconStyle: "icon"  // "icon" = app icons, "category" = category symbols, "custom" = custom symbol
