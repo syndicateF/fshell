@@ -1,4 +1,5 @@
 import Quickshell.Bluetooth
+import qs.services
 import QtQuick
 
 QtObject {
@@ -11,6 +12,7 @@ QtObject {
     property bool navExpanded: false
 
     readonly property Bt bt: Bt {}
+    readonly property Nw nw: Nw {}
 
     onActiveChanged: activeIndex = panes.indexOf(active)
     onActiveIndexChanged: active = panes[activeIndex]
@@ -21,5 +23,16 @@ QtObject {
         property bool editingAdapterName
         property bool fabMenuOpen
         property bool editingDeviceName
+    }
+
+    component Nw: QtObject {
+        property var active: null  // Currently selected AccessPoint
+        property var pendingNetwork: null  // Network waiting for password
+        property bool fabMenuOpen: false
+        property bool connectDialogOpen: false
+        property string pendingPassword: ""
+        property bool forgetDialogOpen: false
+        property var networkToForget: null  // Network to be forgotten (needs confirmation)
+        property bool showingWarning: false
     }
 }

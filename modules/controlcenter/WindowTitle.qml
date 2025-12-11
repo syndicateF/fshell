@@ -10,14 +10,14 @@ StyledRect {
     required property ShellScreen screen
     required property Session session
 
-    implicitHeight: text.implicitHeight + Appearance.padding.normal
+    implicitHeight: text.implicitHeight + Appearance.padding.large * 2
     color: Colours.tPalette.m3surfaceContainer
 
     StyledText {
         id: text
 
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
+        anchors.verticalCenter: parent.verticalCenter
 
         text: qsTr("Caelestia Settings - %1").arg(root.session.active)
         font.capitalization: Font.Capitalize
@@ -27,11 +27,11 @@ StyledRect {
 
     Item {
         anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.margins: Appearance.padding.normal
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.rightMargin: Appearance.padding.normal
 
         implicitWidth: implicitHeight
-        implicitHeight: closeIcon.implicitHeight + Appearance.padding.small
+        implicitHeight: closeIcon.implicitHeight + Appearance.padding.normal
 
         StateLayer {
             radius: Appearance.rounding.full
