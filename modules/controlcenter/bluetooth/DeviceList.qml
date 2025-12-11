@@ -22,10 +22,11 @@ ColumnLayout {
     spacing: Appearance.spacing.small
 
     RowLayout {
+        Layout.alignment: Qt.AlignTop
         spacing: Appearance.spacing.smaller
 
         StyledText {
-            text: qsTr("Settings")
+            text: qsTr("Bluetooth")
             font.pointSize: Appearance.font.size.large
             font.weight: 500
         }
@@ -71,6 +72,18 @@ ColumnLayout {
         }
 
         ToggleButton {
+            toggled: Bluetooth.defaultAdapter?.discovering ?? false
+            icon: "bluetooth_searching"
+            accent: "Secondary"
+
+            function onClicked(): void {
+                const adapter = Bluetooth.defaultAdapter;
+                if (adapter)
+                    adapter.discovering = !adapter.discovering;
+            }
+        }
+
+        ToggleButton {
             toggled: !root.session.bt.active
             icon: "settings"
             accent: "Primary"
@@ -85,81 +98,36 @@ ColumnLayout {
         }
     }
 
-    RowLayout {
-        Layout.topMargin: Appearance.spacing.large
+    // Device list card container
+    StyledRect {
+        Layout.topMargin: Appearance.spacing.normal
         Layout.fillWidth: true
-        spacing: Appearance.spacing.normal
+        implicitHeight: view.contentHeight + Appearance.padding.normal * 2
+        visible: deviceModel.values.length > 0
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Appearance.spacing.small
+        radius: Appearance.rounding.normal
+        color: Colours.tPalette.m3surfaceContainer
 
-            StyledText {
-                Layout.fillWidth: true
-                text: qsTr("Devices (%1)").arg(Bluetooth.devices.values.length)
-                font.pointSize: Appearance.font.size.large
-                font.weight: 500
+        StyledListView {
+            id: view
+
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.normal
+
+            model: ScriptModel {
+                id: deviceModel
+
+                values: [...Bluetooth.devices.values].sort((a, b) => (b.connected - a.connected) || (b.paired - a.paired))
             }
 
-            StyledText {
-                Layout.fillWidth: true
-                text: qsTr("All available bluetooth devices")
-                color: Colours.palette.m3outline
-            }
-        }
+            clip: true
+            spacing: Appearance.spacing.small / 2
 
-        StyledRect {
-            implicitWidth: implicitHeight
-            implicitHeight: scanIcon.implicitHeight + Appearance.padding.normal * 2
-
-            radius: Bluetooth.defaultAdapter?.discovering ? Appearance.rounding.normal : implicitHeight / 2 * Math.min(1, Appearance.rounding.scale)
-            color: Bluetooth.defaultAdapter?.discovering ? Colours.palette.m3secondary : Colours.palette.m3secondaryContainer
-
-            StateLayer {
-                color: Bluetooth.defaultAdapter?.discovering ? Colours.palette.m3onSecondary : Colours.palette.m3onSecondaryContainer
-
-                function onClicked(): void {
-                    const adapter = Bluetooth.defaultAdapter;
-                    if (adapter)
-                        adapter.discovering = !adapter.discovering;
-                }
+            StyledScrollBar.vertical: StyledScrollBar {
+                flickable: view
             }
 
-            MaterialIcon {
-                id: scanIcon
-
-                anchors.centerIn: parent
-                animate: true
-                text: "bluetooth_searching"
-                color: Bluetooth.defaultAdapter?.discovering ? Colours.palette.m3onSecondary : Colours.palette.m3onSecondaryContainer
-                fill: Bluetooth.defaultAdapter?.discovering ? 1 : 0
-            }
-
-            Behavior on radius {
-                Anim {}
-            }
-        }
-    }
-
-    StyledListView {
-        id: view
-
-        model: ScriptModel {
-            id: deviceModel
-
-            values: [...Bluetooth.devices.values].sort((a, b) => (b.connected - a.connected) || (b.paired - a.paired))
-        }
-
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        clip: true
-        spacing: Appearance.spacing.small / 2
-
-        StyledScrollBar.vertical: StyledScrollBar {
-            flickable: view
-        }
-
-        delegate: StyledRect {
+            delegate: StyledRect {
             id: device
 
             required property BluetoothDevice modelData
@@ -277,6 +245,12 @@ ColumnLayout {
                 }
             }
         }
+    }
+    }
+
+    // Spacer to push content to top
+    Item {
+        Layout.fillHeight: true
     }
 
     component ToggleButton: StyledRect {

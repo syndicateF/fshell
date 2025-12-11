@@ -11,23 +11,31 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
-ColumnLayout {
+Item {
     id: root
 
     required property Session session
 
-    spacing: Appearance.spacing.normal
+    implicitWidth: settingsLayout.implicitWidth
+    implicitHeight: settingsLayout.implicitHeight
 
-    MaterialIcon {
-        Layout.alignment: Qt.AlignHCenter
-        text: "wifi"
-        font.pointSize: Appearance.font.size.extraLarge * 3
-        font.bold: true
-    }
+    ColumnLayout {
+        id: settingsLayout
 
-    StyledText {
-        Layout.alignment: Qt.AlignHCenter
-        text: qsTr("Wi-Fi settings")
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: Appearance.spacing.normal
+
+        MaterialIcon {
+            Layout.alignment: Qt.AlignHCenter
+            text: "wifi"
+            font.pointSize: Appearance.font.size.extraLarge * 3
+            font.bold: true
+        }
+
+        StyledText {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("Wi-Fi settings")
         font.pointSize: Appearance.font.size.large
         font.bold: true
     }
@@ -66,6 +74,14 @@ ColumnLayout {
                 checked: Network.wifiEnabled
                 toggle.onToggled: {
                     Network.enableWifi(checked);
+                }
+            }
+
+            Toggle {
+                label: qsTr("Airplane mode")
+                checked: Network.airplaneMode
+                toggle.onToggled: {
+                    Network.toggleAirplaneMode();
                 }
             }
         }
@@ -333,7 +349,8 @@ ColumnLayout {
 
                         function onClicked(): void {
                             if (savedNetwork.inRange && !savedNetwork.isActive) {
-                                Network.connectToNetwork(savedNetwork.modelData.name, "");
+                                // This is a saved network
+                                Network.connectToNetwork(savedNetwork.modelData.name, "", true);
                             } else if (!savedNetwork.inRange) {
                                 Network.showWarning(qsTr("Network '%1' is not in range").arg(savedNetwork.modelData.name), "warning");
                             }
@@ -403,7 +420,8 @@ ColumnLayout {
 
                             StateLayer {
                                 function onClicked(): void {
-                                    Network.connectToNetwork(savedNetwork.modelData.name, "");
+                                    // This is a saved network
+                                    Network.connectToNetwork(savedNetwork.modelData.name, "", true);
                                 }
                             }
 
@@ -468,53 +486,6 @@ ColumnLayout {
                         color: Colours.palette.m3outline
                     }
                 }
-            }
-        }
-    }
-
-    StyledText {
-        Layout.topMargin: Appearance.spacing.large
-        text: qsTr("Quick actions")
-        font.pointSize: Appearance.font.size.larger
-        font.weight: 500
-    }
-
-    StyledText {
-        text: qsTr("Network management actions")
-        color: Colours.palette.m3outline
-    }
-
-    StyledRect {
-        Layout.fillWidth: true
-        implicitHeight: quickActions.implicitHeight + Appearance.padding.large * 2
-
-        radius: Appearance.rounding.normal
-        color: Colours.tPalette.m3surfaceContainer
-
-        ColumnLayout {
-            id: quickActions
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: Appearance.padding.large
-
-            spacing: Appearance.spacing.normal
-
-            ActionButton {
-                icon: "wifi_find"
-                label: qsTr("Scan for networks")
-                sublabel: Network.scanning ? qsTr("Scanning...") : qsTr("Refresh available networks")
-                loading: Network.scanning
-                onClicked: Network.rescanWifi()
-            }
-            
-            ActionButton {
-                visible: Network.captivePortalDetected
-                icon: "captive_portal"
-                label: qsTr("Open sign-in page")
-                sublabel: qsTr("Authenticate with network portal")
-                onClicked: Network.openCaptivePortal()
             }
         }
     }
@@ -603,6 +574,7 @@ ColumnLayout {
             }
         }
     }
+    } // End of settingsLayout ColumnLayout
 
     component Anim: NumberAnimation {
         duration: Appearance.anim.durations.normal

@@ -21,7 +21,7 @@ Item {
     layer.enabled: true
     layer.smooth: true
     layer.effect: OpacityMask {
-        maskSource: gradientMask
+        mask: gradientMask
     }
 
     Item {

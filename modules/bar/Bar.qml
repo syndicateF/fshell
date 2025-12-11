@@ -105,16 +105,16 @@ Item {
                     popouts.hasCurrent = false;
                 }
             }
-        } else if ((id === "networkIcon" || id === "networkTraffic") && Config.bar.popouts.statusIcons) {
-            // Network icon + traffic indicator - both trigger network popout
-            // Find the combined center between networkTraffic and networkIcon
+        } else if (id === "networkTraffic" && Config.bar.popouts.statusIcons) {
+            // Only networkTraffic triggers network popout
+            // Find networkTraffic position for popout center
             let combinedTop = Infinity;
             let combinedBottom = 0;
             
             for (const rep of allRepeaters) {
                 for (let i = 0; i < rep.count; i++) {
                     const entry = rep.itemAt(i);
-                    if (entry?.enabled && (entry.entryId === "networkIcon" || entry.entryId === "networkTraffic")) {
+                    if (entry?.enabled && entry.entryId === "networkTraffic") {
                         const entryTop = entry.item.mapToItem(root, 0, 0).y;
                         const entryBottom = entryTop + entry.item.implicitHeight;
                         combinedTop = Math.min(combinedTop, entryTop);

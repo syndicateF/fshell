@@ -1,9 +1,12 @@
 import Quickshell
 import QtQuick
+import QtQuick.Effects
 
-ShaderEffect {
-    required property Item source
-    required property Item maskSource
+MultiEffect {
+    property Item mask
 
-    fragmentShader: Qt.resolvedUrl(`${Quickshell.shellDir}/assets/shaders/opacitymask.frag.qsb`)
+    maskEnabled: true
+    maskSource: mask
+    maskThresholdMin: 0.5
+    maskSpreadAtMin: 0.0
 }

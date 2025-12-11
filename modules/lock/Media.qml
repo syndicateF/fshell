@@ -27,7 +27,7 @@ Item {
 
         layer.enabled: true
         layer.effect: OpacityMask {
-            maskSource: mask
+            mask: mask
         }
 
         opacity: status === Image.Ready ? 1 : 0

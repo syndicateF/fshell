@@ -56,7 +56,9 @@ Item {
 
         Popout {
             name: "network"
-            sourceComponent: Network {}
+            sourceComponent: Network {
+                wrapper: root.wrapper
+            }
         }
 
         Popout {

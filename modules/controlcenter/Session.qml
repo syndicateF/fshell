@@ -34,5 +34,7 @@ QtObject {
         property bool forgetDialogOpen: false
         property var networkToForget: null  // Network to be forgotten (needs confirmation)
         property bool showingWarning: false
+        property bool hiddenNetworkDialogOpen: false
+        property bool hotspotDialogOpen: false
     }
 }

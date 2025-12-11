@@ -35,6 +35,28 @@ Singleton {
     property real lastTxBytes: 0
     property string networkInterface: ""
     
+    // IP Address info
+    property string ipAddress: ""
+    property string gateway: ""
+    property string dns: ""
+    property string macAddress: ""
+    
+    // Connection details
+    property string connectionType: "" // wifi, ethernet, etc
+    property int linkSpeed: 0 // Mbps
+    
+    // Hotspot/AP Mode
+    property bool hotspotActive: false
+    property string hotspotSSID: ""
+    property string hotspotPassword: ""
+    
+    // Airplane mode (disable all wireless)
+    property bool airplaneMode: false
+
+    // Pending network from bar popout (to open password dialog in control center)
+    property var pendingNetworkFromBar: null
+    property bool openPasswordDialogOnPanelOpen: false
+    
     // Check if a saved network is currently in range
     function isSavedNetworkInRange(ssid) {
         return networks.some(n => n.ssid === ssid);
@@ -77,15 +99,23 @@ Singleton {
         rescanProc.running = true;
     }
 
-    function connectToNetwork(ssid, password) {
+    // Main connect function - handles all cases
+    function connectToNetwork(ssid, password, isSaved) {
         root.connectionError = "";
         root.connectionFailed = false;
         root.lastConnectedSSID = ssid;
         
+        // Case 1: Password provided - always use wifi connect with password
         if (password && password.length > 0) {
             connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, "password", password]);
-        } else {
+        } 
+        // Case 2: Saved network (no password needed) - use conn up
+        else if (isSaved) {
             connectProc.exec(["nmcli", "conn", "up", ssid]);
+        }
+        // Case 3: Open network (not saved, no password) - use wifi connect without password
+        else {
+            connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid]);
         }
     }
 
@@ -94,6 +124,35 @@ Singleton {
         root.connectionFailed = false;
         root.lastConnectedSSID = ssid;
         connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, "password", password]);
+    }
+    
+    // Connect with specific security type (for enterprise networks)
+    function connectWithSecurity(ssid, password, securityType) {
+        root.connectionError = "";
+        root.connectionFailed = false;
+        root.lastConnectedSSID = ssid;
+        
+        if (securityType === "wpa-eap") {
+            // Enterprise WPA - needs username/password
+            connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, 
+                "password", password]);
+        } else {
+            connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, "password", password]);
+        }
+    }
+    
+    // Connect to hidden network
+    function connectToHiddenNetwork(ssid, password, security) {
+        root.connectionError = "";
+        root.connectionFailed = false;
+        root.lastConnectedSSID = ssid;
+        
+        if (security === "open") {
+            connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, "hidden", "yes"]);
+        } else {
+            connectProc.exec(["nmcli", "dev", "wifi", "connect", ssid, 
+                "password", password, "hidden", "yes"]);
+        }
     }
 
     function forgetNetwork(ssid) {
@@ -108,6 +167,66 @@ Singleton {
 
     function getWifiStatus() {
         wifiStatusProc.running = true;
+    }
+    
+    // Get detailed connection info
+    function getConnectionDetails() {
+        connectionDetailsProc.running = true;
+    }
+    
+    // Toggle airplane mode (disable all wireless)
+    function toggleAirplaneMode() {
+        if (airplaneMode) {
+            // Turn off airplane mode
+            airplaneModeProc.exec(["nmcli", "radio", "all", "on"]);
+        } else {
+            // Turn on airplane mode
+            airplaneModeProc.exec(["nmcli", "radio", "all", "off"]);
+        }
+    }
+    
+    // Start WiFi hotspot
+    function startHotspot(ssid, password) {
+        root.hotspotSSID = ssid;
+        root.hotspotPassword = password;
+        hotspotProc.exec(["nmcli", "dev", "wifi", "hotspot", 
+            "ifname", root.networkInterface || "wlan0",
+            "ssid", ssid, 
+            "password", password]);
+    }
+    
+    // Stop WiFi hotspot
+    function stopHotspot() {
+        stopHotspotProc.exec(["nmcli", "connection", "down", "Hotspot"]);
+    }
+    
+    // Reconnect to current network (useful after wake from sleep)
+    function reconnect() {
+        if (active) {
+            const ssid = active.ssid;
+            disconnectProc.exec(["nmcli", "connection", "down", ssid]);
+            Qt.callLater(() => {
+                connectProc.exec(["nmcli", "conn", "up", ssid]);
+            });
+        }
+    }
+    
+    // Set network priority (auto-connect order)
+    function setNetworkPriority(ssid, priority) {
+        priorityProc.exec(["nmcli", "connection", "modify", ssid, 
+            "connection.autoconnect-priority", priority.toString()]);
+    }
+    
+    // Enable/disable auto-connect for a network
+    function setAutoConnect(ssid, enabled) {
+        autoConnectProc.exec(["nmcli", "connection", "modify", ssid,
+            "connection.autoconnect", enabled ? "yes" : "no"]);
+    }
+    
+    // Get network password (requires root/polkit)
+    function getNetworkPassword(ssid) {
+        getPasswordProc.exec(["nmcli", "-s", "-g", "802-11-wireless-security.psk", 
+            "connection", "show", ssid]);
     }
     
     // Show a warning/info message
@@ -131,7 +250,16 @@ Singleton {
     function openCaptivePortal() {
         if (captivePortalUrl) {
             captivePortalOpenProc.exec(["xdg-open", captivePortalUrl]);
+        } else {
+            // Fallback URLs for common captive portals
+            captivePortalOpenProc.exec(["xdg-open", "http://captive.apple.com"]);
         }
+    }
+    
+    // Open system network settings (nm-connection-editor or gnome-control-center)
+    function openNetworkSettings() {
+        networkSettingsProc.exec(["sh", "-c", 
+            "command -v nm-connection-editor && nm-connection-editor || gnome-control-center network"]);
     }
     
     // Auto-clear warning after 5 seconds
@@ -166,6 +294,18 @@ Singleton {
         }
     }
     
+    // Periodic connection details update
+    Timer {
+        id: connectionDetailsTimer
+        interval: 10000 // Every 10 seconds
+        repeat: true
+        running: root.active !== null
+        triggeredOnStart: true
+        onTriggered: {
+            root.getConnectionDetails();
+        }
+    }
+    
     // Get active network interface
     Process {
         id: getInterfaceProc
@@ -176,6 +316,33 @@ Singleton {
                 if (iface && iface.length > 0) {
                     root.networkInterface = iface
                     trafficStats.reload()
+                }
+            }
+        }
+    }
+    
+    // Get connection details (IP, gateway, DNS, etc)
+    Process {
+        id: connectionDetailsProc
+        command: ["sh", "-c", `
+            echo "IP:$(ip -4 addr show $(ip route | grep default | awk '{print $5}' | head -1) 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1 | head -1)"
+            echo "GW:$(ip route | grep default | awk '{print $3}' | head -1)"
+            echo "DNS:$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | head -1 | awk '{print $2}')"
+            echo "MAC:$(cat /sys/class/net/$(ip route | grep default | awk '{print $5}' | head -1)/address 2>/dev/null)"
+        `]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                for (const line of lines) {
+                    const parts = line.split(":");
+                    if (parts.length >= 2) {
+                        const key = parts[0];
+                        const value = parts.slice(1).join(":");
+                        if (key === "IP") root.ipAddress = value || "";
+                        else if (key === "GW") root.gateway = value || "";
+                        else if (key === "DNS") root.dns = value || "";
+                        else if (key === "MAC") root.macAddress = value || "";
+                    }
                 }
             }
         }
@@ -199,13 +366,17 @@ Singleton {
                 } else if (httpCode === "302" || httpCode === "301" || httpCode === "307") {
                     // Redirect detected - likely captive portal
                     root.captivePortalDetected = true;
-                    root.captivePortalUrl = redirectUrl || "http://captive.apple.com"; // fallback URL
+                    root.captivePortalUrl = redirectUrl || "http://captive.apple.com";
                     root.showWarning(qsTr("Captive portal detected. Click to authenticate."), "warning");
                 } else if (httpCode === "200") {
                     // Got 200 but expected 204 - likely captive portal returning login page
                     root.captivePortalDetected = true;
                     root.captivePortalUrl = "http://captive.apple.com";
                     root.showWarning(qsTr("Network requires authentication. Click to open browser."), "warning");
+                } else if (httpCode === "000") {
+                    // No response - might be no internet or DNS issue
+                    root.captivePortalDetected = false;
+                    root.captivePortalUrl = "";
                 }
             }
         }
@@ -214,6 +385,90 @@ Singleton {
     // Open captive portal in browser
     Process {
         id: captivePortalOpenProc
+    }
+    
+    // Open network settings
+    Process {
+        id: networkSettingsProc
+    }
+    
+    // Airplane mode toggle
+    Process {
+        id: airplaneModeProc
+        onExited: {
+            root.airplaneMode = !root.airplaneMode;
+            root.getWifiStatus();
+            if (!root.airplaneMode) {
+                getNetworks.running = true;
+            }
+        }
+    }
+    
+    // Hotspot management
+    Process {
+        id: hotspotProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (text.includes("successfully")) {
+                    root.hotspotActive = true;
+                    root.showWarning(qsTr("Hotspot started: %1").arg(root.hotspotSSID), "success");
+                }
+            }
+        }
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (text.trim().length > 0) {
+                    root.showWarning(qsTr("Failed to start hotspot: %1").arg(text.trim()), "error");
+                }
+            }
+        }
+    }
+    
+    Process {
+        id: stopHotspotProc
+        onExited: {
+            root.hotspotActive = false;
+            root.hotspotSSID = "";
+            root.hotspotPassword = "";
+            root.showWarning(qsTr("Hotspot stopped"), "info");
+            getNetworks.running = true;
+        }
+    }
+    
+    // Network priority
+    Process {
+        id: priorityProc
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                root.showWarning(qsTr("Network priority updated"), "success");
+                getSavedConnections.running = true;
+            }
+        }
+    }
+    
+    // Auto-connect toggle
+    Process {
+        id: autoConnectProc
+        onExited: (exitCode) => {
+            if (exitCode === 0) {
+                root.showWarning(qsTr("Auto-connect setting updated"), "success");
+                getSavedConnections.running = true;
+            }
+        }
+    }
+    
+    // Get saved password
+    Process {
+        id: getPasswordProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // Password retrieved - you might want to display this somewhere
+                const password = text.trim();
+                if (password) {
+                    root.showWarning(qsTr("Password: %1").arg(password), "info");
+                }
+            }
+        }
     }
     
     // Read network traffic from /proc/net/dev
@@ -315,6 +570,8 @@ Singleton {
                         forgetProc.exec(["nmcli", "connection", "delete", root.lastConnectedSSID]);
                     } else if (errorText.includes("No network with SSID")) {
                         root.showWarning(qsTr("Network not in range."), "error");
+                    } else if (errorText.includes("Connection activation failed")) {
+                        root.showWarning(qsTr("Connection failed. Network may be unavailable."), "error");
                     } else {
                         root.showWarning(qsTr("Connection failed: %1").arg(errorText), "error");
                     }
@@ -331,6 +588,8 @@ Singleton {
                 root.showWarning(qsTr("Connected to %1").arg(root.lastConnectedSSID), "success");
                 // Check for captive portal after successful connection
                 captivePortalTimer.restart();
+                // Get connection details
+                root.getConnectionDetails();
             }
             getNetworks.running = true;
         }
@@ -350,6 +609,13 @@ Singleton {
 
         stdout: SplitParser {
             onRead: getNetworks.running = true
+        }
+        onExited: {
+            root.ipAddress = "";
+            root.gateway = "";
+            root.dns = "";
+            root.captivePortalDetected = false;
+            root.captivePortalUrl = "";
         }
     }
 
@@ -429,6 +695,7 @@ Singleton {
         readonly property string security: lastIpcObject.security
         readonly property bool isSecure: security.length > 0
         readonly property bool isSaved: root.savedConnections.some(c => c.name === ssid)
+        readonly property bool is5GHz: frequency > 5000
     }
 
     component SavedConnection: QtObject {

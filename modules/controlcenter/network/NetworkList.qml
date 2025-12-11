@@ -18,12 +18,36 @@ Item {
     required property Session session
     readonly property bool smallScanning: width <= 540
 
+    // Handle pending network from bar popout
+    Component.onCompleted: {
+        if (Network.pendingNetworkFromBar && Network.openPasswordDialogOnPanelOpen) {
+            root.session.nw.pendingNetwork = Network.pendingNetworkFromBar;
+            root.session.nw.connectDialogOpen = true;
+            Network.pendingNetworkFromBar = null;
+            Network.openPasswordDialogOnPanelOpen = false;
+        }
+    }
+
+    Connections {
+        target: Network
+        function onOpenPasswordDialogOnPanelOpenChanged() {
+            if (Network.openPasswordDialogOnPanelOpen && Network.pendingNetworkFromBar) {
+                root.session.nw.pendingNetwork = Network.pendingNetworkFromBar;
+                root.session.nw.connectDialogOpen = true;
+                Network.pendingNetworkFromBar = null;
+                Network.openPasswordDialogOnPanelOpen = false;
+            }
+        }
+    }
+
     ColumnLayout {
         id: mainLayout
         anchors.fill: parent
+        anchors.bottomMargin: 0
         spacing: Appearance.spacing.small
 
         RowLayout {
+            Layout.alignment: Qt.AlignTop
             spacing: Appearance.spacing.smaller
 
             StyledText {
@@ -57,6 +81,30 @@ Item {
             }
 
             ToggleButton {
+                toggled: root.session.nw.hiddenNetworkDialogOpen
+                icon: "add_link"
+                accent: "Secondary"
+
+                function onClicked(): void {
+                    root.session.nw.hiddenNetworkDialogOpen = true;
+                }
+            }
+
+            ToggleButton {
+                toggled: Network.hotspotActive
+                icon: "wifi_tethering"
+                accent: Network.hotspotActive ? "Tertiary" : "Secondary"
+
+                function onClicked(): void {
+                    if (Network.hotspotActive) {
+                        Network.stopHotspot();
+                    } else {
+                        root.session.nw.hotspotDialogOpen = true;
+                    }
+                }
+            }
+
+            ToggleButton {
                 toggled: !root.session.nw.active
                 icon: "settings"
                 accent: "Primary"
@@ -67,129 +115,6 @@ Item {
                     else {
                         root.session.nw.active = Network.active ?? Network.networks[0] ?? null;
                     }
-                }
-            }
-        }
-
-        RowLayout {
-            Layout.topMargin: Appearance.spacing.large
-            Layout.fillWidth: true
-            spacing: Appearance.spacing.normal
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: Appearance.spacing.small
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: qsTr("Available Networks (%1)").arg(Network.networks.length)
-                    font.pointSize: Appearance.font.size.large
-                    font.weight: 500
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Network.wifiEnabled ? qsTr("All available Wi-Fi networks") : qsTr("Wi-Fi is disabled")
-                    color: Colours.palette.m3outline
-                }
-            }
-
-            StyledRect {
-                implicitWidth: implicitHeight
-                implicitHeight: scanIcon.implicitHeight + Appearance.padding.normal * 2
-
-                radius: Network.scanning ? Appearance.rounding.normal : implicitHeight / 2 * Math.min(1, Appearance.rounding.scale)
-                color: Network.scanning ? Colours.palette.m3secondary : Colours.palette.m3secondaryContainer
-
-                StateLayer {
-                    color: Network.scanning ? Colours.palette.m3onSecondary : Colours.palette.m3onSecondaryContainer
-
-                    function onClicked(): void {
-                        Network.rescanWifi();
-                    }
-                }
-
-                MaterialIcon {
-                    id: scanIcon
-
-                    anchors.centerIn: parent
-                    animate: true
-                    text: "wifi_find"
-                    color: Network.scanning ? Colours.palette.m3onSecondary : Colours.palette.m3onSecondaryContainer
-                    fill: Network.scanning ? 1 : 0
-                }
-
-                Behavior on radius {
-                    Anim {}
-                }
-            }
-        }
-
-        // Network traffic indicator
-        StyledRect {
-            Layout.fillWidth: true
-            Layout.topMargin: Appearance.spacing.small
-            implicitHeight: trafficRow.implicitHeight + Appearance.padding.normal * 2
-            
-            visible: Network.active !== null
-            radius: Appearance.rounding.small
-            color: Colours.tPalette.m3surfaceContainerHigh
-
-            RowLayout {
-                id: trafficRow
-                
-                anchors.fill: parent
-                anchors.margins: Appearance.padding.normal
-                spacing: Appearance.spacing.large
-
-                RowLayout {
-                    spacing: Appearance.spacing.small
-
-                    MaterialIcon {
-                        text: "download"
-                        color: Colours.palette.m3primary
-                        font.pointSize: Appearance.font.size.normal
-                        opacity: Network.speedOpacity(Network.downloadSpeed)
-                        
-                        Behavior on opacity {
-                            Anim { duration: Appearance.anim.durations.small }
-                        }
-                    }
-
-                    StyledText {
-                        text: Network.formatSpeed(Network.downloadSpeed)
-                        color: Colours.palette.m3onSurface
-                        font.pointSize: Appearance.font.size.small
-                    }
-                }
-
-                RowLayout {
-                    spacing: Appearance.spacing.small
-
-                    MaterialIcon {
-                        text: "upload"
-                        color: Colours.palette.m3tertiary
-                        font.pointSize: Appearance.font.size.normal
-                        opacity: Network.speedOpacity(Network.uploadSpeed)
-                        
-                        Behavior on opacity {
-                            Anim { duration: Appearance.anim.durations.small }
-                        }
-                    }
-
-                    StyledText {
-                        text: Network.formatSpeed(Network.uploadSpeed)
-                        color: Colours.palette.m3onSurface
-                        font.pointSize: Appearance.font.size.small
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                StyledText {
-                    text: Network.networkInterface
-                    color: Colours.palette.m3outline
-                    font.pointSize: Appearance.font.size.small
                 }
             }
         }
@@ -251,62 +176,73 @@ Item {
             }
         }
 
-        StyledListView {
-            id: view
-
-            model: ScriptModel {
-                id: networkModel
-
-                values: [...Network.networks].sort((a, b) => (b.active - a.active) || (b.isSaved - a.isSaved) || (b.strength - a.strength))
-            }
-
+        // Network list card container
+        StyledRect {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            clip: true
-            spacing: Appearance.spacing.small / 2
+            Layout.topMargin: Appearance.spacing.normal
+            implicitHeight: view.contentHeight + Appearance.padding.normal * 2
+            visible: networkModel.values.length > 0
+            
+            radius: Appearance.rounding.normal
+            color: Colours.tPalette.m3surfaceContainer
 
-            StyledScrollBar.vertical: StyledScrollBar {
-                flickable: view
-            }
+            StyledListView {
+                id: view
 
-            delegate: StyledRect {
-                id: network
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal
 
-                required property var modelData
-                readonly property bool isActive: modelData.active
-                readonly property bool isSecure: modelData.isSecure
-                readonly property bool isSaved: modelData.isSaved
-                readonly property bool isConnecting: Network.connecting && Network.lastConnectedSSID === modelData.ssid
+                model: ScriptModel {
+                    id: networkModel
 
-                anchors.left: parent?.left
-                anchors.right: parent?.right
-                implicitHeight: networkInner.implicitHeight + Appearance.padding.normal * 2
-
-                color: Qt.alpha(Colours.tPalette.m3surfaceContainer, root.session.nw.active === modelData ? Colours.tPalette.m3surfaceContainer.a : 0)
-                radius: Appearance.rounding.normal
-
-                StateLayer {
-                    id: stateLayer
-
-                    function onClicked(): void {
-                        root.session.nw.active = network.modelData;
-                    }
+                    values: [...Network.networks].sort((a, b) => (b.active - a.active) || (b.isSaved - a.isSaved) || (b.strength - a.strength))
                 }
 
-                RowLayout {
-                    id: networkInner
+                clip: true
+                spacing: Appearance.spacing.small / 2
 
-                    anchors.fill: parent
-                    anchors.margins: Appearance.padding.normal
+                StyledScrollBar.vertical: StyledScrollBar {
+                    flickable: view
+                }
 
-                    spacing: Appearance.spacing.normal
+                delegate: StyledRect {
+                    id: network
 
-                    StyledRect {
-                        implicitWidth: implicitHeight
-                        implicitHeight: icon.implicitHeight + Appearance.padding.normal * 2
+                    required property var modelData
+                    readonly property bool isActive: modelData.active
+                    readonly property bool isSecure: modelData.isSecure
+                    readonly property bool isSaved: modelData.isSaved
+                    readonly property bool isConnecting: Network.connecting && Network.lastConnectedSSID === modelData.ssid
 
-                        radius: Appearance.rounding.normal
-                        color: network.isActive ? Colours.palette.m3primaryContainer : network.isSaved ? Colours.palette.m3tertiaryContainer : network.isSecure ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainerHigh
+                    anchors.left: parent?.left
+                    anchors.right: parent?.right
+                    implicitHeight: networkInner.implicitHeight + Appearance.padding.normal * 2
+
+                    color: Qt.alpha(Colours.tPalette.m3surfaceContainerHigh, root.session.nw.active === modelData ? 1 : 0)
+                    radius: Appearance.rounding.small
+
+                    StateLayer {
+                        id: stateLayer
+
+                        function onClicked(): void {
+                            root.session.nw.active = network.modelData;
+                        }
+                    }
+
+                    RowLayout {
+                        id: networkInner
+
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+
+                        spacing: Appearance.spacing.normal
+
+                        StyledRect {
+                            implicitWidth: implicitHeight
+                            implicitHeight: icon.implicitHeight + Appearance.padding.normal * 2
+
+                            radius: Appearance.rounding.small
+                            color: network.isActive ? Colours.palette.m3primaryContainer : network.isSaved ? Colours.palette.m3tertiaryContainer : network.isSecure ? Colours.palette.m3secondaryContainer : Colours.tPalette.m3surfaceContainerHighest
 
                         StyledRect {
                             anchors.fill: parent
@@ -361,20 +297,6 @@ Item {
                                 text: network.modelData.ssid
                                 elide: Text.ElideRight
                             }
-
-                            MaterialIcon {
-                                visible: network.isSaved
-                                text: "bookmark"
-                                font.pointSize: Appearance.font.size.normal
-                                color: Colours.palette.m3tertiary
-                            }
-
-                            MaterialIcon {
-                                visible: network.isSecure
-                                text: "lock"
-                                font.pointSize: Appearance.font.size.normal
-                                color: Colours.palette.m3outline
-                            }
                         }
 
                         StyledText {
@@ -390,6 +312,24 @@ Item {
                             font.pointSize: Appearance.font.size.small
                             elide: Text.ElideRight
                         }
+                    }
+
+                    // Saved icon - same size as connect button
+                    MaterialIcon {
+                        visible: network.isSaved
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "bookmark"
+                        font.pointSize: Appearance.font.size.normal
+                        color: Colours.palette.m3tertiary
+                    }
+
+                    // Secured icon - same size as connect button
+                    MaterialIcon {
+                        visible: network.isSecure && !network.isSaved
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "lock"
+                        font.pointSize: Appearance.font.size.normal
+                        color: Colours.palette.m3outline
                     }
 
                     StyledRect {
@@ -414,12 +354,15 @@ Item {
                                 if (network.isActive) {
                                     Network.disconnectFromNetwork();
                                 } else if (network.isSaved) {
-                                    Network.connectToNetwork(network.modelData.ssid, "");
+                                    // Saved network - use conn up
+                                    Network.connectToNetwork(network.modelData.ssid, "", true);
                                 } else if (network.isSecure) {
+                                    // New secured network - need password
                                     root.session.nw.pendingNetwork = network.modelData;
                                     root.session.nw.connectDialogOpen = true;
                                 } else {
-                                    Network.connectToNetwork(network.modelData.ssid, "");
+                                    // Open network (not saved) - use wifi connect
+                                    Network.connectToNetwork(network.modelData.ssid, "", false);
                                 }
                             }
                         }
@@ -441,6 +384,12 @@ Item {
                     }
                 }
             }
+        }
+        } // End of StyledRect card container
+
+        // Spacer to push content to top
+        Item {
+            Layout.fillHeight: true
         }
     }
 
@@ -1092,6 +1041,280 @@ Item {
                 if (root.session.nw.connectDialogOpen) {
                     passwordInput.text = "";
                     passwordInput.forceActiveFocus();
+                }
+            }
+        }
+    }
+
+    // Hidden Network Dialog
+    StyledRect {
+        id: hiddenNetworkDialog
+
+        visible: opacity > 0
+        opacity: root.session.nw.hiddenNetworkDialogOpen ? 1 : 0
+        anchors.fill: parent
+        z: 100
+        color: Qt.rgba(Colours.palette.m3scrim.r, Colours.palette.m3scrim.g, Colours.palette.m3scrim.b, 0.5)
+
+        Behavior on opacity {
+            Anim { duration: Appearance.anim.durations.normal }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                root.session.nw.hiddenNetworkDialogOpen = false
+            }
+        }
+
+        StyledRect {
+            id: hiddenDialogCard
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Appearance.padding.large * 2, 350)
+            implicitHeight: hiddenContent.implicitHeight + Appearance.padding.large * 2
+            radius: Appearance.rounding.large
+            color: Colours.palette.m3surfaceContainerHigh
+            scale: root.session.nw.hiddenNetworkDialogOpen ? 1 : 0.9
+
+            Behavior on scale {
+                Anim {
+                    duration: Appearance.anim.durations.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                }
+            }
+
+            MouseArea { anchors.fill: parent }
+
+            ColumnLayout {
+                id: hiddenContent
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.large
+                spacing: Appearance.spacing.normal
+
+                StyledText {
+                    text: qsTr("Connect to hidden network")
+                    font.pointSize: Appearance.font.size.large
+                    font.weight: 500
+                }
+
+                // SSID Field with background
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: hiddenSsid.implicitHeight + Appearance.padding.normal * 2
+                    radius: Appearance.rounding.small
+                    color: Colours.palette.m3surfaceContainer
+
+                    StyledTextField {
+                        id: hiddenSsid
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+                        placeholderText: qsTr("Network name (SSID)")
+                    }
+                }
+
+                // Password Field with background
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: hiddenPassword.implicitHeight + Appearance.padding.normal * 2
+                    radius: Appearance.rounding.small
+                    color: Colours.palette.m3surfaceContainer
+                    visible: !hiddenSecurityOpen.checked
+
+                    StyledTextField {
+                        id: hiddenPassword
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+                        echoMode: TextInput.Password
+                        placeholderText: qsTr("Password")
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.normal
+
+                    StyledRadioButton {
+                        id: hiddenSecurityOpen
+                        text: qsTr("Open network")
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.normal
+
+                    Item { Layout.fillWidth: true }
+
+                    TextButton {
+                        text: qsTr("Cancel")
+                        onClicked: {
+                            root.session.nw.hiddenNetworkDialogOpen = false
+                            hiddenSsid.text = ""
+                            hiddenPassword.text = ""
+                            hiddenSecurityOpen.checked = false
+                        }
+                    }
+
+                    IconTextButton {
+                        icon: "wifi"
+                        text: qsTr("Connect")
+                        enabled: hiddenSsid.text.length > 0 && (hiddenSecurityOpen.checked || hiddenPassword.text.length >= 8)
+                        onClicked: {
+                            if (hiddenSecurityOpen.checked) {
+                                Network.connectToHiddenNetwork(hiddenSsid.text, "", "open")
+                            } else {
+                                Network.connectToHiddenNetwork(hiddenSsid.text, hiddenPassword.text, "wpa")
+                            }
+                            root.session.nw.hiddenNetworkDialogOpen = false
+                            hiddenSsid.text = ""
+                            hiddenPassword.text = ""
+                            hiddenSecurityOpen.checked = false
+                        }
+                    }
+                }
+            }
+        }
+
+        Connections {
+            target: root.session.nw
+            function onHiddenNetworkDialogOpenChanged() {
+                if (root.session.nw.hiddenNetworkDialogOpen) {
+                    hiddenSsid.text = ""
+                    hiddenPassword.text = ""
+                    hiddenSecurityOpen.checked = false
+                    hiddenSsid.forceActiveFocus()
+                }
+            }
+        }
+    }
+
+    // Hotspot Dialog
+    StyledRect {
+        id: hotspotDialog
+
+        visible: opacity > 0
+        opacity: root.session.nw.hotspotDialogOpen ? 1 : 0
+        anchors.fill: parent
+        z: 100
+        color: Qt.rgba(Colours.palette.m3scrim.r, Colours.palette.m3scrim.g, Colours.palette.m3scrim.b, 0.5)
+
+        Behavior on opacity {
+            Anim { duration: Appearance.anim.durations.normal }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                root.session.nw.hotspotDialogOpen = false
+            }
+        }
+
+        StyledRect {
+            id: hotspotDialogCard
+            anchors.centerIn: parent
+            width: Math.min(parent.width - Appearance.padding.large * 2, 350)
+            implicitHeight: hotspotContent.implicitHeight + Appearance.padding.large * 2
+            radius: Appearance.rounding.large
+            color: Colours.palette.m3surfaceContainerHigh
+            scale: root.session.nw.hotspotDialogOpen ? 1 : 0.9
+
+            Behavior on scale {
+                Anim {
+                    duration: Appearance.anim.durations.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                }
+            }
+
+            MouseArea { anchors.fill: parent }
+
+            ColumnLayout {
+                id: hotspotContent
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.large
+                spacing: Appearance.spacing.normal
+
+                StyledText {
+                    text: qsTr("Start Wi-Fi hotspot")
+                    font.pointSize: Appearance.font.size.large
+                    font.weight: 500
+                }
+
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("Share your internet connection with nearby devices")
+                    color: Colours.palette.m3outline
+                    wrapMode: Text.WordWrap
+                }
+
+                // Hotspot name field with background
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: hotspotSsid.implicitHeight + Appearance.padding.normal * 2
+                    radius: Appearance.rounding.small
+                    color: Colours.palette.m3surfaceContainer
+
+                    StyledTextField {
+                        id: hotspotSsid
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+                        placeholderText: qsTr("Hotspot name")
+                        text: "My Hotspot"
+                    }
+                }
+
+                // Hotspot password field with background
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: hotspotPassword.implicitHeight + Appearance.padding.normal * 2
+                    radius: Appearance.rounding.small
+                    color: Colours.palette.m3surfaceContainer
+
+                    StyledTextField {
+                        id: hotspotPassword
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+                        echoMode: TextInput.Password
+                        placeholderText: qsTr("Password (min 8 characters)")
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.normal
+
+                    Item { Layout.fillWidth: true }
+
+                    TextButton {
+                        text: qsTr("Cancel")
+                        onClicked: {
+                            root.session.nw.hotspotDialogOpen = false
+                            hotspotSsid.text = "My Hotspot"
+                            hotspotPassword.text = ""
+                        }
+                    }
+
+                    IconTextButton {
+                        icon: "wifi_tethering"
+                        text: qsTr("Start")
+                        enabled: hotspotSsid.text.length > 0 && hotspotPassword.text.length >= 8
+                        onClicked: {
+                            Network.startHotspot(hotspotSsid.text, hotspotPassword.text)
+                            root.session.nw.hotspotDialogOpen = false
+                            hotspotSsid.text = "My Hotspot"
+                            hotspotPassword.text = ""
+                        }
+                    }
+                }
+            }
+        }
+
+        Connections {
+            target: root.session.nw
+            function onHotspotDialogOpenChanged() {
+                if (root.session.nw.hotspotDialogOpen) {
+                    hotspotSsid.text = "My Hotspot"
+                    hotspotPassword.text = ""
+                    hotspotSsid.forceActiveFocus()
                 }
             }
         }

@@ -20,7 +20,7 @@ Item {
 
     layer.enabled: true
     layer.effect: OpacityMask {
-        maskSource: mask
+        mask: mask
     }
 
     Item {

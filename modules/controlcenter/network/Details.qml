@@ -100,12 +100,15 @@ Item {
                             if (root.network?.active) {
                                 Network.disconnectFromNetwork();
                             } else if (root.isSaved) {
-                                Network.connectToNetwork(root.network.ssid, "");
+                                // Saved network
+                                Network.connectToNetwork(root.network.ssid, "", true);
                             } else if (root.network?.isSecure) {
+                                // New secured network - need password
                                 root.session.nw.pendingNetwork = root.network;
                                 root.session.nw.connectDialogOpen = true;
                             } else {
-                                Network.connectToNetwork(root.network.ssid, "");
+                                // Open network (not saved)
+                                Network.connectToNetwork(root.network.ssid, "", false);
                             }
                         }
                     }
@@ -538,6 +541,85 @@ Item {
                     }
                 }
             }
+
+            // Connection details section (only when connected)
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("Connection details")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+                visible: root.network?.active ?? false
+            }
+
+            StyledText {
+                text: qsTr("IP and network information")
+                color: Colours.palette.m3outline
+                visible: root.network?.active ?? false
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: connectionDetails.implicitHeight + Appearance.padding.large * 2
+                visible: root.network?.active ?? false
+
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: connectionDetails
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: Appearance.padding.large
+
+                    spacing: Appearance.spacing.small / 2
+
+                    InfoRow {
+                        label: qsTr("IP Address")
+                        value: Network.ipAddress || qsTr("Not available")
+                    }
+
+                    InfoRow {
+                        label: qsTr("Gateway")
+                        value: Network.gateway || qsTr("Not available")
+                    }
+
+                    InfoRow {
+                        label: qsTr("DNS Server")
+                        value: Network.dns || qsTr("Not available")
+                    }
+
+                    InfoRow {
+                        label: qsTr("MAC Address")
+                        value: Network.macAddress || qsTr("Not available")
+                    }
+
+                    RowLayout {
+                        Layout.topMargin: Appearance.spacing.normal
+                        Layout.fillWidth: true
+                        spacing: Appearance.spacing.small
+
+                        StyledText {
+                            text: qsTr("Band")
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        MaterialIcon {
+                            text: root.network?.is5GHz ? "signal_wifi_4_bar" : "network_wifi"
+                            color: Colours.palette.m3outline
+                            font.pointSize: Appearance.font.size.normal
+                        }
+
+                        StyledText {
+                            text: root.network?.is5GHz ? "5 GHz" : "2.4 GHz"
+                            color: Colours.palette.m3outline
+                            font.pointSize: Appearance.font.size.small
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -656,12 +738,15 @@ Item {
                         const action = fabMenuItem.modelData.action;
                         if (action === "connect") {
                             if (root.isSaved) {
-                                Network.connectToNetwork(root.network.ssid, "");
+                                // Saved network
+                                Network.connectToNetwork(root.network.ssid, "", true);
                             } else if (root.network?.isSecure) {
+                                // New secured network - need password
                                 root.session.nw.pendingNetwork = root.network;
                                 root.session.nw.connectDialogOpen = true;
                             } else {
-                                Network.connectToNetwork(root.network.ssid, "");
+                                // Open network (not saved)
+                                Network.connectToNetwork(root.network.ssid, "", false);
                             }
                         } else if (action === "rescan") {
                             Network.rescanWifi();
