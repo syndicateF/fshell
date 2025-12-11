@@ -51,44 +51,63 @@ RowLayout {
             radius: rightBorder.innerRadius
             color: "transparent"
 
-            Loader {
-                id: loader
-
-                property var pane: root.session.nw.active
-
+            // Horizontal sliding panes
+            Item {
+                id: horizontalPanes
+                
                 anchors.fill: parent
-                anchors.margins: Appearance.padding.large * 2
+                clip: true
+                
+                // 0 = Settings, 1 = Details
+                property int activePane: root.session.nw.active ? 1 : 0
+                
+                RowLayout {
+                    id: paneRow
+                    
+                    spacing: 0
+                    x: -horizontalPanes.activePane * horizontalPanes.width
+                    
+                    // Pane 0: Settings
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        StyledFlickable {
+                            anchors.fill: parent
+                            anchors.margins: Appearance.padding.large * 2
+                            flickableDirection: Flickable.VerticalFlick
+                            contentHeight: settingsInner.height
 
-                asynchronous: true
-                sourceComponent: pane ? details : settings
+                            Settings {
+                                id: settingsInner
 
-                Behavior on pane {
-                    SequentialAnimation {
-                        ParallelAnimation {
-                            Anim {
-                                property: "opacity"
-                                to: 0
-                                easing.bezierCurve: Appearance.anim.curves.standardAccel
-                            }
-                            Anim {
-                                property: "scale"
-                                to: 0.8
-                                easing.bezierCurve: Appearance.anim.curves.standardAccel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                session: root.session
                             }
                         }
-                        PropertyAction {}
-                        ParallelAnimation {
-                            Anim {
-                                property: "opacity"
-                                to: 1
-                                easing.bezierCurve: Appearance.anim.curves.standardDecel
-                            }
-                            Anim {
-                                property: "scale"
-                                to: 1
-                                easing.bezierCurve: Appearance.anim.curves.standardDecel
+                    }
+                    
+                    // Pane 1: Details
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        Loader {
+                            anchors.fill: parent
+                            anchors.margins: Appearance.padding.large * 2
+                            
+                            active: root.session.nw.active !== null
+                            asynchronous: true
+                            
+                            sourceComponent: Details {
+                                session: root.session
                             }
                         }
+                    }
+                    
+                    Behavior on x {
+                        Anim {}
                     }
                 }
             }
@@ -100,35 +119,11 @@ RowLayout {
             leftThickness: Appearance.padding.normal / 2
         }
 
-        Component {
-            id: settings
-
-            StyledFlickable {
-                flickableDirection: Flickable.VerticalFlick
-                contentHeight: settingsInner.height
-
-                Settings {
-                    id: settingsInner
-
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    session: root.session
-                }
-            }
-        }
-
-        Component {
-            id: details
-
-            Details {
-                session: root.session
-            }
-        }
     }
 
     component Anim: NumberAnimation {
-        target: loader
-        duration: Appearance.anim.durations.normal / 2
+        duration: Appearance.anim.durations.expressiveDefaultSpatial
         easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
     }
 }

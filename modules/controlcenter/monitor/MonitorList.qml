@@ -11,6 +11,7 @@ import Quickshell
 import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 
 Item {
     id: root
@@ -37,18 +38,27 @@ Item {
 
             Item { Layout.fillWidth: true }
 
-            // VRR Toggle (Global setting)
+            // VRR Toggle (Global setting) - disabled if no monitor supports VRR
             ToggleButton {
                 toggled: Monitors.globalVrr > 0
                 icon: "display_settings"
                 label: root.smallVrr ? "" : (Monitors.globalVrr === 0 ? "VRR" : Monitors.globalVrr === 1 ? "VRR On" : "VRR FS")
                 accent: Monitors.globalVrr > 0 ? "Tertiary" : "Secondary"
+                // Disable if no monitor supports VRR
+                enabled: Monitors.anyMonitorSupportsVrr
+                opacity: enabled ? 1 : 0.5
 
                 function onClicked(): void {
+                    if (!Monitors.anyMonitorSupportsVrr) return;
                     // Cycle through VRR modes: 0 -> 1 -> 2 -> 0
                     const nextVrr = (Monitors.globalVrr + 1) % 3;
                     Monitors.setGlobalVrr(nextVrr);
                 }
+
+                // Tooltip for disabled state
+                ToolTip.visible: !enabled && toggleStateLayer.containsMouse
+                ToolTip.text: qsTr("No monitors with high refresh rate detected")
+                ToolTip.delay: 500
             }
 
             // Settings toggle - shows GlobalInfo when no monitor selected
@@ -134,9 +144,8 @@ Item {
                     MonitorCard {
                         required property var modelData
 
-                        // Use anchors like Network card delegate
-                        anchors.left: parent?.left
-                        anchors.right: parent?.right
+                        // Use Layout.fillWidth for ColumnLayout child
+                        Layout.fillWidth: true
                         monitor: modelData
 
                         onClicked: {

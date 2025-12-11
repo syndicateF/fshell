@@ -13,6 +13,113 @@ Singleton {
     readonly property list<Monitor> monitors: variants.instances
     property bool appleDisplayPresent: false
 
+    // =====================================================
+    // COLOR TEMPERATURE / GAMMA
+    // =====================================================
+    
+    // Available gamma backend
+    property string gammaBackend: "none"  // "hyprsunset", "wlsunset", "gammastep", "none"
+    
+    // Current color temperature (in Kelvin, 1000-10000, default 6500 = neutral)
+    property int colorTemperature: 6500
+    
+    // Night light enabled state
+    property bool nightLightEnabled: false
+    
+    // Night light temperature (warmer, around 4500K)
+    property int nightLightTemperature: 4500
+    
+    // Gamma process (for hyprsunset/wlsunset)
+    property var gammaProcess: null
+    
+    // Check available gamma tools on startup
+    function detectGammaBackend(): void {
+        gammaDetectProcess.running = true;
+    }
+    
+    // Set color temperature
+    function setColorTemperature(temp: int): void {
+        colorTemperature = Math.max(1000, Math.min(10000, temp));
+        applyColorTemperature();
+    }
+    
+    // Toggle night light
+    function toggleNightLight(): void {
+        nightLightEnabled = !nightLightEnabled;
+        applyColorTemperature();
+    }
+    
+    // Enable night light
+    function enableNightLight(): void {
+        nightLightEnabled = true;
+        applyColorTemperature();
+    }
+    
+    // Disable night light
+    function disableNightLight(): void {
+        nightLightEnabled = false;
+        applyColorTemperature();
+    }
+    
+    // Apply color temperature using available backend
+    function applyColorTemperature(): void {
+        const temp = nightLightEnabled ? nightLightTemperature : colorTemperature;
+        
+        // Kill existing gamma process if any
+        if (gammaProcess) {
+            gammaProcess.running = false;
+        }
+        
+        switch (gammaBackend) {
+            case "hyprsunset":
+                // hyprsunset -t <temperature>
+                Quickshell.execDetached(["hyprsunset", "-t", temp.toString()]);
+                break;
+                
+            case "wlsunset":
+                // wlsunset needs to run as daemon with -T (high temp) and -t (low temp)
+                // For manual control, we set both to same value
+                gammaProcess = gammaRunProcess;
+                gammaRunProcess.command = ["wlsunset", "-T", temp.toString(), "-t", temp.toString()];
+                gammaRunProcess.running = true;
+                break;
+                
+            case "gammastep":
+                // gammastep -O <temperature>
+                Quickshell.execDetached(["gammastep", "-O", temp.toString()]);
+                break;
+                
+            default:
+                console.log("[Brightness] No gamma backend available");
+        }
+    }
+    
+    // Reset color temperature to neutral
+    function resetColorTemperature(): void {
+        colorTemperature = 6500;
+        nightLightEnabled = false;
+        
+        // Kill gamma process
+        if (gammaProcess) {
+            gammaProcess.running = false;
+            gammaProcess = null;
+        }
+        
+        // Reset using backend-specific commands
+        switch (gammaBackend) {
+            case "hyprsunset":
+                // Kill hyprsunset to reset
+                Quickshell.execDetached(["pkill", "-x", "hyprsunset"]);
+                break;
+            case "wlsunset":
+                Quickshell.execDetached(["pkill", "-x", "wlsunset"]);
+                break;
+            case "gammastep":
+                Quickshell.execDetached(["gammastep", "-x"]);
+                break;
+        }
+    }
+
     function getMonitorForScreen(screen: ShellScreen): var {
         return monitors.find(m => m.modelData === screen);
     }
@@ -85,6 +192,37 @@ Singleton {
         }
     }
 
+    // Process to detect available gamma backend
+    Process {
+        id: gammaDetectProcess
+        
+        command: ["sh", "-c", "which hyprsunset 2>/dev/null && echo hyprsunset || which wlsunset 2>/dev/null && echo wlsunset || which gammastep 2>/dev/null && echo gammastep || echo none"]
+        
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                // Get the last line which is the backend name
+                const backend = lines[lines.length - 1].trim();
+                if (["hyprsunset", "wlsunset", "gammastep"].includes(backend)) {
+                    root.gammaBackend = backend;
+                    console.log("[Brightness] Gamma backend detected:", backend);
+                } else {
+                    root.gammaBackend = "none";
+                    console.log("[Brightness] No gamma backend available");
+                }
+            }
+        }
+    }
+    
+    // Process to run gamma daemon (for wlsunset)
+    Process {
+        id: gammaRunProcess
+        
+        onExited: (exitCode, exitStatus) => {
+            console.log("[Brightness] Gamma process exited:", exitCode);
+        }
+    }
+
     CustomShortcut {
         name: "brightnessUp"
         description: "Increase brightness"
@@ -95,6 +233,12 @@ Singleton {
         name: "brightnessDown"
         description: "Decrease brightness"
         onPressed: root.decreaseBrightness()
+    }
+
+    CustomShortcut {
+        name: "nightLightToggle"
+        description: "Toggle night light (warmer colors)"
+        onPressed: root.toggleNightLight()
     }
 
     IpcHandler {
@@ -221,5 +365,10 @@ Singleton {
 
         onBusNumChanged: initBrightness()
         Component.onCompleted: initBrightness()
+    }
+    
+    // Detect gamma backend on startup
+    Component.onCompleted: {
+        detectGammaBackend();
     }
 }

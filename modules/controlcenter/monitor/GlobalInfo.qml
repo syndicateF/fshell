@@ -355,6 +355,36 @@ Item {
                 radius: Appearance.rounding.normal
                 color: Colours.tPalette.m3surfaceContainer
 
+                // Make card clickable - navigate to MonitorSettings
+                MouseArea {
+                    id: cardMouseArea
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    z: 100  // High z-index to ensure it captures click
+                    
+                    onClicked: mouse => {
+                        mouse.accepted = true;  // Prevent propagation
+                        const targetName = monitorCard.modelData;
+                        console.log("[GlobalInfo] Navigating to monitor settings:", targetName);
+                        
+                        // Find and select the monitor using Qt.callLater to avoid race conditions
+                        Qt.callLater(() => {
+                            const hyprMon = Monitors.monitors.values.find(m => m?.name === targetName);
+                            if (hyprMon) {
+                                Monitors.selectMonitor(hyprMon);
+                            }
+                        });
+                    }
+                    
+                    // Hover effect
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: monitorCard.radius
+                        color: Qt.alpha(Colours.palette.m3onSurface, cardMouseArea.pressed ? 0.1 : cardMouseArea.containsMouse ? 0.08 : 0)
+                    }
+                }
+
                 ColumnLayout {
                     id: monitorDetailColumn
                     anchors.left: parent.left
@@ -389,11 +419,13 @@ Item {
                             Behavior on color { CAnim {} }
                         }
 
+                        // Monitor info - takes remaining space
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 0
 
                             RowLayout {
+                                Layout.fillWidth: true
                                 spacing: Appearance.spacing.small
 
                                 StyledText {
@@ -433,6 +465,9 @@ Item {
                                         color: Colours.palette.m3onTertiaryContainer
                                     }
                                 }
+
+                                // Spacer to push chevron to right
+                                Item { Layout.fillWidth: true }
                             }
 
                             StyledText {
@@ -443,36 +478,11 @@ Item {
                             }
                         }
 
-                        // Select this monitor button
-                        StyledRect {
-                            implicitWidth: implicitHeight
-                            implicitHeight: selectIcon.implicitHeight + Appearance.padding.smaller * 2
-
-                            radius: Appearance.rounding.full
-                            color: Colours.palette.m3primaryContainer
-
-                            StateLayer {
-                                color: Colours.palette.m3onPrimaryContainer
-
-                                function onClicked(): void {
-                                    // Find the monitor object and select it
-                                    for (let i = 0; i < Monitors.monitors.count; i++) {
-                                        const m = Monitors.monitors.values[i];
-                                        if (m.name === monitorCard.modelData) {
-                                            Monitors.selectMonitor(m);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            MaterialIcon {
-                                id: selectIcon
-
-                                anchors.centerIn: parent
-                                text: "tune"
-                                color: Colours.palette.m3onPrimaryContainer
-                            }
+                        // Chevron arrow - navigate to MonitorSettings
+                        MaterialIcon {
+                            Layout.alignment: Qt.AlignVCenter
+                            text: "chevron_right"
+                            color: Colours.palette.m3outline
                         }
                     }
 

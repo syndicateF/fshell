@@ -280,6 +280,196 @@ Item {
             }
 
             // =====================================================
+            // Display Mode Section (Mirror/Extend/Single)
+            // Only show if there are multiple monitors
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                visible: Monitors.monitors.count > 1
+                text: qsTr("Display mode")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+            }
+
+            StyledText {
+                visible: Monitors.monitors.count > 1
+                text: qsTr("Configure how this display works with others")
+                color: Colours.palette.m3outline
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                visible: Monitors.monitors.count > 1
+                implicitHeight: displayModeContent.implicitHeight + Appearance.padding.large * 2
+
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: displayModeContent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.normal
+
+                    // Visual Preview of current mode
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 100
+                        
+                        // Preview container with subtle background
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: Qt.alpha(Colours.palette.m3surfaceContainerHighest, 0.5)
+                            
+                            // Mode preview illustration
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: {
+                                    const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                    return (mirrorOf !== "none" && mirrorOf !== "") ? -20 : 15;
+                                }
+                                
+                                // Primary monitor illustration
+                                DisplayPreview {
+                                    id: primaryPreview
+                                    width: 80
+                                    height: 60
+                                    isPrimary: true
+                                    label: {
+                                        const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                        return (mirrorOf !== "none" && mirrorOf !== "") ? mirrorOf : "1";
+                                    }
+                                    showContent: true
+                                    isMirrored: (root.monitorData?.mirrorOf ?? "none") !== "none" && (root.monitorData?.mirrorOf ?? "") !== ""
+                                }
+                                
+                                // Secondary monitor illustration
+                                DisplayPreview {
+                                    id: secondaryPreview
+                                    width: 80
+                                    height: 60
+                                    isPrimary: false
+                                    label: {
+                                        const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                        return (mirrorOf !== "none" && mirrorOf !== "") ? root.monitor?.name ?? "2" : "2";
+                                    }
+                                    showContent: true
+                                    isMirrored: (root.monitorData?.mirrorOf ?? "none") !== "none" && (root.monitorData?.mirrorOf ?? "") !== ""
+                                    opacity: 1
+                                    
+                                    // Animation when switching modes
+                                    Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                                }
+                            }
+                            
+                            // Mode label overlay
+                            Rectangle {
+                                anchors.bottom: parent.bottom
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottomMargin: 8
+                                
+                                width: modePreviewLabel.implicitWidth + 16
+                                height: modePreviewLabel.implicitHeight + 6
+                                radius: height / 2
+                                color: {
+                                    const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                    if (mirrorOf !== "none" && mirrorOf !== "") return Colours.palette.m3tertiaryContainer;
+                                    return Colours.palette.m3secondaryContainer;
+                                }
+                                
+                                StyledText {
+                                    id: modePreviewLabel
+                                    anchors.centerIn: parent
+                                    text: {
+                                        const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                        if (mirrorOf !== "none" && mirrorOf !== "") return qsTr("Mirror");
+                                        return qsTr("Extended");
+                                    }
+                                    font.pointSize: Appearance.font.size.smaller
+                                    font.weight: 500
+                                    color: {
+                                        const mirrorOf = root.monitorData?.mirrorOf ?? "none";
+                                        if (mirrorOf !== "none" && mirrorOf !== "") return Colours.palette.m3onTertiaryContainer;
+                                        return Colours.palette.m3onSecondaryContainer;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 1
+                        color: Colours.palette.m3outlineVariant
+                    }
+
+                    // Mode selection buttons
+                    StyledText {
+                        text: qsTr("Change mode")
+                        font.pointSize: Appearance.font.size.small
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+
+                    // Extend (Default) button
+                    ModeButton {
+                        Layout.fillWidth: true
+                        icon: "expand"
+                        label: qsTr("Extend")
+                        description: qsTr("Use as separate display extending your desktop")
+                        isActive: (root.monitorData?.mirrorOf ?? "none") === "none" || (root.monitorData?.mirrorOf ?? "") === ""
+
+                        function onClicked(): void {
+                            // Remove mirror, use as extended display
+                            Monitors.enableMonitor(root.monitor);
+                        }
+                    }
+
+                    // Mirror buttons - one for each other monitor
+                    Repeater {
+                        model: {
+                            // Get list of other monitors to mirror to
+                            let others = [];
+                            for (let i = 0; i < Monitors.monitors.count; i++) {
+                                const mon = Monitors.monitors.values[i];
+                                if (mon && mon.name !== root.monitor?.name && !mon.disabled) {
+                                    others.push(mon);
+                                }
+                            }
+                            return others;
+                        }
+
+                        ModeButton {
+                            required property var modelData
+
+                            Layout.fillWidth: true
+                            icon: "content_copy"
+                            label: qsTr("Mirror to %1").arg(modelData.name)
+                            description: qsTr("Show same content as %1").arg(modelData.name)
+                            isActive: root.monitorData?.mirrorOf === modelData.name
+                            accent: "Tertiary"
+
+                            function onClicked(): void {
+                                Monitors.mirrorTo(root.monitor, modelData);
+                            }
+                        }
+                    }
+
+                    // Info text
+                    StyledText {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Appearance.spacing.small
+                        text: qsTr("Mirror mode shows identical content on both displays. Resolution will match the target monitor. Extended mode lets you use displays independently.")
+                        font.pointSize: Appearance.font.size.smaller
+                        color: Colours.palette.m3outline
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            // =====================================================
             // Resolution Section
             // =====================================================
             StyledText {
@@ -699,6 +889,73 @@ Item {
             }
 
             // =====================================================
+            // Monitor Capabilities Section
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("Capabilities")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+            }
+
+            StyledText {
+                text: qsTr("Detected display features")
+                color: Colours.palette.m3outline
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: capColumn.implicitHeight + Appearance.padding.large * 2
+
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: capColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.small
+
+                    property var caps: Monitors.getMonitorCapabilities(root.monitor)
+
+                    // Connection Type
+                    CapabilityRow {
+                        icon: "cable"
+                        label: qsTr("Connection")
+                        value: capColumn.caps.connectionType ?? "Unknown"
+                        supported: true
+                    }
+
+                    // High Refresh Rate
+                    CapabilityRow {
+                        icon: "speed"
+                        label: qsTr("High Refresh Rate")
+                        value: capColumn.caps.isHighRefresh ? qsTr("Up to %1 Hz").arg(Math.round(capColumn.caps.maxRefreshRate ?? 60)) : qsTr("Standard (60 Hz)")
+                        supported: capColumn.caps.isHighRefresh ?? false
+                    }
+
+                    // VRR/Adaptive Sync
+                    CapabilityRow {
+                        icon: "display_settings"
+                        label: qsTr("VRR/Adaptive Sync")
+                        value: capColumn.caps.vrrCapable ? qsTr("Likely supported") : qsTr("Not detected")
+                        supported: capColumn.caps.vrrCapable ?? false
+                        description: capColumn.caps.vrrReason ?? ""
+                    }
+
+                    // Resolution Modes
+                    CapabilityRow {
+                        icon: "aspect_ratio"
+                        label: qsTr("Resolution Modes")
+                        value: qsTr("%1 modes available").arg(capColumn.caps.modeCount ?? 0)
+                        supported: (capColumn.caps.modeCount ?? 0) > 1
+                    }
+                }
+            }
+
+            // =====================================================
             // Display Info Section
             // =====================================================
             StyledText {
@@ -1071,5 +1328,255 @@ Item {
         duration: Appearance.anim.durations.normal
         easing.type: Easing.BezierSpline
         easing.bezierCurve: Appearance.anim.curves.standard
+    }
+
+    // Capability row with icon and support indicator
+    component CapabilityRow: RowLayout {
+        property string icon
+        property string label
+        property string value
+        property bool supported: false
+        property string description: ""
+
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.normal
+
+        // Status icon
+        MaterialIcon {
+            text: supported ? "check_circle" : "cancel"
+            color: supported ? Colours.palette.m3primary : Colours.palette.m3outline
+            font.pointSize: Appearance.font.size.normal
+        }
+
+        // Label and value
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+
+            StyledText {
+                Layout.fillWidth: true
+                text: label
+                font.pointSize: Appearance.font.size.small
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                visible: description !== ""
+                text: description
+                font.pointSize: Appearance.font.size.smaller
+                color: Colours.palette.m3outline
+            }
+        }
+
+        // Value
+        StyledText {
+            text: value
+            font.pointSize: Appearance.font.size.small
+            color: supported ? Colours.palette.m3primary : Colours.palette.m3outline
+        }
+    }
+
+    // Mode button for display mode selection (Mirror/Extend)
+    component ModeButton: StyledRect {
+        id: modeBtn
+
+        property string icon
+        property string label
+        property string description: ""
+        property bool isActive: false
+        property string accent: "Secondary"
+
+        function onClicked(): void {}
+
+        implicitHeight: modeBtnContent.implicitHeight + Appearance.padding.normal * 2
+
+        radius: Appearance.rounding.small
+        color: isActive ? Colours.palette[`m3${accent.toLowerCase()}Container`] : "transparent"
+        border.width: isActive ? 0 : 1
+        border.color: Colours.palette.m3outlineVariant
+
+        StateLayer {
+            id: modeBtnState
+            color: isActive ? Colours.palette[`m3on${accent}Container`] : Colours.palette.m3onSurface
+
+            function onClicked(): void {
+                modeBtn.onClicked();
+            }
+        }
+
+        RowLayout {
+            id: modeBtnContent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.margins: Appearance.padding.normal
+            spacing: Appearance.spacing.normal
+
+            // Active indicator
+            MaterialIcon {
+                text: modeBtn.isActive ? "radio_button_checked" : "radio_button_unchecked"
+                color: modeBtn.isActive ? Colours.palette[`m3on${modeBtn.accent}Container`] : Colours.palette.m3outline
+            }
+
+            // Icon
+            MaterialIcon {
+                text: modeBtn.icon
+                color: modeBtn.isActive ? Colours.palette[`m3on${modeBtn.accent}Container`] : Colours.palette.m3onSurface
+            }
+
+            // Text
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    text: modeBtn.label
+                    color: modeBtn.isActive ? Colours.palette[`m3on${modeBtn.accent}Container`] : Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    visible: modeBtn.description !== ""
+                    text: modeBtn.description
+                    font.pointSize: Appearance.font.size.smaller
+                    color: modeBtn.isActive ? Colours.palette[`m3on${modeBtn.accent}Container`] : Colours.palette.m3outline
+                    opacity: modeBtn.isActive ? 0.8 : 1
+                }
+            }
+        }
+
+        Behavior on color { CAnim {} }
+    }
+
+    // Display preview illustration for mode visualization
+    component DisplayPreview: Item {
+        id: displayPreviewItem
+        
+        property bool isPrimary: false
+        property string label: "1"
+        property bool showContent: true
+        property bool isMirrored: false
+        
+        // Monitor frame
+        Rectangle {
+            id: monitorFrame
+            anchors.fill: parent
+            anchors.bottomMargin: 8
+            
+            radius: 4
+            color: Colours.palette.m3surfaceContainerHigh
+            border.width: 2
+            border.color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outline
+            
+            // Screen content area
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 4
+                radius: 2
+                color: displayPreviewItem.isPrimary ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+                
+                // Content preview (fake windows/desktop)
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 3
+                    visible: displayPreviewItem.showContent
+                    
+                    // Fake taskbar
+                    Rectangle {
+                        width: parent.parent.width - 12
+                        height: 4
+                        radius: 1
+                        color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                        opacity: 0.6
+                    }
+                    
+                    // Fake windows
+                    Row {
+                        spacing: 3
+                        
+                        Rectangle {
+                            width: 20
+                            height: 15
+                            radius: 2
+                            color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                            opacity: 0.4
+                        }
+                        
+                        Rectangle {
+                            width: 25
+                            height: 18
+                            radius: 2
+                            color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outlineVariant
+                            opacity: 0.3
+                        }
+                    }
+                }
+                
+                // Mirror indicator overlay
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 2
+                    color: Colours.palette.m3tertiary
+                    opacity: displayPreviewItem.isMirrored ? 0.2 : 0
+                    
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                }
+                
+                // Mirror icon overlay
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "content_copy"
+                    font.pointSize: Appearance.font.size.normal
+                    color: Colours.palette.m3tertiary
+                    opacity: displayPreviewItem.isMirrored ? 0.8 : 0
+                    
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                }
+            }
+        }
+        
+        // Monitor stand
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 20
+            height: 8
+            radius: 2
+            color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outline
+            opacity: 0.6
+        }
+        
+        // Monitor base
+        Rectangle {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            width: 30
+            height: 3
+            radius: 1
+            color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3outline
+            opacity: 0.6
+        }
+        
+        // Label badge
+        Rectangle {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: -4
+            anchors.rightMargin: -4
+            
+            width: 18
+            height: 18
+            radius: width / 2
+            color: displayPreviewItem.isPrimary ? Colours.palette.m3primary : Colours.palette.m3surfaceContainerHighest
+            border.width: displayPreviewItem.isPrimary ? 0 : 1
+            border.color: Colours.palette.m3outline
+            
+            StyledText {
+                anchors.centerIn: parent
+                text: displayPreviewItem.label.charAt(0).toUpperCase()
+                font.pointSize: Appearance.font.size.smaller
+                font.weight: 600
+                color: displayPreviewItem.isPrimary ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
+            }
+        }
     }
 }

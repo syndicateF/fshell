@@ -105,6 +105,109 @@ Singleton {
     ]
 
     // =====================================================
+    // MONITOR CAPABILITIES
+    // =====================================================
+    
+    // Check if any monitor supports VRR (high refresh rate as heuristic)
+    readonly property bool anyMonitorSupportsVrr: {
+        // Check if any monitor has refresh rate > 60Hz (likely VRR capable)
+        for (const name of Object.keys(monitorData)) {
+            const mon = monitorData[name];
+            if (checkMonitorVrrCapable(mon)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Check if a specific monitor likely supports VRR
+    function checkMonitorVrrCapable(monData: var): bool {
+        if (!monData) return false;
+        
+        // Check 1: If monitor has modes with refresh rate > 60Hz, likely VRR capable
+        const modes = monData.availableModes ?? [];
+        for (const mode of modes) {
+            const match = mode.match(/@([\d.]+)Hz/);
+            if (match && parseFloat(match[1]) > 65) {
+                return true;
+            }
+        }
+        
+        // Check 2: Current refresh rate > 60Hz
+        if ((monData.refreshRate ?? 60) > 65) {
+            return true;
+        }
+        
+        // Check 3: Detect known non-VRR types from description/make
+        const desc = (monData.description ?? "").toLowerCase();
+        const make = (monData.make ?? "").toLowerCase();
+        
+        // Projectors typically don't support VRR
+        if (desc.includes("projector") || make.includes("projector") ||
+            desc.includes("benq") && desc.includes("proj")) {
+            return false;
+        }
+        
+        // Most modern monitors support VRR, default to true if unclear
+        return false; // Conservative: only enable if we detect high refresh rate
+    }
+    
+    // Get monitor capabilities summary
+    function getMonitorCapabilities(monitor: var): var {
+        if (!monitor) return {};
+        
+        const cached = monitorData[monitor.name];
+        if (!cached) return {};
+        
+        const modes = cached.availableModes ?? [];
+        let maxRefresh = 60;
+        let minRefresh = 999;
+        
+        for (const mode of modes) {
+            const match = mode.match(/@([\d.]+)Hz/);
+            if (match) {
+                const rate = parseFloat(match[1]);
+                maxRefresh = Math.max(maxRefresh, rate);
+                minRefresh = Math.min(minRefresh, rate);
+            }
+        }
+        
+        return {
+            // VRR capability (heuristic)
+            vrrCapable: checkMonitorVrrCapable(cached),
+            vrrReason: maxRefresh > 65 ? qsTr("High refresh rate detected") : qsTr("Standard refresh rate only"),
+            
+            // Refresh rate range
+            maxRefreshRate: maxRefresh,
+            minRefreshRate: minRefresh === 999 ? 60 : minRefresh,
+            isHighRefresh: maxRefresh > 65,
+            
+            // Display type detection
+            isInternal: monitor.name.startsWith("eDP"),
+            isExternal: !monitor.name.startsWith("eDP"),
+            connectionType: getConnectionType(monitor.name),
+            
+            // Features
+            supportsHDR: false, // Hyprland doesn't expose HDR capability easily
+            supports10bit: cached.currentFormat?.includes("10") ?? false,
+            
+            // Resolution info
+            resolutionCount: getAvailableResolutions(monitor).length,
+            modeCount: modes.length
+        };
+    }
+    
+    // Get connection type from monitor name
+    function getConnectionType(name: string): string {
+        if (name.startsWith("eDP")) return "Internal";
+        if (name.startsWith("HDMI")) return "HDMI";
+        if (name.startsWith("DP")) return "DisplayPort";
+        if (name.startsWith("VGA")) return "VGA";
+        if (name.startsWith("DVI")) return "DVI";
+        return "Unknown";
+    }
+
+    // =====================================================
     // SIGNALS
     // =====================================================
 
@@ -121,6 +224,7 @@ Singleton {
 
     // Select a monitor for editing
     function selectMonitor(monitor: var): void {
+        console.log("[Monitors] selectMonitor called. Current:", selectedMonitor?.name ?? "null", "New:", monitor?.name ?? "null");
         selectedMonitor = monitor;
         pendingChanges = {};
         applyError = "";
@@ -128,6 +232,7 @@ Singleton {
         if (monitor) {
             refreshMonitorData();
         }
+        console.log("[Monitors] selectedMonitor is now:", selectedMonitor?.name ?? "null");
     }
 
     // Refresh monitor data from hyprctl

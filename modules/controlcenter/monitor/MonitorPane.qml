@@ -53,44 +53,64 @@ RowLayout {
             radius: rightBorder.innerRadius
             color: "transparent"
 
-            Loader {
-                id: loader
-
-                property var pane: Monitors.selectedMonitor
-
+            // Horizontal sliding panes - same pattern as vertical Panes.qml
+            Item {
+                id: horizontalPanes
+                
                 anchors.fill: parent
-                anchors.margins: Appearance.padding.large * 2
+                clip: true
+                
+                // 0 = GlobalInfo, 1 = MonitorSettings
+                property int activePane: Monitors.selectedMonitor ? 1 : 0
+                
+                RowLayout {
+                    id: paneRow
+                    
+                    spacing: 0
+                    x: -horizontalPanes.activePane * horizontalPanes.width
+                    
+                    // Pane 0: Global Info
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        StyledFlickable {
+                            anchors.fill: parent
+                            anchors.margins: Appearance.padding.large * 2
+                            flickableDirection: Flickable.VerticalFlick
+                            contentHeight: globalInfoInner.height
 
-                asynchronous: true
-                sourceComponent: pane ? settingsComponent : emptyComponent
+                            GlobalInfo {
+                                id: globalInfoInner
 
-                Behavior on pane {
-                    SequentialAnimation {
-                        ParallelAnimation {
-                            Anim {
-                                property: "opacity"
-                                to: 0
-                                easing.bezierCurve: Appearance.anim.curves.standardAccel
-                            }
-                            Anim {
-                                property: "scale"
-                                to: 0.8
-                                easing.bezierCurve: Appearance.anim.curves.standardAccel
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                session: root.session
                             }
                         }
-                        PropertyAction {}
-                        ParallelAnimation {
-                            Anim {
-                                property: "opacity"
-                                to: 1
-                                easing.bezierCurve: Appearance.anim.curves.standardDecel
-                            }
-                            Anim {
-                                property: "scale"
-                                to: 1
-                                easing.bezierCurve: Appearance.anim.curves.standardDecel
+                    }
+                    
+                    // Pane 1: Monitor Settings
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        Loader {
+                            anchors.fill: parent
+                            anchors.margins: Appearance.padding.large * 2
+                            
+                            active: Monitors.selectedMonitor !== null
+                            asynchronous: true
+                            
+                            sourceComponent: MonitorSettings {
+                                anchors.fill: parent
+                                session: root.session
                             }
                         }
+                    }
+                    
+                    Behavior on x {
+                        Anim {}
                     }
                 }
             }
@@ -497,37 +517,11 @@ RowLayout {
                 }
             }
         }
-
-        Component {
-            id: emptyComponent
-
-            StyledFlickable {
-                flickableDirection: Flickable.VerticalFlick
-                contentHeight: globalInfoInner.height
-
-                GlobalInfo {
-                    id: globalInfoInner
-
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    session: root.session
-                }
-            }
-        }
-
-        Component {
-            id: settingsComponent
-
-            MonitorSettings {
-                anchors.fill: parent
-                session: root.session
-            }
-        }
     }
 
     component Anim: NumberAnimation {
-        target: loader
-        duration: Appearance.anim.durations.normal / 2
+        duration: Appearance.anim.durations.expressiveDefaultSpatial
         easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
     }
 }

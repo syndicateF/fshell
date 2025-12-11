@@ -58,7 +58,11 @@ ClippingRectangle {
         }
 
         Behavior on y {
-            Anim {}
+            NumberAnimation {
+                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+            }
         }
     }
 
