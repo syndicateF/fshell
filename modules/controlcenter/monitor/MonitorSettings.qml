@@ -127,7 +127,7 @@ Item {
                         if (root.monitor?.disabled) return false; // Already disabled, can enable
                         // Count active (non-disabled) monitors
                         let activeCount = 0;
-                        for (let i = 0; i < Monitors.monitors.count; i++) {
+                        for (let i = 0; i < Monitors.monitorCount; i++) {
                             const mon = Monitors.monitors.values[i];
                             if (!mon.disabled) activeCount++;
                         }
@@ -285,21 +285,21 @@ Item {
             // =====================================================
             StyledText {
                 Layout.topMargin: Appearance.spacing.large
-                visible: Monitors.monitors.count > 1
+                visible: Monitors.monitorCount > 1
                 text: qsTr("Display mode")
                 font.pointSize: Appearance.font.size.larger
                 font.weight: 500
             }
 
             StyledText {
-                visible: Monitors.monitors.count > 1
+                visible: Monitors.monitorCount > 1
                 text: qsTr("Configure how this display works with others")
                 color: Colours.palette.m3outline
             }
 
             StyledRect {
                 Layout.fillWidth: true
-                visible: Monitors.monitors.count > 1
+                visible: Monitors.monitorCount > 1
                 implicitHeight: displayModeContent.implicitHeight + Appearance.padding.large * 2
 
                 radius: Appearance.rounding.normal
@@ -432,7 +432,7 @@ Item {
                         model: {
                             // Get list of other monitors to mirror to
                             let others = [];
-                            for (let i = 0; i < Monitors.monitors.count; i++) {
+                            for (let i = 0; i < Monitors.monitorCount; i++) {
                                 const mon = Monitors.monitors.values[i];
                                 if (mon && mon.name !== root.monitor?.name && !mon.disabled) {
                                     others.push(mon);

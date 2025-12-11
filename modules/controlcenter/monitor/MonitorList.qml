@@ -72,7 +72,7 @@ Item {
                         Monitors.selectMonitor(null);
                     else {
                         // Select first monitor
-                        if (Monitors.monitors.count > 0)
+                        if (Monitors.monitorCount > 0)
                             Monitors.selectMonitor(Monitors.monitors.values[0]);
                     }
                 }
@@ -85,7 +85,7 @@ Item {
             spacing: Appearance.spacing.normal
 
             StyledText {
-                text: qsTr("%1 display(s)").arg(Monitors.monitors.count ?? 0)
+                text: qsTr("%1 display(s)").arg(Monitors.monitorCount)
                 color: Colours.palette.m3onSurfaceVariant
                 font.pointSize: Appearance.font.size.small
             }

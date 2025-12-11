@@ -16,6 +16,9 @@ Singleton {
 
     // All connected monitors from Hyprland
     readonly property var monitors: Hypr.monitors
+    
+    // Helper: monitor count (ObjectModel doesn't have .count, use .values.length)
+    readonly property int monitorCount: monitors?.values?.length ?? 0
 
     // Currently selected monitor for settings
     property var selectedMonitor: null
@@ -664,8 +667,8 @@ Singleton {
         let maxX = 0;
         let maxWidth = 0;
         
-        for (let i = 0; i < monitors.count; i++) {
-            const mon = monitors.get(i);
+        for (let i = 0; i < monitorCount; i++) {
+            const mon = monitors.values[i];
             if (mon && mon.name !== monitor.name && mon.x + mon.width > maxX + maxWidth) {
                 maxX = mon.x;
                 maxWidth = mon.width;
@@ -1025,6 +1028,8 @@ Singleton {
 
     // Initial data fetch
     Component.onCompleted: {
+        console.log("[Monitors Service] monitorCount:", monitorCount);
+        console.log("[Monitors Service] monitors.values:", JSON.stringify(monitors?.values?.map(m => m?.name)));
         refreshMonitorData();
         refreshGlobalVrr();
         refreshGlobalInfo();
