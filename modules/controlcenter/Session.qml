@@ -3,7 +3,7 @@ import qs.services
 import QtQuick
 
 QtObject {
-    readonly property list<string> panes: ["network", "bluetooth", "audio"]
+    readonly property list<string> panes: ["network", "bluetooth", "monitor", "audio"]
 
     required property var root
     property bool floating: false
@@ -13,6 +13,7 @@ QtObject {
 
     readonly property Bt bt: Bt {}
     readonly property Nw nw: Nw {}
+    readonly property Mon mon: Mon {}
 
     onActiveChanged: activeIndex = panes.indexOf(active)
     onActiveIndexChanged: active = panes[activeIndex]
@@ -36,5 +37,9 @@ QtObject {
         property bool showingWarning: false
         property bool hiddenNetworkDialogOpen: false
         property bool hotspotDialogOpen: false
+    }
+
+    component Mon: QtObject {
+        property bool fabMenuOpen: false
     }
 }

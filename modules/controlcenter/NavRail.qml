@@ -168,6 +168,11 @@ Item {
         }
 
         NavItem {
+            icon: "desktop_windows"
+            label: "monitor"
+        }
+
+        NavItem {
             icon: "tune"
             label: "audio"
         }

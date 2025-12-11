@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import "bluetooth"
 import "network"
+import "monitor"
 import qs.components
 import qs.services
 import qs.config
@@ -38,6 +39,13 @@ ClippingRectangle {
 
         Pane {
             index: 2
+            sourceComponent: MonitorPane {
+                session: root.session
+            }
+        }
+
+        Pane {
+            index: 3
             sourceComponent: Item {
                 StyledText {
                     anchors.centerIn: parent
