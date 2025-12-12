@@ -173,8 +173,8 @@ Item {
         }
 
         NavItem {
-            icon: "tune"
-            label: "audio"
+            icon: "memory"
+            label: "hardware"
         }
     }
 

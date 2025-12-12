@@ -1028,8 +1028,6 @@ Singleton {
 
     // Initial data fetch
     Component.onCompleted: {
-        console.log("[Monitors Service] monitorCount:", monitorCount);
-        console.log("[Monitors Service] monitors.values:", JSON.stringify(monitors?.values?.map(m => m?.name)));
         refreshMonitorData();
         refreshGlobalVrr();
         refreshGlobalInfo();

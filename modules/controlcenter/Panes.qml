@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import "bluetooth"
 import "network"
 import "monitor"
+import "hardware"
 import qs.components
 import qs.services
 import qs.config
@@ -46,14 +47,8 @@ ClippingRectangle {
 
         Pane {
             index: 3
-            sourceComponent: Item {
-                StyledText {
-                    anchors.centerIn: parent
-                    text: qsTr("Work in progress")
-                    color: Colours.palette.m3outline
-                    font.pointSize: Appearance.font.size.extraLarge
-                    font.weight: 500
-                }
+            sourceComponent: HardwarePane {
+                session: root.session
             }
         }
 
