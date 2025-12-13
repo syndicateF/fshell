@@ -47,6 +47,6 @@ QtObject {
     component Hw: QtObject {
         property string view: "cpu"  // "cpu", "gpu", "battery", "gpumode", "profiles", "rgb", "sysinfo"
         property bool fabMenuOpen: false
-        property bool showSysInfo: false  // Toggle for sysinfo view (like Settings in Network)
+        property bool showSysInfo: true  // Default to sysinfo view when Hardware opened
     }
 }

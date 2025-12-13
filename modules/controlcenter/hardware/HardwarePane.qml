@@ -220,6 +220,49 @@ RowLayout {
                             barColor: Colours.palette.m3secondary
                             barHeight: 6
                         }
+
+                        // GPU Priority Switch
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Appearance.spacing.small
+                            visible: Hardware.hasGpuPriority
+                            spacing: Appearance.spacing.normal
+
+                            MaterialIcon {
+                                text: "swap_horiz"
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+
+                            StyledText {
+                                text: qsTr("GPU Priority")
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            StyledText {
+                                text: Hardware.gpuPriority === "nvidia" ? "NVIDIA" : "Integrated"
+                                font.pointSize: Appearance.font.size.small
+                                font.weight: 500
+                                color: Hardware.gpuPriority === "nvidia" ? Colours.palette.m3primary : Colours.palette.m3tertiary
+                            }
+
+                            StyledSwitch {
+                                checked: Hardware.gpuPriority === "nvidia"
+                                onClicked: Hardware.toggleGpuPriority()
+                            }
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            visible: Hardware.hasGpuPriority
+                            text: qsTr("⚠ Requires logout to apply")
+                            font.pointSize: Appearance.font.size.smaller
+                            color: Colours.palette.m3outline
+                            horizontalAlignment: Text.AlignRight
+                        }
                     }
                 }
 

@@ -88,18 +88,19 @@ Item {
                 // Toggle Card - RGB ON/OFF
                 StyledRect {
                     Layout.fillWidth: true
-                    implicitHeight: 70
+                    implicitHeight: toggleContent.implicitHeight + Appearance.padding.large * 2
                     radius: Appearance.rounding.normal
-                    color: Hardware.rgbEnabled ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+                    color: Colours.tPalette.m3surfaceContainer
 
                     RowLayout {
+                        id: toggleContent
                         anchors.fill: parent
                         anchors.margins: Appearance.padding.large
 
                         MaterialIcon {
                             text: "keyboard"
                             font.pointSize: Appearance.font.size.large
-                            color: Hardware.rgbEnabled ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                            color: Colours.palette.m3onSurface
                         }
 
                         StyledText {
@@ -107,7 +108,7 @@ Item {
                             text: qsTr("RGB Lighting")
                             font.pointSize: Appearance.font.size.larger
                             font.weight: 500
-                            color: Hardware.rgbEnabled ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                            color: Colours.palette.m3onSurface
                         }
 
                         StyledSwitch {
@@ -140,7 +141,7 @@ Item {
                             width: (mainCol.width - Appearance.spacing.small) / 2
                             height: 56
                             radius: Appearance.rounding.normal
-                            color: Hardware.rgbCurrentMode === modelData ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+                            color: Hardware.rgbCurrentMode === modelData ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainer
                             required property string modelData
 
                             RowLayout {
@@ -196,15 +197,16 @@ Item {
 
                 StyledRect {
                     Layout.fillWidth: true
-                    implicitHeight: 60
+                    implicitHeight: speedContent.implicitHeight + Appearance.padding.large * 2
                     radius: Appearance.rounding.normal
-                    color: Colours.palette.m3surfaceContainerHighest
+                    color: Colours.tPalette.m3surfaceContainer
                     visible: Hardware.rgbModeSupportsSpeed && Hardware.rgbEnabled
 
                     RowLayout {
+                        id: speedContent
                         anchors.fill: parent
-                        anchors.margins: 15
-                        spacing: 15
+                        anchors.margins: Appearance.padding.large
+                        spacing: Appearance.spacing.normal
 
                         MaterialIcon {
                             text: "slow_motion_video"
@@ -243,7 +245,7 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: breathingColorContent.height + Appearance.padding.large * 2
                     radius: Appearance.rounding.normal
-                    color: Colours.palette.m3surfaceContainerHighest
+                    color: Colours.tPalette.m3surfaceContainer
                     visible: Hardware.rgbCurrentMode === "Breathing" && Hardware.rgbEnabled
 
                     ColumnLayout {
@@ -320,11 +322,11 @@ Item {
                             border.color: Colours.palette.m3primary
                             required property var modelData
 
-                            Text {
+                            StyledText {
                                 anchors.centerIn: parent
                                 text: modelData.name
-                                font.bold: true
-                                font.pixelSize: Appearance.font.size.normal
+                                font.weight: 600
+                                font.pointSize: Appearance.font.size.normal
                                 color: root.getContrastColor(parent.color.toString())
                             }
 
@@ -349,7 +351,7 @@ Item {
                     Layout.fillWidth: true
                     implicitHeight: zoneColorPickerContent.height + Appearance.padding.large * 2
                     radius: Appearance.rounding.normal
-                    color: Colours.palette.m3surfaceContainerHighest
+                    color: Colours.tPalette.m3surfaceContainer
                     visible: root.selectedZone >= 0 && Hardware.rgbEnabled && Hardware.rgbModeIsZoned
 
                     ColumnLayout {
@@ -358,7 +360,7 @@ Item {
                         anchors.right: parent.right
                         anchors.margins: Appearance.padding.large
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 10
+                        spacing: Appearance.spacing.normal
 
                         StyledText {
                             text: qsTr("Pick color for Zone %1").arg(root.selectedZone + 1)
@@ -420,7 +422,7 @@ Item {
                             width: (mainCol.width - Appearance.spacing.small * 2) / 3
                             height: 60
                             radius: Appearance.rounding.normal
-                            color: Colours.palette.m3surfaceContainerHighest
+                            color: Colours.tPalette.m3surfaceContainer
                             required property var modelData
                             required property int index
 
@@ -448,10 +450,10 @@ Item {
                                     }
                                 }
 
-                                Text {
+                                StyledText {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: modelData.name || "Preset"
-                                    font.pixelSize: Appearance.font.size.small
+                                    font.pointSize: Appearance.font.size.small
                                     color: Colours.palette.m3onSurface
                                 }
                             }
