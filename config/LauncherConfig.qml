@@ -3,8 +3,10 @@ import Quickshell.Io
 JsonObject {
     property bool enabled: true
     property bool showOnHover: true
-    property int maxShown: 7
-    property int maxWallpapers: 9 // Warning: even numbers look bad
+    property int maxShown: 18 // For grid: 3 columns x 6 rows
+    property int columns: 3 // Number of columns in grid (horizontal)
+    property int rows: 6 // Number of visible rows (vertical)
+    property int maxWallpapers: 14 // Warning: even numbers look bad
     property string specialPrefix: "@"
     property string actionPrefix: ">"
     property bool enableDangerousActions: false // Allow actions that can cause losing data, like shutdown, reboot and logout
@@ -13,6 +15,7 @@ JsonObject {
     property list<string> hiddenApps: []
     property UseFuzzy useFuzzy: UseFuzzy {}
     property Sizes sizes: Sizes {}
+    property Tabs tabs: Tabs {}
 
     component UseFuzzy: JsonObject {
         property bool apps: false
@@ -23,53 +26,46 @@ JsonObject {
     }
 
     component Sizes: JsonObject {
-        property int itemWidth: 600
-        property int itemHeight: 57
-        property int wallpaperWidth: 280
+        property int itemWidth: 240
+        property int itemHeight: 48
+        property int wallpaperWidth: 320
         property int wallpaperHeight: 200
     }
 
+    // Tab definitions for the launcher - 6 tabs
+    component Tabs: JsonObject {
+        property Tab apps: Tab {
+            name: "Apps"
+            icon: "apps"
+        }
+        property Tab commands: Tab {
+            name: "Commands"
+            icon: "terminal"
+        }
+        property Tab calculator: Tab {
+            name: "Calc"
+            icon: "calculate"
+        }
+        property Tab schemes: Tab {
+            name: "Schemes"
+            icon: "palette"
+        }
+        property Tab wallpapers: Tab {
+            name: "Wallpaperss"
+            icon: "image"
+        }
+        property Tab variants: Tab {
+            name: "Variants"
+            icon: "colors"
+        }
+    }
+
+    component Tab: JsonObject {
+        property string name: ""
+        property string icon: ""
+    }
+
     property list<var> actions: [
-        {
-            name: "Calculator",
-            icon: "calculate",
-            description: "Do simple math equations (powered by Qalc)",
-            command: ["autocomplete", "calc"],
-            enabled: true,
-            dangerous: false
-        },
-        {
-            name: "Scheme",
-            icon: "palette",
-            description: "Change the current colour scheme",
-            command: ["autocomplete", "scheme"],
-            enabled: true,
-            dangerous: false
-        },
-        {
-            name: "Wallpaper",
-            icon: "image",
-            description: "Change the current wallpaper",
-            command: ["autocomplete", "wallpaper"],
-            enabled: true,
-            dangerous: false
-        },
-        {
-            name: "Variant",
-            icon: "colors",
-            description: "Change the current scheme variant",
-            command: ["autocomplete", "variant"],
-            enabled: true,
-            dangerous: false
-        },
-        {
-            name: "Transparency",
-            icon: "opacity",
-            description: "Change shell transparency",
-            command: ["autocomplete", "transparency"],
-            enabled: false,
-            dangerous: false
-        },
         {
             name: "Random",
             icon: "casino",

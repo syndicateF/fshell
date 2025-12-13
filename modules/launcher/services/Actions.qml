@@ -11,7 +11,8 @@ Searcher {
     id: root
 
     function transformSearch(search: string): string {
-        return search.slice(Config.launcher.actionPrefix.length);
+        // No longer need to strip prefix since we use tabs now
+        return search;
     }
 
     list: variants.instances
@@ -34,17 +35,23 @@ Searcher {
         readonly property bool enabled: modelData.enabled ?? true
         readonly property bool dangerous: modelData.dangerous ?? false
 
-        function onClicked(list: AppList): void {
+        function onClicked(gridContent: var): void {
             if (command.length === 0)
                 return;
 
+            // Handle autocomplete commands by switching to Tools tab with appropriate mode
             if (command[0] === "autocomplete" && command.length > 1) {
-                list.search.text = `${Config.launcher.actionPrefix}${command[1]} `;
+                const toolType = command[1];
+                if (gridContent && gridContent.content) {
+                    gridContent.content.currentTab = 2; // Switch to Tools tab
+                    gridContent.content.toolsMode = toolType; // Set the tool mode
+                }
             } else if (command[0] === "setMode" && command.length > 1) {
-                list.visibilities.launcher = false;
+                // Don't close launcher for mode change - let user see the change
                 Colours.setMode(command[1]);
             } else {
-                list.visibilities.launcher = false;
+                // Close launcher for system commands (shutdown, reboot, lock, etc)
+                gridContent.visibilities.launcher = false;
                 Quickshell.execDetached(command);
             }
         }

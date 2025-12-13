@@ -10,7 +10,8 @@ Searcher {
     id: root
 
     function transformSearch(search: string): string {
-        return search.slice(`${Config.launcher.actionPrefix}variant `.length);
+        // No longer need to strip prefix since we use tabs now
+        return search;
     }
 
     list: [
@@ -77,8 +78,8 @@ Searcher {
         required property string name
         required property string description
 
-        function onClicked(list: AppList): void {
-            list.visibilities.launcher = false;
+        function onClicked(gridContent: var): void {
+            // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-v", variant]);
         }
     }

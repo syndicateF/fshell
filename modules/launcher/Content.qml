@@ -15,35 +15,31 @@ Item {
     required property var panels
     required property real maxHeight
 
-    readonly property int padding: Appearance.padding.large
+    readonly property int padding: 40  // Fixed 40px padding horizontal & vertical
     readonly property int rounding: Appearance.rounding.large
+    readonly property int innerPadding: Appearance.padding.large
 
-    implicitWidth: listWrapper.width + padding * 2
-    implicitHeight: searchWrapper.height + listWrapper.height + padding * 2
+    // Tab state: 0=Apps, 1=Commands, 2=Calc, 3=Schemes, 4=Wallpapers, 5=Variants
+    property int currentTab: 0
 
-    Item {
-        id: listWrapper
+    // Dynamic width/height based on content
+    implicitWidth: gridContent.implicitWidth + padding * 2
+    implicitHeight: searchWrapper.implicitHeight + gridContent.implicitHeight + tabBar.implicitHeight + padding * 2 + Appearance.spacing.large * 2
 
-        implicitWidth: list.width
-        implicitHeight: list.height + root.padding
+    // Reset tab when launcher closes
+    Connections {
+        target: root.visibilities
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: searchWrapper.top
-        anchors.bottomMargin: root.padding
-
-        ContentList {
-            id: list
-
-            content: root
-            visibilities: root.visibilities
-            panels: root.panels
-            maxHeight: root.maxHeight - searchWrapper.implicitHeight - root.padding * 3
-            search: search
-            padding: root.padding
-            rounding: root.rounding
+        function onLauncherChanged(): void {
+            if (!root.visibilities.launcher) {
+                root.currentTab = 0;
+            }
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // SEARCH BAR (TOP)
+    // ═══════════════════════════════════════════════════════════════
     StyledRect {
         id: searchWrapper
 
@@ -52,7 +48,7 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.top: parent.top
         anchors.margins: root.padding
 
         implicitHeight: Math.max(searchIcon.implicitHeight, search.implicitHeight, clearIcon.implicitHeight)
@@ -62,9 +58,10 @@ Item {
 
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
-            anchors.leftMargin: root.padding
+            anchors.leftMargin: Appearance.padding.large
 
             text: "search"
+            font.pointSize: Appearance.font.size.small
             color: Colours.palette.m3onSurfaceVariant
         }
 
@@ -76,54 +73,84 @@ Item {
             anchors.leftMargin: Appearance.spacing.small
             anchors.rightMargin: Appearance.spacing.small
 
-            topPadding: Appearance.padding.larger
-            bottomPadding: Appearance.padding.larger
+            topPadding: Appearance.padding.normal
+            bottomPadding: Appearance.padding.normal
 
-            placeholderText: qsTr("Type \"%1\" for commands").arg(Config.launcher.actionPrefix)
+            placeholderText: {
+                const tabNames = ["apps", "commands", "calculator", "schemes", "wallpapers", "variants"];
+                return qsTr("Search %1...").arg(tabNames[root.currentTab] || "");
+            }
 
             onAccepted: {
-                const currentItem = list.currentList?.currentItem;
+                const currentItem = gridContent.currentList?.currentItem;
                 if (currentItem) {
-                    if (list.showWallpapers) {
-                        if (Colours.scheme === "dynamic" && currentItem.modelData.path !== Wallpapers.actualCurrent)
-                            Wallpapers.previewColourLock = true;
-                        Wallpapers.setWallpaper(currentItem.modelData.path);
-                        root.visibilities.launcher = false;
-                    } else if (text.startsWith(Config.launcher.actionPrefix)) {
-                        if (text.startsWith(`${Config.launcher.actionPrefix}calc `))
+                    switch (root.currentTab) {
+                        case 0: // Apps - ONLY apps close launcher
+                            Apps.launch(currentItem.modelData);
+                            root.visibilities.launcher = false;
+                            break;
+                        case 1: // Commands
+                            currentItem.modelData.onClicked(gridContent);
+                            break;
+                        case 2: // Calc
                             currentItem.onClicked();
-                        else
-                            currentItem.modelData.onClicked(list.currentList);
-                    } else {
-                        Apps.launch(currentItem.modelData);
-                        root.visibilities.launcher = false;
+                            break;
+                        case 3: // Schemes - don't close
+                            currentItem.modelData.onClicked(gridContent);
+                            break;
+                        case 4: // Wallpapers - don't close
+                            if (Colours.scheme === "dynamic" && currentItem.modelData.path !== Wallpapers.actualCurrent)
+                                Wallpapers.previewColourLock = true;
+                            Wallpapers.setWallpaper(currentItem.modelData.path);
+                            break;
+                        case 5: // Variants - don't close
+                            currentItem.modelData.onClicked(gridContent);
+                            break;
                     }
                 }
             }
 
-            Keys.onUpPressed: list.currentList?.decrementCurrentIndex()
-            Keys.onDownPressed: list.currentList?.incrementCurrentIndex()
+            // Grid navigation
+            Keys.onUpPressed: gridContent.navigateUp()
+            Keys.onDownPressed: gridContent.navigateDown()
+            Keys.onLeftPressed: gridContent.navigateLeft()
+            Keys.onRightPressed: gridContent.navigateRight()
 
             Keys.onEscapePressed: root.visibilities.launcher = false
 
             Keys.onPressed: event => {
-                if (!Config.launcher.vimKeybinds)
-                    return;
-
-                if (event.modifiers & Qt.ControlModifier) {
-                    if (event.key === Qt.Key_J) {
-                        list.currentList?.incrementCurrentIndex();
+                // Tab switching with Shift + < / >
+                if (event.modifiers & Qt.ShiftModifier) {
+                    if (event.key === Qt.Key_Greater || event.key === Qt.Key_Period) {
+                        // Shift + > : Next tab
+                        root.currentTab = (root.currentTab + 1) % 6;
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_K) {
-                        list.currentList?.decrementCurrentIndex();
+                        return;
+                    } else if (event.key === Qt.Key_Less || event.key === Qt.Key_Comma) {
+                        // Shift + < : Previous tab
+                        root.currentTab = (root.currentTab + 5) % 6;
                         event.accepted = true;
+                        return;
                     }
-                } else if (event.key === Qt.Key_Tab) {
-                    list.currentList?.incrementCurrentIndex();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Backtab || (event.key === Qt.Key_Tab && (event.modifiers & Qt.ShiftModifier))) {
-                    list.currentList?.decrementCurrentIndex();
-                    event.accepted = true;
+                }
+
+                // Vim keybinds
+                if (Config.launcher.vimKeybinds) {
+                    if (event.modifiers & Qt.ControlModifier) {
+                        if (event.key === Qt.Key_J) {
+                            gridContent.navigateDown();
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_K) {
+                            gridContent.navigateUp();
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_H) {
+                            gridContent.navigateLeft();
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_L) {
+                            gridContent.navigateRight();
+                            event.accepted = true;
+                        }
+                    }
                 }
             }
 
@@ -135,6 +162,8 @@ Item {
                 function onLauncherChanged(): void {
                     if (!root.visibilities.launcher)
                         search.text = "";
+                    else
+                        search.forceActiveFocus();
                 }
 
                 function onSessionChanged(): void {
@@ -155,18 +184,19 @@ Item {
             opacity: {
                 if (!search.text)
                     return 0;
-                if (mouse.pressed)
+                if (clearMouse.pressed)
                     return 0.7;
-                if (mouse.containsMouse)
+                if (clearMouse.containsMouse)
                     return 0.8;
                 return 1;
             }
 
             text: "close"
+            font.pointSize: Appearance.font.size.small
             color: Colours.palette.m3onSurfaceVariant
 
             MouseArea {
-                id: mouse
+                id: clearMouse
 
                 anchors.fill: parent
                 hoverEnabled: true
@@ -186,6 +216,103 @@ Item {
                     duration: Appearance.anim.durations.small
                 }
             }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GRID CONTENT (MIDDLE)
+    // ═══════════════════════════════════════════════════════════════
+    Item {
+        id: gridWrapper
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: searchWrapper.bottom
+        anchors.leftMargin: root.padding
+        anchors.rightMargin: root.padding
+        anchors.topMargin: Appearance.spacing.large
+
+        // Use gridContent's actual size
+        implicitWidth: gridContent.implicitWidth
+        implicitHeight: gridContent.implicitHeight
+        width: gridContent.implicitWidth
+        height: gridContent.implicitHeight
+
+        clip: true
+
+        GridContent {
+            id: gridContent
+
+            width: implicitWidth
+            height: implicitHeight
+
+            content: root
+            visibilities: root.visibilities
+            panels: root.panels
+            search: search
+            currentTab: root.currentTab
+            padding: root.padding
+            rounding: root.rounding
+        }
+
+        // Empty state
+        Row {
+            id: empty
+
+            opacity: gridContent.currentList?.count === 0 ? 1 : 0
+            scale: gridContent.currentList?.count === 0 ? 1 : 0.5
+            visible: opacity > 0
+
+            spacing: Appearance.spacing.small
+            padding: Appearance.padding.normal
+
+            anchors.centerIn: parent
+
+            MaterialIcon {
+                text: "manage_search"
+                color: Colours.palette.m3onSurfaceVariant
+                font.pointSize: Appearance.font.size.large
+
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            StyledText {
+                text: qsTr("No results")
+                color: Colours.palette.m3onSurfaceVariant
+                font.pointSize: Appearance.font.size.normal
+
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Behavior on opacity {
+                Anim {}
+            }
+
+            Behavior on scale {
+                Anim {}
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TAB BAR (BOTTOM)
+    // ═══════════════════════════════════════════════════════════════
+    TabBar {
+        id: tabBar
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: gridWrapper.bottom
+        anchors.leftMargin: root.padding
+        anchors.rightMargin: root.padding
+        anchors.topMargin: Appearance.spacing.large
+        anchors.bottomMargin: root.padding
+
+        currentTab: root.currentTab
+
+        onTabChanged: index => {
+            root.currentTab = index;
+            search.forceActiveFocus();
         }
     }
 }

@@ -14,7 +14,8 @@ Searcher {
     property string currentVariant
 
     function transformSearch(search: string): string {
-        return search.slice(`${Config.launcher.actionPrefix}scheme `.length);
+        // No longer need to strip prefix since we use tabs now
+        return search;
     }
 
     function selector(item: var): string {
@@ -80,8 +81,8 @@ Searcher {
         readonly property string flavour: modelData.flavour
         readonly property var colours: modelData.colours
 
-        function onClicked(list: AppList): void {
-            list.visibilities.launcher = false;
+        function onClicked(gridContent: var): void {
+            // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-n", name, "-f", flavour]);
         }
     }
