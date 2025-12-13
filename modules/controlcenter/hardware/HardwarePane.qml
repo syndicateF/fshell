@@ -86,6 +86,17 @@ RowLayout {
                             Hardware.setFnLock(!Hardware.fnLock);
                         }
                     }
+
+                    // System Info Toggle - Settings button style (like Network/Bluetooth/Monitor)
+                    ToggleButton {
+                        toggled: root.session.hw.showSysInfo
+                        icon: "info"
+                        accent: "Primary"
+
+                        function onClicked(): void {
+                            root.session.hw.showSysInfo = !root.session.hw.showSysInfo;
+                        }
+                    }
                 }
 
                 // CPU Overview Card
@@ -94,8 +105,8 @@ RowLayout {
                     icon: "developer_board"
                     title: "CPU"
                     subtitle: Hardware.cpuModel
-                    isSelected: root.session.hw.view === "cpu"
-                    onClicked: root.session.hw.view = "cpu"
+                    isSelected: root.session.hw.view === "cpu" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "cpu"; root.session.hw.showSysInfo = false; }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -143,8 +154,8 @@ RowLayout {
                     icon: "videogame_asset"
                     title: "GPU"
                     subtitle: Hardware.gpuModel
-                    isSelected: root.session.hw.view === "gpu"
-                    onClicked: root.session.hw.view = "gpu"
+                    isSelected: root.session.hw.view === "gpu" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "gpu"; root.session.hw.showSysInfo = false; }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -209,53 +220,6 @@ RowLayout {
                             barColor: Colours.palette.m3secondary
                             barHeight: 6
                         }
-
-                        // GPU Priority Toggle (only in hybrid mode)
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.topMargin: Appearance.spacing.normal
-                            visible: Hardware.hasGpuPriority
-                            spacing: Appearance.spacing.normal
-
-                            MaterialIcon {
-                                text: Hardware.gpuPriority === "nvidia" ? "memory" : "eco"
-                                font.pointSize: Appearance.font.size.normal
-                                color: Hardware.gpuPriority === "nvidia" ? 
-                                       Colours.palette.m3tertiary : Colours.palette.m3primary
-                            }
-
-                            StyledText {
-                                text: qsTr("Primary GPU")
-                                font.pointSize: Appearance.font.size.small
-                                color: Colours.palette.m3onSurfaceVariant
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            StyledText {
-                                text: Hardware.gpuPriority === "nvidia" ? "NVIDIA" : "Integrated"
-                                font.pointSize: Appearance.font.size.small
-                                font.weight: Font.Medium
-                                color: Hardware.gpuPriority === "nvidia" ? 
-                                       Colours.palette.m3tertiary : Colours.palette.m3primary
-                            }
-
-                            StyledSwitch {
-                                checked: Hardware.gpuPriority === "nvidia"
-                                onClicked: Hardware.setGpuPriority(checked ? "nvidia" : "integrated")
-                            }
-                        }
-
-                        // Hint text for GPU Priority
-                        StyledText {
-                            Layout.fillWidth: true
-                            visible: Hardware.hasGpuPriority
-                            text: qsTr("⚠ Requires logout to apply")
-                            font.pointSize: Appearance.font.size.smaller
-                            color: Colours.palette.m3onSurfaceVariant
-                            opacity: 0.7
-                            horizontalAlignment: Text.AlignRight
-                        }
                     }
                 }
 
@@ -268,8 +232,8 @@ RowLayout {
                           Hardware.batteryPercent > 20 ? "battery_2_bar" : "battery_alert"
                     title: qsTr("Battery")
                     subtitle: Hardware.batteryStatus
-                    isSelected: root.session.hw.view === "battery"
-                    onClicked: root.session.hw.view = "battery"
+                    isSelected: root.session.hw.view === "battery" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "battery"; root.session.hw.showSysInfo = false; }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -317,8 +281,8 @@ RowLayout {
                     title: qsTr("GPU Switching")
                     subtitle: Hardware.gpuMode === "nvidia" ? qsTr("NVIDIA Only") :
                               Hardware.gpuMode === "integrated" ? qsTr("Integrated") : qsTr("Hybrid")
-                    isSelected: root.session.hw.view === "gpumode"
-                    onClicked: root.session.hw.view = "gpumode"
+                    isSelected: root.session.hw.view === "gpumode" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "gpumode"; root.session.hw.showSysInfo = false; }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -348,8 +312,8 @@ RowLayout {
                     title: qsTr("RGB Keyboard")
                     subtitle: Hardware.rgbCurrentMode.charAt(0).toUpperCase() + 
                               Hardware.rgbCurrentMode.slice(1).replace(/_/g, " ")
-                    isSelected: root.session.hw.view === "rgb"
-                    onClicked: root.session.hw.view = "rgb"
+                    isSelected: root.session.hw.view === "rgb" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "rgb"; root.session.hw.showSysInfo = false; }
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -393,8 +357,8 @@ RowLayout {
                     icon: "tune"
                     title: qsTr("Quick Profiles")
                     subtitle: qsTr("One-click optimization")
-                    isSelected: root.session.hw.view === "profiles"
-                    onClicked: root.session.hw.view = "profiles"
+                    isSelected: root.session.hw.view === "profiles" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "profiles"; root.session.hw.showSysInfo = false; }
 
                     Flow {
                         Layout.fillWidth: true
@@ -442,25 +406,21 @@ RowLayout {
             radius: rightBorder.innerRadius
             color: "transparent"
 
+            // Horizontal sliding panes - like Network/Bluetooth/Monitor
             Item {
-                id: viewSwitcher
+                id: horizontalPanes
+                
                 anchors.fill: parent
                 clip: true
                 
-                property int activeView: {
-                    switch (root.session.hw.view) {
-                        case "gpu": return 1;
-                        case "battery": return 2;
-                        case "gpumode": return 3;
-                        case "profiles": return 4;
-                        case "rgb": return 5;
-                        default: return 0;
-                    }
-                }
+                // 0 = Normal Views, 1 = SysInfo
+                property int activePane: root.session.hw.showSysInfo ? 1 : 0
                 
                 RowLayout {
+                    id: paneRow
+                    
                     spacing: 0
-                    x: -viewSwitcher.activeView * viewSwitcher.width
+                    x: -horizontalPanes.activePane * horizontalPanes.width
                     
                     Behavior on x {
                         NumberAnimation {
@@ -469,35 +429,85 @@ RowLayout {
                             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
                         }
                     }
+                    
+                    // Pane 0: Normal hardware views (CPU, GPU, Battery, etc.)
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
 
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 0
-                        sourceComponent: Component { CpuSettings { session: root.session } }
+                        Item {
+                            id: viewSwitcher
+                            anchors.fill: parent
+                            clip: true
+                            
+                            property int activeView: {
+                                switch (root.session.hw.view) {
+                                    case "gpu": return 1;
+                                    case "battery": return 2;
+                                    case "gpumode": return 3;
+                                    case "profiles": return 4;
+                                    case "rgb": return 5;
+                                    default: return 0;
+                                }
+                            }
+                            
+                            RowLayout {
+                                spacing: 0
+                                x: -viewSwitcher.activeView * viewSwitcher.width
+                                
+                                Behavior on x {
+                                    NumberAnimation {
+                                        duration: Appearance.anim.durations.expressiveDefaultSpatial
+                                        easing.type: Easing.BezierSpline
+                                        easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+                                    }
+                                }
+
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 0 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { CpuSettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 1 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { GpuSettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 2 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { BatterySettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 3 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { GpuModeSettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 4 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { ProfilesSettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 5 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { RgbSettings { session: root.session } }
+                                }
+                            }
+                        }
                     }
                     
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 1
-                        sourceComponent: Component { GpuSettings { session: root.session } }
-                    }
-                    
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 2
-                        sourceComponent: Component { BatterySettings { session: root.session } }
-                    }
-                    
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 3
-                        sourceComponent: Component { GpuModeSettings { session: root.session } }
-                    }
-                    
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 4
-                        sourceComponent: Component { ProfilesSettings { session: root.session } }
-                    }
-                    
-                    SettingsPane {
-                        active: viewSwitcher.activeView === 5
-                        sourceComponent: Component { RgbSettings { session: root.session } }
+                    // Pane 1: System Info (Vulkan/VA-API)
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        Loader {
+                            anchors.fill: parent
+                            anchors.margins: Appearance.padding.large * 2
+                            active: root.session.hw.showSysInfo
+                            
+                            sourceComponent: Component { SysInfoSettings { session: root.session } }
+                        }
                     }
                 }
             }
