@@ -488,6 +488,11 @@ Item {
 
             model: ListModel {
                 ListElement {
+                    name: "save"
+                    icon: "save"
+                    action: "save"
+                }
+                ListElement {
                     name: "revert"
                     icon: "undo"
                     action: "revert"
@@ -507,13 +512,18 @@ Item {
 
                 readonly property bool isRevert: modelData.action === "revert"
                 readonly property bool isReset: modelData.action === "reset"
+                readonly property bool isSave: modelData.action === "save"
+                
+                // Save and Revert only visible when there are changes
+                visible: isReset || ((isRevert || isSave) && Hardware.rgbHasChanges)
 
                 Layout.alignment: Qt.AlignRight
 
                 implicitHeight: fabMenuItemInner.implicitHeight + Appearance.padding.larger * 2
 
                 radius: Appearance.rounding.full
-                color: isReset ? Colours.palette.m3errorContainer : Colours.palette.m3secondaryContainer
+                color: isSave ? Colours.palette.m3primaryContainer : 
+                       (isReset ? Colours.palette.m3errorContainer : Colours.palette.m3secondaryContainer)
 
                 opacity: 0
 
@@ -572,13 +582,16 @@ Item {
                 ]
 
                 StateLayer {
-                    color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+                    color: fabMenuItem.isSave ? Colours.palette.m3onPrimaryContainer :
+                           (fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer)
 
                     function onClicked(): void {
                         root.session.hw.fabMenuOpen = false;
 
                         const action = fabMenuItem.modelData.action;
-                        if (action === "revert") {
+                        if (action === "save") {
+                            Hardware.saveRgbState();
+                        } else if (action === "revert") {
                             Hardware.revertRgbChanges();
                         } else if (action === "reset") {
                             Hardware.resetRgbToDefault();
@@ -595,14 +608,17 @@ Item {
 
                     MaterialIcon {
                         text: fabMenuItem.modelData.icon
-                        color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+                        color: fabMenuItem.isSave ? Colours.palette.m3onPrimaryContainer :
+                               (fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer)
                         fill: 1
                     }
 
                     StyledText {
                         animate: true
-                        text: fabMenuItem.isReset ? qsTr("Reset") : qsTr("Revert")
-                        color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+                        text: fabMenuItem.isSave ? qsTr("Save") : 
+                              (fabMenuItem.isReset ? qsTr("Reset") : qsTr("Revert"))
+                        color: fabMenuItem.isSave ? Colours.palette.m3onPrimaryContainer :
+                               (fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer)
                         font.capitalization: Font.Capitalize
                         Layout.preferredWidth: implicitWidth
                     }

@@ -317,11 +317,37 @@ Singleton {
     property int rgbSpeedInternal: 50
     property string rgbBreathingColorInternal: "#FF0000"
     
-    // Saved state for revert functionality
+    // Saved state for revert functionality (in-memory checkpoint)
     property string rgbSavedMode: "Direct"
     property var rgbSavedColors: ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"]
     property int rgbSavedSpeed: 50
     property string rgbSavedBreathingColor: "#FF0000"
+    
+    // Persistent state (loaded from file on startup)
+    property string rgbPersistedMode: "Direct"
+    property var rgbPersistedColors: ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"]
+    property int rgbPersistedSpeed: 50
+    property string rgbPersistedBreathingColor: "#FF0000"
+    property bool rgbPersistedEnabled: true
+    property bool rgbSettingsLoaded: false
+    
+    // Track if user has made changes from the persisted state
+    readonly property bool rgbHasChanges: {
+        if (!rgbSettingsLoaded) return false;
+        return rgbCurrentModeInternal !== rgbPersistedMode ||
+               rgbSpeedInternal !== rgbPersistedSpeed ||
+               rgbBreathingColorInternal !== rgbPersistedBreathingColor ||
+               rgbEnabledInternal !== rgbPersistedEnabled ||
+               !arraysEqual(rgbColorsInternal, rgbPersistedColors);
+    }
+    
+    function arraysEqual(a: var, b: var): bool {
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
     
     // RGB presets
     readonly property var rgbPresets: [
@@ -389,8 +415,10 @@ Singleton {
         console.log("[Hardware] Resetting RGB to defaults");
         setRgbMode(defaults.rgbMode);
         setRgbColors(defaults.rgbColors);
-        // Save as new checkpoint
+        rgbEnabledInternal = true;
+        // Save as new checkpoint and persist to file
         saveRgbState();
+        persistRgbSettings();
     }
     
     function saveRgbState(): void {
@@ -399,14 +427,23 @@ Singleton {
         rgbSavedColors = rgbColorsInternal.slice();  // Clone array
         rgbSavedSpeed = rgbSpeedInternal;
         rgbSavedBreathingColor = rgbBreathingColorInternal;
+        // Also persist to file
+        persistRgbSettings();
     }
     
     function revertRgbChanges(): void {
-        console.log("[Hardware] Reverting RGB to saved state");
-        setRgbMode(rgbSavedMode);
-        setRgbColors(rgbSavedColors);
-        setRgbSpeed(rgbSavedSpeed);
-        setRgbBreathingColor(rgbSavedBreathingColor);
+        console.log("[Hardware] Reverting RGB to persisted state");
+        // Revert to persisted state (from file)
+        setRgbMode(rgbPersistedMode);
+        setRgbColors(rgbPersistedColors);
+        setRgbSpeed(rgbPersistedSpeed);
+        setRgbBreathingColor(rgbPersistedBreathingColor);
+        setRgbEnabled(rgbPersistedEnabled);
+        // Update saved state to match persisted
+        rgbSavedMode = rgbPersistedMode;
+        rgbSavedColors = [...rgbPersistedColors];
+        rgbSavedSpeed = rgbPersistedSpeed;
+        rgbSavedBreathingColor = rgbPersistedBreathingColor;
     }
     
     function resetAllToDefault(): void {
@@ -1517,6 +1554,87 @@ Singleton {
                 root.refreshGpuInfo();
                 root.refreshGpuProcesses();
             }
+        }
+    }
+    
+    // =====================================================
+    // RGB SETTINGS PERSISTENCE
+    // =====================================================
+    
+    FileView {
+        id: rgbStorage
+        
+        path: `${Paths.state}/rgb-keyboard.json`
+        
+        onLoaded: {
+            console.log("[Hardware] Loading RGB settings from file");
+            try {
+                const data = JSON.parse(text());
+                // Apply persisted settings
+                root.rgbPersistedMode = data.mode || "Direct";
+                root.rgbPersistedColors = data.colors || ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"];
+                root.rgbPersistedSpeed = data.speed || 50;
+                root.rgbPersistedBreathingColor = data.breathingColor || "#FF0000";
+                root.rgbPersistedEnabled = data.enabled !== undefined ? data.enabled : true;
+                
+                // Also set current state to match persisted state
+                root.rgbCurrentModeInternal = root.rgbPersistedMode;
+                root.rgbColorsInternal = [...root.rgbPersistedColors];
+                root.rgbLastColors = [...root.rgbPersistedColors];
+                root.rgbSpeedInternal = root.rgbPersistedSpeed;
+                root.rgbBreathingColorInternal = root.rgbPersistedBreathingColor;
+                root.rgbEnabledInternal = root.rgbPersistedEnabled;
+                
+                // Update saved state to match
+                root.rgbSavedMode = root.rgbPersistedMode;
+                root.rgbSavedColors = [...root.rgbPersistedColors];
+                root.rgbSavedSpeed = root.rgbPersistedSpeed;
+                root.rgbSavedBreathingColor = root.rgbPersistedBreathingColor;
+                
+                root.rgbSettingsLoaded = true;
+                console.log("[Hardware] RGB settings loaded:", JSON.stringify(data));
+            } catch (e) {
+                console.log("[Hardware] Failed to parse RGB settings:", e);
+                root.rgbSettingsLoaded = true;
+            }
+        }
+        
+        onLoadFailed: err => {
+            if (err === FileViewError.FileNotFound) {
+                console.log("[Hardware] No RGB settings file, using defaults");
+                root.rgbSettingsLoaded = true;
+                // Save defaults to create the file
+                root.persistRgbSettings();
+            }
+        }
+    }
+    
+    Timer {
+        id: rgbSaveTimer
+        interval: 500  // Debounce saves
+        onTriggered: {
+            const data = {
+                mode: root.rgbCurrentModeInternal,
+                colors: root.rgbColorsInternal,
+                speed: root.rgbSpeedInternal,
+                breathingColor: root.rgbBreathingColorInternal,
+                enabled: root.rgbEnabledInternal
+            };
+            console.log("[Hardware] Persisting RGB settings:", JSON.stringify(data));
+            rgbStorage.setText(JSON.stringify(data, null, 2));
+            
+            // Update persisted state
+            root.rgbPersistedMode = root.rgbCurrentModeInternal;
+            root.rgbPersistedColors = [...root.rgbColorsInternal];
+            root.rgbPersistedSpeed = root.rgbSpeedInternal;
+            root.rgbPersistedBreathingColor = root.rgbBreathingColorInternal;
+            root.rgbPersistedEnabled = root.rgbEnabledInternal;
+        }
+    }
+    
+    function persistRgbSettings(): void {
+        if (rgbSettingsLoaded) {
+            rgbSaveTimer.restart();
         }
     }
     
