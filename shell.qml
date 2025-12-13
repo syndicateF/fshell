@@ -26,11 +26,13 @@ ShellRoot {
     }
     
     // Initialize RGB keyboard on shell start
-    // Only calls RGB connect, doesn't load all Hardware refreshes
-    // Uses small delay to let shell fully initialize first
+    // Uses a longer delay on cold boot because OpenRGB server 
+    // may take 5-10 seconds to fully initialize after boot.
+    // The Hardware service has exponential backoff retry mechanism
+    // if initial connection fails.
     Timer {
         id: rgbInitTimer
-        interval: 500
+        interval: 2000  // 2 second initial delay
         running: true
         repeat: false
         onTriggered: Hardware.refreshRgb()

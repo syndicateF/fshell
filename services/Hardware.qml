@@ -300,14 +300,15 @@ Singleton {
     readonly property var rgbColors: rgbColorsInternal  // Array of 4 colors for each zone
     readonly property int rgbSpeed: rgbSpeedInternal
     readonly property string rgbBreathingColor: rgbBreathingColorInternal
+    readonly property int rgbServerState: rgbServerStateInternal  // 0=Disconnected, 1=Connecting, 2=Connected
     
     // Mode capabilities
     readonly property bool rgbModeSupportsSpeed: ["Breathing", "Rainbow Wave", "Spectrum Cycle"].includes(rgbCurrentModeInternal)
     readonly property bool rgbModeSupportsColor: ["Direct", "Breathing"].includes(rgbCurrentModeInternal)
     readonly property bool rgbModeIsZoned: rgbCurrentModeInternal === "Direct"
     
-    // Default to true for Lenovo Legion - will be validated on startup
-    property bool hasRgbKeyboardInternal: true
+    // Start as false - will be set to true only after successful connection
+    property bool hasRgbKeyboardInternal: false
     property bool rgbEnabledInternal: true
     property string rgbDeviceNameInternal: "Lenovo 5 2021"
     property var rgbModesInternal: ["Direct", "Breathing", "Rainbow Wave", "Spectrum Cycle"]
@@ -358,8 +359,7 @@ Singleton {
         { name: "Sunset", colors: ["#FF6600", "#FF3300", "#FF0066", "#FF0099"] },
         { name: "Ocean", colors: ["#0033FF", "#0066FF", "#0099FF", "#00CCFF"] },
         { name: "Rainbow", colors: ["#FF0000", "#FFFF00", "#00FF00", "#0000FF"] },
-        { name: "White", colors: ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"] },
-        { name: "Off", colors: ["#000000", "#000000", "#000000", "#000000"] }
+        { name: "White", colors: ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"] }
     ]
     
     // RGB Command Queue - prevents race conditions
@@ -367,8 +367,16 @@ Singleton {
     property bool rgbCommandRunning: false
     property bool rgbServerReady: false  // OpenRGB server running and ready
     
+    // RGB busy state - true when commands are being processed
+    readonly property bool rgbBusy: rgbCommandRunning || rgbCommandQueue.length > 0
+    
     // RGB Server connection state (internal use)
     property int rgbServerStateInternal: 0  // 0=Disconnected, 1=Connecting, 2=Connected
+    
+    // RGB Connection retry mechanism
+    property int rgbRetryCount: 0
+    readonly property int rgbMaxRetries: 5
+    readonly property var rgbRetryDelays: [2000, 4000, 8000, 16000, 32000]  // Exponential backoff
 
     // =====================================================
     // DEFAULT VALUES (for reset functionality)
@@ -701,46 +709,48 @@ Singleton {
         console.log("[Hardware] Queueing RGB mode:", mode);
         rgbCurrentModeInternal = mode;
         // Priority command - goes to front of queue
-        queueRgbCommand(["openrgb", "-d", "0", "-m", mode], true);
+        // Include appropriate parameters for each mode type
+        if (mode === "Direct") {
+            const colorString = rgbColorsInternal.map(c => c.replace("#", "")).join(",");
+            queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct", "-c", colorString], true);
+        } else if (mode === "Breathing") {
+            const color = rgbBreathingColorInternal.replace("#", "");
+            queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-s", rgbSpeedInternal.toString(), "-c", color], true);
+        } else {
+            // Rainbow Wave, Spectrum Cycle, etc. - just need mode + speed
+            queueRgbCommand(["openrgb", "-d", "0", "-m", mode, "-s", rgbSpeedInternal.toString()], true);
+        }
     }
     
     function setRgbColor(zoneIndex: int, color: string): void {
         if (!hasRgbKeyboard || zoneIndex < 0 || zoneIndex > 3) return;
         // Ensure color has # prefix for internal storage
         const normalizedColor = color.startsWith("#") ? color : "#" + color;
-        console.log("[Hardware] Queueing RGB zone", zoneIndex, "color:", normalizedColor);
+        console.log("[Hardware] Setting RGB zone", zoneIndex, "color:", normalizedColor);
         // Update internal colors array immediately for UI responsiveness
         let newColors = [...rgbColorsInternal];
         newColors[zoneIndex] = normalizedColor;
         rgbColorsInternal = newColors;
         if (rgbEnabled) rgbLastColors = [...newColors];
+        rgbCurrentModeInternal = "Direct";
         
-        // If not in Direct mode, queue mode change first
-        if (rgbCurrentModeInternal !== "Direct") {
-            rgbCurrentModeInternal = "Direct";
-            queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
-        }
-        
-        // Device has 1 zone with 4 LEDs - must set all colors at once
+        // Combined command: mode + colors in single call
         const colorString = newColors.map(c => c.replace("#", "")).join(",");
-        queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
+        queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct", "-c", colorString], true);
     }
     
     function setRgbColors(colors: var): void {
         if (!hasRgbKeyboard || colors.length !== 4) return;
-        console.log("[Hardware] Queueing all RGB colors");
+        console.log("[Hardware] Setting RGB colors");
         rgbColorsInternal = colors;
         // Only save to lastColors if not turning off
         const isOff = colors.every(c => c === "#000000");
         if (!isOff) rgbLastColors = [...colors];
         rgbCurrentModeInternal = "Direct";
         
-        // Queue mode change first (priority)
-        queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
-        
-        // Build comma-separated color string for all 4 LEDs
+        // Combined command: mode + colors in single call (faster!)
         const colorString = colors.map(c => c.replace("#", "")).join(",");
-        queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
+        queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct", "-c", colorString], true);
     }
     
     function setRgbPreset(presetIndex: int): void {
@@ -748,13 +758,8 @@ Singleton {
         const preset = rgbPresets[presetIndex];
         console.log("[Hardware] Applying RGB preset:", preset.name);
         
-        // If Off preset, disable RGB
-        if (preset.name === "Off") {
-            setRgbEnabled(false);
-        } else {
-            rgbEnabledInternal = true;
-            setRgbColors(preset.colors);
-        }
+        rgbEnabledInternal = true;
+        setRgbColors(preset.colors);
     }
     
     function setRgbSpeed(speed: int): void {
@@ -762,7 +767,15 @@ Singleton {
         rgbSpeedInternal = speed;
         console.log("[Hardware] Queueing RGB speed:", speed);
         if (rgbModeSupportsSpeed) {
-            queueRgbCommand(["openrgb", "-d", "0", "-m", rgbCurrentModeInternal, "-s", speed.toString()], false);
+            const mode = rgbCurrentModeInternal;
+            if (mode === "Breathing") {
+                // Breathing mode needs speed + color
+                const color = rgbBreathingColorInternal.replace("#", "");
+                queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-s", speed.toString(), "-c", color], false);
+            } else {
+                // Other animated modes just need speed
+                queueRgbCommand(["openrgb", "-d", "0", "-m", mode, "-s", speed.toString()], false);
+            }
         }
     }
     
@@ -771,14 +784,16 @@ Singleton {
         rgbBreathingColorInternal = color;
         console.log("[Hardware] Setting breathing color:", color);
         if (rgbCurrentModeInternal === "Breathing") {
-            queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-c", color.replace("#", "")], false);
+            // Include speed for complete state
+            queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-s", rgbSpeedInternal.toString(), "-c", color.replace("#", "")], false);
         }
     }
     
     function refreshRgb(): void {
         // Reconnect to OpenRGB server if disconnected
-        if (!rgbServerReady && !rgbConnectProcess.running) {
-            console.log("[Hardware] Reconnecting to OpenRGB server...");
+        if (!rgbServerReady && !rgbConnectProcess.running && !rgbRetryTimer.running) {
+            console.log("[Hardware] Manual refresh - connecting to OpenRGB server...");
+            rgbRetryCount = 0;  // Reset retry count on manual refresh
             rgbServerStateInternal = 1;  // Connecting
             rgbConnectProcess.running = true;
         }
@@ -1471,7 +1486,7 @@ Singleton {
     // Connect to OpenRGB server (expects systemd service running)
     Process {
         id: rgbConnectProcess
-        command: ["timeout", "2", "openrgb", "--list-devices"]
+        command: ["timeout", "3", "openrgb", "--list-devices"]
         property string outputBuffer: ""
         
         stdout: SplitParser {
@@ -1486,10 +1501,11 @@ Singleton {
             
             if (exitCode === 0 && (output.includes("lenovo") || output.includes("4-zone") || output.includes("keyboard"))) {
                 // Connected successfully!
-                console.log("[Hardware] Connected to OpenRGB server!");
+                console.log("[Hardware] Connected to OpenRGB server after", root.rgbRetryCount, "retries");
                 root.hasRgbKeyboardInternal = true;
                 root.rgbServerReady = true;
                 root.rgbServerStateInternal = 2;  // Connected
+                root.rgbRetryCount = 0;  // Reset retry counter on success
                 
                 // Extract device name
                 const lines = output.split("\n");
@@ -1501,25 +1517,59 @@ Singleton {
                     }
                 }
                 
-                // FORCE SYNC: Apply current colors to keyboard
+                // FORCE SYNC: Apply current state to keyboard
                 console.log("[Hardware] Syncing RGB state to keyboard...");
                 if (root.rgbEnabledInternal) {
-                    root.queueRgbCommand(["openrgb", "-d", "0", "-m", root.rgbCurrentModeInternal], true);
-                    const colorString = root.rgbColorsInternal.map(c => c.replace("#", "")).join(",");
-                    root.queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
+                    const mode = root.rgbCurrentModeInternal;
+                    // Build command based on mode
+                    if (mode === "Direct") {
+                        // Direct mode: mode + colors
+                        const colorString = root.rgbColorsInternal.map(c => c.replace("#", "")).join(",");
+                        root.queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct", "-c", colorString], true);
+                    } else if (mode === "Breathing") {
+                        // Breathing mode: mode + speed + color
+                        const color = root.rgbBreathingColorInternal.replace("#", "");
+                        root.queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-s", root.rgbSpeedInternal.toString(), "-c", color], true);
+                    } else {
+                        // Other animated modes (Rainbow Wave, Spectrum Cycle): mode + speed
+                        root.queueRgbCommand(["openrgb", "-d", "0", "-m", mode, "-s", root.rgbSpeedInternal.toString()], true);
+                    }
                 } else {
-                    root.queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
-                    root.queueRgbCommand(["openrgb", "-d", "0", "-c", "000000,000000,000000,000000"], false);
+                    root.queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct", "-c", "000000,000000,000000,000000"], true);
                 }
                 
                 Qt.callLater(root.processRgbQueue);
             } else {
-                // Server not available
-                console.log("[Hardware] OpenRGB server not available. Start with: systemctl --user start openrgb-server");
-                root.hasRgbKeyboardInternal = false;
+                // Server not available - mark as not ready during retry attempts
+                root.hasRgbKeyboardInternal = false;  // Hide UI while retrying
                 root.rgbServerReady = false;
-                root.rgbServerStateInternal = 0;  // Disconnected
+                
+                // Schedule retry if we haven't exceeded max retries
+                if (root.rgbRetryCount < root.rgbMaxRetries) {
+                    const delay = root.rgbRetryDelays[root.rgbRetryCount];
+                    console.log("[Hardware] OpenRGB not ready, retry", root.rgbRetryCount + 1, "of", root.rgbMaxRetries, "in", delay, "ms");
+                    root.rgbRetryCount++;
+                    root.rgbServerStateInternal = 1;  // Connecting (retry in progress)
+                    rgbRetryTimer.interval = delay;
+                    rgbRetryTimer.start();
+                } else {
+                    // Exhausted retries
+                    console.log("[Hardware] OpenRGB server not available after", root.rgbMaxRetries, "retries. Use refresh button to retry.");
+                    root.rgbServerStateInternal = 0;  // Disconnected
+                    root.rgbRetryCount = 0;  // Reset for future manual refresh
+                }
             }
+        }
+    }
+    
+    // Timer for RGB connection retry with exponential backoff
+    Timer {
+        id: rgbRetryTimer
+        repeat: false
+        onTriggered: {
+            console.log("[Hardware] Retrying OpenRGB connection...");
+            root.rgbServerStateInternal = 1;  // Connecting
+            rgbConnectProcess.running = true;
         }
     }
     

@@ -59,23 +59,53 @@ Item {
                 font.pointSize: Appearance.font.size.small
             }
 
-            // Not Available Warning
+            // Not Available / Connecting State
             ColumnLayout {
                 width: mainCol.width
                 Layout.topMargin: 20
                 visible: !Hardware.hasRgbKeyboard
                 spacing: 10
 
+                // Show different icon based on state
                 MaterialIcon {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "warning"
+                    text: Hardware.rgbServerState === 1 ? "sync" : "warning"
                     font.pointSize: 40
-                    color: Colours.palette.m3error
+                    color: Hardware.rgbServerState === 1 ? Colours.palette.m3primary : Colours.palette.m3error
+                    
+                    // Spin animation when connecting
+                    RotationAnimation on rotation {
+                        running: Hardware.rgbServerState === 1
+                        loops: Animation.Infinite
+                        from: 0
+                        to: 360
+                        duration: 1000
+                    }
                 }
+                
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("RGB keyboard not detected")
-                    color: Colours.palette.m3error
+                    text: Hardware.rgbServerState === 1 
+                        ? qsTr("Connecting to OpenRGB...") 
+                        : qsTr("RGB keyboard not detected")
+                    color: Hardware.rgbServerState === 1 ? Colours.palette.m3primary : Colours.palette.m3error
+                }
+                
+                // Retry info when connecting
+                StyledText {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: Hardware.rgbServerState === 1
+                    text: qsTr("Retrying connection...")
+                    color: Colours.palette.m3onSurfaceVariant
+                    font.pointSize: Appearance.font.size.small
+                }
+                
+                // Manual refresh button when disconnected
+                TextButton {
+                    Layout.alignment: Qt.AlignHCenter
+                    visible: Hardware.rgbServerState === 0
+                    text: qsTr("Retry Connection")
+                    onClicked: Hardware.refreshRgb()
                 }
             }
 
@@ -591,8 +621,10 @@ Item {
                         const action = fabMenuItem.modelData.action;
                         if (action === "save") {
                             Hardware.saveRgbState();
+                            fabRoot.showSavedStatus();
                         } else if (action === "revert") {
                             Hardware.revertRgbChanges();
+                            fabRoot.showRevertedStatus();
                         } else if (action === "reset") {
                             Hardware.resetRgbToDefault();
                         }
@@ -627,7 +659,7 @@ Item {
         }
     }
 
-    // FAB Button
+    // FAB Button with Status Display
     Item {
         id: fabRoot
 
@@ -638,17 +670,83 @@ Item {
         implicitWidth: 64
         implicitHeight: 64
 
+        // FAB Status States
+        property int fabStatus: 0  // 0=normal, 1=busy, 2=connecting, 3=saved, 4=reverted
+        property string fabStatusText: ""
+
+        // Timer to reset status back to normal
+        Timer {
+            id: fabStatusResetTimer
+            interval: 2000
+            onTriggered: fabRoot.fabStatus = 0
+        }
+
+        // Watch for busy state changes
+        Connections {
+            target: Hardware
+            function onRgbBusyChanged() {
+                if (Hardware.rgbBusy && !root.session.hw.fabMenuOpen) {
+                    fabRoot.fabStatus = 1;
+                    fabRoot.fabStatusText = qsTr("Applying...");
+                    fabStatusResetTimer.restart();
+                }
+            }
+            function onRgbServerStateChanged() {
+                if (Hardware.rgbServerState === 1 && !root.session.hw.fabMenuOpen) {
+                    fabRoot.fabStatus = 2;
+                    fabRoot.fabStatusText = qsTr("Connecting...");
+                    fabStatusResetTimer.stop();
+                } else if (Hardware.rgbServerState === 2 && fabRoot.fabStatus === 2) {
+                    fabRoot.fabStatus = 0;
+                }
+            }
+        }
+
+        // Function to show saved/reverted status
+        function showSavedStatus() {
+            fabStatus = 3;
+            fabStatusText = qsTr("Saved!");
+            fabStatusResetTimer.restart();
+        }
+        function showRevertedStatus() {
+            fabStatus = 4;
+            fabStatusText = qsTr("Reverted!");
+            fabStatusResetTimer.restart();
+        }
+
         StyledRect {
             id: fabBg
 
             anchors.right: parent.right
             anchors.top: parent.top
 
-            implicitWidth: 64
+            // Expand width when showing status text
+            readonly property bool showingStatus: fabRoot.fabStatus > 0 && !root.session.hw.fabMenuOpen
+            readonly property real expandedWidth: fabStatusRow.implicitWidth + Appearance.padding.large * 2
+
+            implicitWidth: showingStatus ? Math.max(64, expandedWidth) : 64
             implicitHeight: 64
 
-            radius: Appearance.rounding.normal
-            color: root.session.hw.fabMenuOpen ? Colours.palette.m3primary : Colours.palette.m3primaryContainer
+            radius: showingStatus ? Appearance.rounding.full : Appearance.rounding.normal
+            color: {
+                if (root.session.hw.fabMenuOpen) return Colours.palette.m3primary;
+                switch (fabRoot.fabStatus) {
+                    case 1: return Colours.palette.m3tertiaryContainer;  // Busy/Applying
+                    case 2: return Colours.palette.m3secondaryContainer; // Connecting
+                    case 3: return Colours.palette.m3primaryContainer;   // Saved
+                    case 4: return Colours.palette.m3secondaryContainer; // Reverted
+                    default: return Colours.palette.m3primaryContainer;
+                }
+            }
+
+            Behavior on implicitWidth {
+                FabAnim {
+                    duration: Appearance.anim.durations.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                }
+            }
+            Behavior on radius { FabAnim {} }
+            Behavior on color { ColorAnimation { duration: Appearance.anim.durations.normal } }
 
             states: State {
                 name: "expanded"
@@ -683,18 +781,75 @@ Item {
             StateLayer {
                 id: fabState
 
-                color: root.session.hw.fabMenuOpen ? Colours.palette.m3onPrimary : Colours.palette.m3onPrimaryContainer
+                color: {
+                    if (root.session.hw.fabMenuOpen) return Colours.palette.m3onPrimary;
+                    switch (fabRoot.fabStatus) {
+                        case 1: return Colours.palette.m3onTertiaryContainer;
+                        case 2: return Colours.palette.m3onSecondaryContainer;
+                        case 3: return Colours.palette.m3onPrimaryContainer;
+                        case 4: return Colours.palette.m3onSecondaryContainer;
+                        default: return Colours.palette.m3onPrimaryContainer;
+                    }
+                }
 
                 function onClicked(): void {
-                    root.session.hw.fabMenuOpen = !root.session.hw.fabMenuOpen;
+                    if (fabRoot.fabStatus > 0 && !root.session.hw.fabMenuOpen) {
+                        // If showing status, clicking resets to normal
+                        fabRoot.fabStatus = 0;
+                        fabStatusResetTimer.stop();
+                    } else {
+                        root.session.hw.fabMenuOpen = !root.session.hw.fabMenuOpen;
+                    }
                 }
             }
 
+            // Status content (icon + text when showing status)
+            Row {
+                id: fabStatusRow
+                anchors.centerIn: parent
+                spacing: Appearance.spacing.small
+                visible: fabBg.showingStatus
+
+                CircularIndicator {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 20
+                    height: 20
+                    visible: fabRoot.fabStatus === 1 || fabRoot.fabStatus === 2
+                }
+
+                MaterialIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: fabRoot.fabStatus === 3 ? "check_circle" : "undo"
+                    visible: fabRoot.fabStatus === 3 || fabRoot.fabStatus === 4
+                    color: fabRoot.fabStatus === 3 ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSecondaryContainer
+                    font.pointSize: Appearance.font.size.large
+                    fill: 1
+                }
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: fabRoot.fabStatusText
+                    font.pointSize: Appearance.font.size.normal
+                    font.weight: 500
+                    color: {
+                        switch (fabRoot.fabStatus) {
+                            case 1: return Colours.palette.m3onTertiaryContainer;
+                            case 2: return Colours.palette.m3onSecondaryContainer;
+                            case 3: return Colours.palette.m3onPrimaryContainer;
+                            case 4: return Colours.palette.m3onSecondaryContainer;
+                            default: return Colours.palette.m3onPrimaryContainer;
+                        }
+                    }
+                }
+            }
+
+            // Normal FAB icon (when not showing status)
             MaterialIcon {
                 id: fab
 
                 anchors.centerIn: parent
                 animate: true
+                visible: !fabBg.showingStatus
                 text: root.session.hw.fabMenuOpen ? "close" : "more_vert"
                 color: root.session.hw.fabMenuOpen ? Colours.palette.m3onPrimary : Colours.palette.m3onPrimaryContainer
                 font.pointSize: Appearance.font.size.large
