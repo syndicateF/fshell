@@ -45,6 +45,7 @@ QtObject {
     }
 
     component Hw: QtObject {
-        property string view: "cpu"  // "cpu", "gpu", "battery", "tdp", "gpumode", "profiles"
+        property string view: "cpu"  // "cpu", "gpu", "battery", "gpumode", "profiles", "rgb"
+        property bool fabMenuOpen: false
     }
 }

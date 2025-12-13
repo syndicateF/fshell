@@ -75,15 +75,9 @@ ClippingRectangle {
 
             anchors.fill: parent
             clip: true
-            asynchronous: true
-            active: {
-                if (root.session.activeIndex === pane.index)
-                    return true;
-
-                const ly = -layout.y;
-                const ty = pane.index * root.height;
-                return ly + root.height > ty && ly < ty + root.height;
-            }
+            asynchronous: false
+            // Pre-load semua pane agar switch instan
+            active: true
         }
     }
 }

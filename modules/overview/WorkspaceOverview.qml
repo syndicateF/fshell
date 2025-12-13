@@ -27,10 +27,8 @@ FocusScope {
     property int overviewColumns: 5
     property real scale: Config.overview.sizes.scale
     
-    property var monitorData: {
-        const mon = Hypr.monitors.values.find(m => m.id === monitor?.id);
-        return mon?.lastIpcObject ?? null;
-    }
+    // Use monitor's lastIpcObject directly instead of searching
+    property var monitorData: monitor?.lastIpcObject ?? null
     
     property color activeBorderColor: Colours.palette.m3primary
     property int uniformRadius: Config.border.rounding
@@ -204,10 +202,9 @@ FocusScope {
                             property string wsName: modelData
                             property bool isActive: root.monitorData?.specialWorkspace?.name === `special:${wsName}`
                             property var appInfo: root.getSpecialAppInfo(wsName)
-                            property bool hasWindows: {
-                                const ws = Hypr.workspaces.values.find(w => w.name === `special:${wsName}`)
-                                return ws?.lastIpcObject?.windows > 0 ?? false
-                            }
+                            // Direct lookup using workspace name - no loop needed
+                            property var specialWsObj: Hypr.workspaces.values.find(w => w.name === `special:${wsName}`)
+                            property bool hasWindows: (specialWsObj?.lastIpcObject?.windows ?? 0) > 0
                             
                             width: root.wsWidth
                             height: root.wsHeight
@@ -261,15 +258,14 @@ FocusScope {
                                 z: 1
                                 
                                 Repeater {
+                                    // Use cached specialWsObj instead of looping
                                     model: ScriptModel {
                                         values: {
-                                            let arr = [];
-                                            for (const ws of Hypr.workspaces.values) {
-                                                if (ws.name === `special:${specialWsRect.wsName}`) {
-                                                    for (const tl of ws.toplevels.values) arr.push(tl);
-                                                }
-                                            }
-                                            return arr.reverse();
+                                            const ws = specialWsRect.specialWsObj
+                                            if (!ws) return []
+                                            let arr = []
+                                            for (const tl of ws.toplevels.values) arr.push(tl)
+                                            return arr.reverse()
                                         }
                                     }
                                     
@@ -298,7 +294,8 @@ FocusScope {
                                             ScreencopyView {
                                                 anchors.fill: parent
                                                 captureSource: root.visibilities.overview ? specialWinItem.modelData.wayland : null
-                                                live: true
+                                                // Only live capture when overview visible
+                                                live: root.visibilities.overview
                                             }
                                             
                                             Rectangle {
@@ -357,15 +354,19 @@ FocusScope {
             Repeater {
                 model: ScriptModel {
                     values: {
-                        // Use ws.toplevels - standard Hyprland workspace data
-                        let arr = [];
+                        // Pre-calculate range once
+                        const minWs = root.workspaceGroup * root.workspacesShown
+                        const maxWs = minWs + root.workspacesShown
+                        const arr = []
+                        
                         for (const ws of Hypr.workspaces.values) {
-                            const wsId = ws.id;
-                            if (root.workspaceGroup * root.workspacesShown < wsId && wsId <= (root.workspaceGroup + 1) * root.workspacesShown) {
-                                for (const tl of ws.toplevels.values) arr.push(tl);
-                            }
+                            const wsId = ws.id
+                            // Skip workspaces outside visible range
+                            if (wsId <= minWs || wsId > maxWs) continue
+                            // Add all toplevels from this workspace
+                            for (const tl of ws.toplevels.values) arr.push(tl)
                         }
-                        return arr.reverse();
+                        return arr.reverse()
                     }
                 }
                 
@@ -420,12 +421,13 @@ FocusScope {
                     
                     Timer {
                         id: clearAnimatingTimer
-                        interval: 250  // Match animation duration + buffer
+                        interval: 250
                         onTriggered: winItem.animatingToNewWs = false
                     }
                     
                     Behavior on x {
-                        enabled: !winItem.dragging
+                        // Only animate when visible and not dragging
+                        enabled: root.visibilities.overview && !winItem.dragging
                         NumberAnimation {
                             id: xAnim
                             duration: 200
@@ -433,25 +435,14 @@ FocusScope {
                         }
                     }
                     Behavior on y {
-                        enabled: !winItem.dragging
+                        enabled: root.visibilities.overview && !winItem.dragging
                         NumberAnimation {
                             id: yAnim
                             duration: 200
                             easing.type: Easing.OutCubic
                         }
                     }
-                    Behavior on width {
-                        NumberAnimation {
-                            duration: 0  // Fast resize
-                            easing.type: Easing.OutCubic
-                        }
-                    }
-                    Behavior on height {
-                        NumberAnimation {
-                            duration: 0  // Fast resize
-                            easing.type: Easing.OutCubic
-                        }
-                    }
+                    // Width/height langsung tanpa animation untuk performa
                     
                     Drag.active: dragArea.drag.active
                     Drag.hotSpot.x: width / 2
@@ -462,16 +453,12 @@ FocusScope {
                         radius: root.uniformRadius
                         color: "transparent"
                         
-                        // GPU layer for better performance
-                        layer.enabled: true
-                        layer.smooth: false
-                        layer.mipmap: false
-                        
                         ScreencopyView {
                             id: screenCopy
                             anchors.fill: parent
                             captureSource: root.visibilities.overview ? winItem.modelData.wayland : null
-                            live: true
+                            // Only live capture when visible, not dragging
+                            live: root.visibilities.overview && !winItem.dragging
                         }
                         
                         Rectangle {

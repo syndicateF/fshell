@@ -41,35 +41,66 @@ RowLayout {
                 anchors.right: parent.right
                 spacing: Appearance.spacing.normal
 
-                // Header
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "memory"
-                    font.pointSize: Appearance.font.size.extraLarge * 2.5
-                    font.bold: true
-                }
+                // Header Row - matching Network/Bluetooth/Monitor style
+                RowLayout {
+                    Layout.alignment: Qt.AlignTop
+                    spacing: Appearance.spacing.smaller
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Hardware")
-                    font.pointSize: Appearance.font.size.large
-                    font.bold: true
+                    StyledText {
+                        text: qsTr("Hardware")
+                        font.pointSize: Appearance.font.size.large
+                        font.weight: 500
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    // Power Profile Toggle - cycles through modes (icon only)
+                    ToggleButton {
+                        visible: Hardware.hasPowerProfiles
+                        toggled: Hardware.powerProfile !== "balanced"
+                        icon: Hardware.powerProfile === "performance" ? "bolt" :
+                              Hardware.powerProfile === "power-saver" ? "eco" : "balance"
+                        accent: Hardware.powerProfile === "performance" ? "Error" :
+                                Hardware.powerProfile === "power-saver" ? "Tertiary" : "Primary"
+
+                        function onClicked(): void {
+                            // Cycle: balanced -> performance -> power-saver -> balanced
+                            if (Hardware.powerProfile === "balanced")
+                                Hardware.setPowerProfile("performance");
+                            else if (Hardware.powerProfile === "performance")
+                                Hardware.setPowerProfile("power-saver");
+                            else
+                                Hardware.setPowerProfile("balanced");
+                        }
+                    }
+
+                    // Fn Lock Toggle (on/off label only)
+                    ToggleButton {
+                        visible: Hardware.hasFnLock
+                        toggled: Hardware.fnLock
+                        icon: "keyboard"
+                        label: Hardware.fnLock ? qsTr("On") : qsTr("Off")
+                        accent: Hardware.fnLock ? "Primary" : "Secondary"
+
+                        function onClicked(): void {
+                            Hardware.setFnLock(!Hardware.fnLock);
+                        }
+                    }
                 }
 
                 // CPU Overview Card
                 HardwareCard {
                     Layout.fillWidth: true
-
                     icon: "developer_board"
                     title: "CPU"
                     subtitle: Hardware.cpuModel
-                    isActive: true
+                    isSelected: root.session.hw.view === "cpu"
+                    onClicked: root.session.hw.view = "cpu"
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.small
 
-                        // Temperature & Usage
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: Appearance.spacing.large
@@ -98,51 +129,27 @@ RowLayout {
                             }
                         }
 
-                        // Usage bar
-                        Item {
+                        ProgressBar {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 8
-                            Layout.topMargin: Appearance.spacing.small
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: height / 2
-                                color: Colours.palette.m3surfaceContainerHighest
-                            }
-
-                            Rectangle {
-                                width: parent.width * (Hardware.cpuUsage / 100)
-                                height: parent.height
-                                radius: height / 2
-                                color: Colours.palette.m3primary
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                                }
-                            }
+                            value: Hardware.cpuUsage / 100
+                            barColor: Colours.palette.m3primary
                         }
-                    }
-
-                    onClicked: {
-                        root.session.hw.view = "cpu";
                     }
                 }
 
-                // GPU Overview Card (NVIDIA)
+                // GPU Overview Card
                 HardwareCard {
                     Layout.fillWidth: true
-                    visible: Hardware.hasNvidiaGpu
-
                     icon: "videogame_asset"
                     title: "GPU"
                     subtitle: Hardware.gpuModel
-                    isActive: true
+                    isSelected: root.session.hw.view === "gpu"
+                    onClicked: root.session.hw.view = "gpu"
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.small
 
-                        // Temperature & Usage & Power
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: Appearance.spacing.large
@@ -171,31 +178,12 @@ RowLayout {
                             }
                         }
 
-                        // GPU Usage bar
-                        Item {
+                        ProgressBar {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 8
-                            Layout.topMargin: Appearance.spacing.small
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: height / 2
-                                color: Colours.palette.m3surfaceContainerHighest
-                            }
-
-                            Rectangle {
-                                width: parent.width * (Hardware.gpuUsage / 100)
-                                height: parent.height
-                                radius: height / 2
-                                color: Colours.palette.m3tertiary
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                                }
-                            }
+                            value: Hardware.gpuUsage / 100
+                            barColor: Colours.palette.m3tertiary
                         }
 
-                        // VRAM Usage
                         RowLayout {
                             Layout.fillWidth: true
                             Layout.topMargin: Appearance.spacing.small
@@ -209,52 +197,32 @@ RowLayout {
                             Item { Layout.fillWidth: true }
 
                             StyledText {
-                                text: `${Hardware.gpuMemoryUsed} / ${Hardware.gpuMemoryTotal} MiB`
+                                text: Hardware.gpuMemoryUsed + " / " + Hardware.gpuMemoryTotal + " MiB"
                                 font.pointSize: Appearance.font.size.small
                                 color: Colours.palette.m3onSurfaceVariant
                             }
                         }
 
-                        Item {
+                        ProgressBar {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 6
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: height / 2
-                                color: Colours.palette.m3surfaceContainerHighest
-                            }
-
-                            Rectangle {
-                                width: parent.width * (Hardware.gpuMemoryUsed / Math.max(1, Hardware.gpuMemoryTotal))
-                                height: parent.height
-                                radius: height / 2
-                                color: Colours.palette.m3secondary
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                                }
-                            }
+                            value: Hardware.gpuMemoryUsed / Math.max(1, Hardware.gpuMemoryTotal)
+                            barColor: Colours.palette.m3secondary
+                            barHeight: 6
                         }
-                    }
-
-                    onClicked: {
-                        root.session.hw.view = "gpu";
                     }
                 }
 
                 // Battery Card
                 HardwareCard {
                     Layout.fillWidth: true
-                    visible: Hardware.hasBattery
-
                     icon: Hardware.batteryCharging ? "battery_charging_full" : 
                           Hardware.batteryPercent > 80 ? "battery_full" :
                           Hardware.batteryPercent > 50 ? "battery_3_bar" :
                           Hardware.batteryPercent > 20 ? "battery_2_bar" : "battery_alert"
                     title: qsTr("Battery")
                     subtitle: Hardware.batteryStatus
-                    isActive: true
+                    isSelected: root.session.hw.view === "battery"
+                    onClicked: root.session.hw.view = "battery"
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -286,117 +254,24 @@ RowLayout {
                             }
                         }
 
-                        // Battery bar
-                        Item {
+                        ProgressBar {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 8
-                            Layout.topMargin: Appearance.spacing.small
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: height / 2
-                                color: Colours.palette.m3surfaceContainerHighest
-                            }
-
-                            Rectangle {
-                                width: parent.width * (Hardware.batteryPercent / 100)
-                                height: parent.height
-                                radius: height / 2
-                                color: Hardware.batteryPercent < 20 ? Colours.palette.m3error :
-                                       Hardware.batteryCharging ? Colours.palette.m3primary : Colours.palette.m3secondary
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                                }
-                            }
+                            value: Hardware.batteryPercent / 100
+                            barColor: Hardware.batteryPercent < 20 ? Colours.palette.m3error :
+                                   Hardware.batteryCharging ? Colours.palette.m3primary : Colours.palette.m3secondary
                         }
-                    }
-
-                    onClicked: {
-                        root.session.hw.view = "battery";
-                    }
-                }
-
-                // TDP Card (RyzenAdj)
-                HardwareCard {
-                    Layout.fillWidth: true
-                    visible: Hardware.hasRyzenAdj
-
-                    icon: "electric_bolt"
-                    title: qsTr("TDP Control")
-                    subtitle: qsTr("RyzenAdj - %1W").arg(Hardware.tdpStapmLimit.toFixed(0))
-                    isActive: true
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: Appearance.spacing.small
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Appearance.spacing.large
-
-                            StatItem {
-                                label: "STAPM"
-                                value: Hardware.tdpStapmValue.toFixed(0) + "W"
-                                icon: "trending_flat"
-                                color: Colours.palette.m3primary
-                            }
-
-                            StatItem {
-                                label: "Fast"
-                                value: Hardware.tdpFastValue.toFixed(0) + "W"
-                                icon: "trending_up"
-                                color: Colours.palette.m3tertiary
-                            }
-
-                            StatItem {
-                                label: qsTr("Temp")
-                                value: Hardware.tdpThermalValue.toFixed(0) + "°C"
-                                icon: "thermostat"
-                                color: Hardware.tdpThermalValue > 90 ? Colours.palette.m3error : Colours.palette.m3secondary
-                            }
-                        }
-
-                        // TDP usage bar
-                        Item {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 8
-                            Layout.topMargin: Appearance.spacing.small
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: height / 2
-                                color: Colours.palette.m3surfaceContainerHighest
-                            }
-
-                            Rectangle {
-                                width: parent.width * Math.min(1, Hardware.tdpStapmValue / Math.max(1, Hardware.tdpStapmLimit))
-                                height: parent.height
-                                radius: height / 2
-                                color: Colours.palette.m3tertiary
-
-                                Behavior on width {
-                                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-                                }
-                            }
-                        }
-                    }
-
-                    onClicked: {
-                        root.session.hw.view = "tdp";
                     }
                 }
 
                 // GPU Mode Card
                 HardwareCard {
                     Layout.fillWidth: true
-                    visible: Hardware.hasEnvyControl || Hardware.hasNvidiaGpu
-
                     icon: "swap_horiz"
                     title: qsTr("GPU Switching")
                     subtitle: Hardware.gpuMode === "nvidia" ? qsTr("NVIDIA Only") :
                               Hardware.gpuMode === "integrated" ? qsTr("Integrated") : qsTr("Hybrid")
-                    isActive: true
+                    isSelected: root.session.hw.view === "gpumode"
+                    onClicked: root.session.hw.view = "gpumode"
 
                     ColumnLayout {
                         Layout.fillWidth: true
@@ -417,28 +292,22 @@ RowLayout {
                             color: Colours.palette.m3primary
                         }
                     }
-
-                    onClicked: {
-                        root.session.hw.view = "gpumode";
-                    }
                 }
 
                 // RGB Keyboard Card
                 HardwareCard {
                     Layout.fillWidth: true
-                    visible: Hardware.hasRgbKeyboard
-
                     icon: "keyboard"
                     title: qsTr("RGB Keyboard")
                     subtitle: Hardware.rgbCurrentMode.charAt(0).toUpperCase() + 
                               Hardware.rgbCurrentMode.slice(1).replace(/_/g, " ")
-                    isActive: true
+                    isSelected: root.session.hw.view === "rgb"
+                    onClicked: root.session.hw.view = "rgb"
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.small
 
-                        // Zone color preview - simple row
                         Row {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 20
@@ -449,9 +318,7 @@ RowLayout {
 
                                 Rectangle {
                                     required property string modelData
-                                    required property int index
-                                    
-                                    width: 20  // Fixed width
+                                    width: 20
                                     height: 20
                                     radius: 4
                                     color: modelData || "#333333"
@@ -461,14 +328,9 @@ RowLayout {
 
                         StyledText {
                             text: {
-                                var name = Hardware.rgbDeviceName || qsTr("Legion 4-Zone RGB");
-                                // Extract first few words for shorter format
-                                var words = name.split(" ");
-                                if (words.length >= 3) {
-                                    return words[0] + " " + words[1] + " " + words[2]; // e.g., "Lenovo 5 2021"
-                                } else {
-                                    return name;
-                                }
+                                const name = Hardware.rgbDeviceName || qsTr("Legion 4-Zone RGB");
+                                const words = name.split(" ");
+                                return words.length >= 3 ? words.slice(0, 3).join(" ") : name;
                             }
                             font.pointSize: Appearance.font.size.small
                             color: Colours.palette.m3onSurfaceVariant
@@ -476,89 +338,37 @@ RowLayout {
                             Layout.maximumWidth: parent.width
                         }
                     }
-
-                    onClicked: {
-                        root.session.hw.view = "rgb";
-                    }
                 }
 
                 // Quick Profiles Card
                 HardwareCard {
                     Layout.fillWidth: true
-
                     icon: "tune"
                     title: qsTr("Quick Profiles")
                     subtitle: qsTr("One-click optimization")
-                    isActive: true
+                    isSelected: root.session.hw.view === "profiles"
+                    onClicked: root.session.hw.view = "profiles"
 
-                    ColumnLayout {
+                    Flow {
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.small
 
-                        Flow {
-                            Layout.fillWidth: true
-                            spacing: Appearance.spacing.small
+                        Repeater {
+                            model: Hardware.appProfiles.slice(0, 4)
 
-                            Repeater {
-                                model: Hardware.appProfiles.slice(0, 4)
+                            StyledRect {
+                                required property var modelData
+                                implicitWidth: profileLabel.implicitWidth + Appearance.padding.small * 2
+                                implicitHeight: profileLabel.implicitHeight + 4
+                                radius: Appearance.rounding.small
+                                color: Colours.palette.m3surfaceContainerHighest
 
-                                StyledRect {
-                                    required property var modelData
-
-                                    implicitWidth: profileLabel.implicitWidth + Appearance.padding.small * 2
-                                    implicitHeight: profileLabel.implicitHeight + 4
-                                    radius: Appearance.rounding.small
-                                    color: Colours.palette.m3surfaceContainerHighest
-
-                                    StyledText {
-                                        id: profileLabel
-                                        anchors.centerIn: parent
-                                        text: modelData.icon + " " + modelData.name
-                                        font.pointSize: Appearance.font.size.small
-                                    }
+                                StyledText {
+                                    id: profileLabel
+                                    anchors.centerIn: parent
+                                    text: modelData.icon + " " + modelData.name
+                                    font.pointSize: Appearance.font.size.small
                                 }
-                            }
-                        }
-                    }
-
-                    onClicked: {
-                        root.session.hw.view = "profiles";
-                    }
-                }
-
-                // Power Profile Quick Toggle
-                StyledText {
-                    Layout.topMargin: Appearance.spacing.large
-                    text: qsTr("Power Profile")
-                    font.pointSize: Appearance.font.size.larger
-                    font.weight: 500
-                    visible: Hardware.hasPowerProfiles
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    visible: Hardware.hasPowerProfiles
-                    spacing: Appearance.spacing.small
-
-                    Repeater {
-                        model: Hardware.powerProfilesAvailable
-
-                        ProfileButton {
-                            required property string modelData
-                            required property int index
-
-                            Layout.fillWidth: true
-                            
-                            icon: modelData === "performance" ? "bolt" :
-                                  modelData === "balanced" ? "balance" :
-                                  modelData === "power-saver" ? "eco" : "settings"
-                            label: modelData === "performance" ? qsTr("Performance") :
-                                   modelData === "balanced" ? qsTr("Balanced") :
-                                   modelData === "power-saver" ? qsTr("Power Saver") : modelData
-                            isActive: Hardware.powerProfile === modelData
-
-                            onClicked: {
-                                Hardware.setPowerProfile(modelData);
                             }
                         }
                     }
@@ -582,27 +392,22 @@ RowLayout {
             anchors.margins: Appearance.padding.normal
             anchors.leftMargin: 0
             anchors.rightMargin: Appearance.padding.normal / 2
-
             radius: rightBorder.innerRadius
             color: "transparent"
 
-            // View switcher
             Item {
                 id: viewSwitcher
-                
                 anchors.fill: parent
                 clip: true
                 
-                // 0=CPU, 1=GPU, 2=Battery, 3=TDP, 4=GPUMode, 5=Profiles, 6=RGB
                 property int activeView: {
                     switch (root.session.hw.view) {
                         case "gpu": return 1;
                         case "battery": return 2;
-                        case "tdp": return 3;
-                        case "gpumode": return 4;
-                        case "profiles": return 5;
-                        case "rgb": return 6;
-                        default: return 0;  // cpu
+                        case "gpumode": return 3;
+                        case "profiles": return 4;
+                        case "rgb": return 5;
+                        default: return 0;
                     }
                 }
                 
@@ -610,97 +415,42 @@ RowLayout {
                     spacing: 0
                     x: -viewSwitcher.activeView * viewSwitcher.width
                     
-                    // CPU Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        CpuSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // GPU Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        GpuSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // Battery Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        BatterySettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // TDP Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        TdpSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // GPU Mode Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        GpuModeSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // Profiles Details
-                    Item {
-                        Layout.preferredWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        ProfilesSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
-                    // RGB Details
-                    Item {
-                        Layout.preferredWidth: 400
-                        Layout.maximumWidth: viewSwitcher.width
-                        Layout.preferredHeight: viewSwitcher.height
-                        
-                        RgbSettings {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.large * 2
-                            session: root.session
-                        }
-                    }
-                    
                     Behavior on x {
                         NumberAnimation {
                             duration: Appearance.anim.durations.expressiveDefaultSpatial
                             easing.type: Easing.BezierSpline
                             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
                         }
+                    }
+
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 0
+                        sourceComponent: Component { CpuSettings { session: root.session } }
+                    }
+                    
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 1
+                        sourceComponent: Component { GpuSettings { session: root.session } }
+                    }
+                    
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 2
+                        sourceComponent: Component { BatterySettings { session: root.session } }
+                    }
+                    
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 3
+                        sourceComponent: Component { GpuModeSettings { session: root.session } }
+                    }
+                    
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 4
+                        sourceComponent: Component { ProfilesSettings { session: root.session } }
+                    }
+                    
+                    SettingsPane {
+                        active: viewSwitcher.activeView === 5
+                        sourceComponent: Component { RgbSettings { session: root.session } }
                     }
                 }
             }
@@ -716,52 +466,90 @@ RowLayout {
     // COMPONENTS
     // =====================================================
 
+    component SettingsPane: Item {
+        property alias active: loader.active
+        property alias sourceComponent: loader.sourceComponent
+        
+        Layout.preferredWidth: viewSwitcher.width
+        Layout.preferredHeight: viewSwitcher.height
+        
+        Loader {
+            id: loader
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.large * 2
+        }
+    }
+
+    component ProgressBar: Item {
+        property real value: 0
+        property color barColor: Colours.palette.m3primary
+        property int barHeight: 8
+        
+        Layout.fillWidth: true
+        Layout.preferredHeight: barHeight
+        Layout.topMargin: Appearance.spacing.small
+
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.barHeight / 2
+            color: Colours.palette.m3surfaceContainerHighest
+        }
+
+        Rectangle {
+            width: parent.width * Math.min(1, Math.max(0, parent.value))
+            height: parent.barHeight
+            radius: height / 2
+            color: parent.barColor
+
+            Behavior on width {
+                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+            }
+        }
+    }
+
     component HardwareCard: StyledRect {
         id: cardRoot
 
         required property string icon
         required property string title
         required property string subtitle
-        property bool isActive: false
-
+        property bool isSelected: false
         default property alias content: contentLayout.children
 
         signal clicked()
 
         implicitHeight: cardLayout.implicitHeight + Appearance.padding.large * 2
         radius: Appearance.rounding.normal
-        color: Colours.tPalette.m3surfaceContainer
+        color: isSelected ? Colours.palette.m3surfaceContainerHighest: Colours.tPalette.m3surfaceContainer 
 
+        // Hover
         StateLayer {
             radius: cardRoot.radius
-            color: Colours.palette.m3onSurface
-            onClicked: {
-                cardRoot.clicked();
-            }
+            color: isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+            onClicked: cardRoot.clicked()
         }
 
         ColumnLayout {
             id: cardLayout
-
             anchors.fill: parent
             anchors.margins: Appearance.padding.large
             spacing: Appearance.spacing.normal
 
-            // Header
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Appearance.spacing.normal
 
+                // Bg icon
                 StyledRect {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: Appearance.rounding.small
-                    color: cardRoot.isActive ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+                    color: cardRoot.isSelected ? Colours.palette.m3secondary : Colours.palette.m3primaryContainer
 
                     MaterialIcon {
                         anchors.centerIn: parent
                         text: cardRoot.icon
-                        color: cardRoot.isActive ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
+                        color: cardRoot.isSelected ? Colours.palette.m3onSecondary : Colours.palette.m3onPrimaryContainer
                     }
                 }
 
@@ -773,24 +561,24 @@ RowLayout {
                         text: cardRoot.title
                         font.pointSize: Appearance.font.size.normal
                         font.weight: 600
+                        color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
                     }
 
                     StyledText {
                         Layout.fillWidth: true
                         text: cardRoot.subtitle
                         font.pointSize: Appearance.font.size.small
-                        color: Colours.palette.m3onSurfaceVariant
+                        color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
                         elide: Text.ElideRight
                     }
                 }
 
                 MaterialIcon {
                     text: "chevron_right"
-                    color: Colours.palette.m3onSurfaceVariant
+                    color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
                 }
             }
 
-            // Content area
             ColumnLayout {
                 id: contentLayout
                 Layout.fillWidth: true
@@ -831,41 +619,77 @@ RowLayout {
         }
     }
 
-    component ProfileButton: StyledRect {
-        id: profileBtn
+    // ToggleButton - matching style from Network/Bluetooth/Monitor
+    component ToggleButton: StyledRect {
+        id: toggleBtn
 
-        required property string icon
-        required property string label
-        property bool isActive: false
+        required property bool toggled
+        property string icon
+        property string label: ""
+        property string accent: "Secondary"
 
-        signal clicked()
+        function onClicked(): void {}
 
-        implicitHeight: 48
-        radius: Appearance.rounding.full
-        color: isActive ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+        Layout.preferredWidth: implicitWidth + (toggleStateLayer.pressed ? Appearance.padding.normal * 2 : toggled ? Appearance.padding.small * 2 : 0)
+        implicitWidth: toggleBtnInner.implicitWidth + Appearance.padding.large * 2
+        implicitHeight: toggleBtnIcon.implicitHeight + Appearance.padding.normal * 2
+
+        radius: toggled || toggleStateLayer.pressed ? Appearance.rounding.small : Math.min(width, height) / 2 * Math.min(1, Appearance.rounding.scale)
+        color: toggled ? Colours.palette[`m3${accent.toLowerCase()}`] : Colours.palette[`m3${accent.toLowerCase()}Container`]
 
         StateLayer {
-            radius: profileBtn.radius
-            color: isActive ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
-            onClicked: {
-                profileBtn.clicked();
+            id: toggleStateLayer
+
+            color: toggleBtn.toggled ? Colours.palette[`m3on${toggleBtn.accent}`] : Colours.palette[`m3on${toggleBtn.accent}Container`]
+
+            function onClicked(): void {
+                toggleBtn.onClicked();
             }
         }
 
         RowLayout {
+            id: toggleBtnInner
+
             anchors.centerIn: parent
-            spacing: Appearance.spacing.small
+            spacing: Appearance.spacing.normal
 
             MaterialIcon {
-                text: profileBtn.icon
-                color: profileBtn.isActive ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
+                id: toggleBtnIcon
+
+                visible: !!text
+                fill: toggleBtn.toggled ? 1 : 0
+                text: toggleBtn.icon
+                color: toggleBtn.toggled ? Colours.palette[`m3on${toggleBtn.accent}`] : Colours.palette[`m3on${toggleBtn.accent}Container`]
+                font.pointSize: Appearance.font.size.large
+
+                Behavior on fill {
+                    Anim {}
+                }
             }
 
-            StyledText {
-                text: profileBtn.label
-                font.pointSize: Appearance.font.size.small
-                font.weight: 500
-                color: profileBtn.isActive ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+            Loader {
+                asynchronous: true
+                active: !!toggleBtn.label
+                visible: active
+
+                sourceComponent: StyledText {
+                    text: toggleBtn.label
+                    color: toggleBtn.toggled ? Colours.palette[`m3on${toggleBtn.accent}`] : Colours.palette[`m3on${toggleBtn.accent}Container`]
+                }
+            }
+        }
+
+        Behavior on radius {
+            Anim {
+                duration: Appearance.anim.durations.expressiveFastSpatial
+                easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+            }
+        }
+
+        Behavior on Layout.preferredWidth {
+            Anim {
+                duration: Appearance.anim.durations.expressiveFastSpatial
+                easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
             }
         }
     }

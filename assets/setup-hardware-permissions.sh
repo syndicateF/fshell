@@ -75,10 +75,17 @@ polkit.addRule(function(action, subject) {
         if (cmdline.indexOf("echo") !== -1 && 
             (cmdline.indexOf("/sys/devices/system/cpu") !== -1 ||
              cmdline.indexOf("/sys/firmware/acpi/platform_profile") !== -1 ||
-             cmdline.indexOf("/sys/class/backlight") !== -1)) {
+             cmdline.indexOf("/sys/class/backlight") !== -1 ||
+             cmdline.indexOf("/sys/bus/platform/drivers/ideapad_acpi") !== -1)) {
             return polkit.Result.YES;
         }
         
+        // Allow tee to Lenovo ideapad sysfs
+        if (cmdline.indexOf("tee") !== -1 &&
+            cmdline.indexOf("/sys/bus/platform/drivers/ideapad_acpi") !== -1) {
+            return polkit.Result.YES;
+        }
+
         // Allow powerprofilesctl (usually doesn't need pkexec but just in case)
         if (cmdline.indexOf("powerprofilesctl") !== -1) {
             return polkit.Result.YES;
@@ -116,16 +123,10 @@ $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu*/cpufr
 # Platform Profile (ACPI)
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/firmware/acpi/platform_profile
 
-# Lenovo Conservation Mode (Battery Protection)
+# Lenovo Ideapad Features (Battery Protection, USB Charging, Fn Lock)
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/conservation_mode
-
-# RyzenAdj (TDP Control)
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj *
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj -i
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj --stapm-limit=*
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj --fast-limit=*
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj --slow-limit=*
-$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/ryzenadj --tctl-temp=*
+$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/usb_charging
+$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/fn_lock
 
 # envycontrol (GPU Switching)
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/envycontrol -s *
@@ -161,6 +162,9 @@ echo "  • CPU boost enable/disable"
 echo "  • CPU governor changes"
 echo "  • CPU energy performance preference"
 echo "  • Platform profile changes"
+echo "  • Lenovo battery conservation mode"
+echo "  • Lenovo USB charging toggle"
+echo "  • Lenovo Fn Lock toggle"
 echo ""
 read -p "Continue? [Y/n] " -n 1 -r
 echo ""

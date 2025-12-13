@@ -154,6 +154,8 @@ Singleton {
     readonly property int batteryPercent: batteryPercentInternal
     readonly property bool batteryCharging: batteryStatus === "Charging"
     readonly property bool batteryDischarging: batteryStatus === "Discharging"
+    readonly property bool batteryNotCharging: batteryStatus === "Not charging"  // Conservation mode active
+    readonly property bool batteryPluggedIn: batteryCharging || batteryNotCharging || batteryStatus === "Full"
     property bool batteryPresentInternal: false
     property string batteryStatusInternal: "Unknown"
     property int batteryPercentInternal: 0
@@ -188,41 +190,17 @@ Singleton {
     property bool hasConservationModeInternal: false
     property string conservationModeInternal: "0"
     
-    // =====================================================
-    // TDP PROPERTIES (AMD RyzenAdj)
-    // =====================================================
+    // Lenovo USB Charging (charge devices when laptop is off)
+    readonly property bool hasUsbCharging: hasUsbChargingInternal
+    readonly property bool usbCharging: usbChargingInternal === "1"
+    property bool hasUsbChargingInternal: false
+    property string usbChargingInternal: "0"
     
-    readonly property bool hasRyzenAdj: hasRyzenAdjInternal
-    property bool hasRyzenAdjInternal: false
-    
-    // TDP values (Watts)
-    readonly property real tdpStapmLimit: tdpStapmLimitInternal
-    readonly property real tdpStapmValue: tdpStapmValueInternal
-    readonly property real tdpFastLimit: tdpFastLimitInternal
-    readonly property real tdpFastValue: tdpFastValueInternal
-    readonly property real tdpSlowLimit: tdpSlowLimitInternal
-    readonly property real tdpSlowValue: tdpSlowValueInternal
-    property real tdpStapmLimitInternal: 0
-    property real tdpStapmValueInternal: 0
-    property real tdpFastLimitInternal: 0
-    property real tdpFastValueInternal: 0
-    property real tdpSlowLimitInternal: 0
-    property real tdpSlowValueInternal: 0
-    
-    // Thermal limit
-    readonly property real tdpThermalLimit: tdpThermalLimitInternal
-    readonly property real tdpThermalValue: tdpThermalValueInternal
-    property real tdpThermalLimitInternal: 100
-    property real tdpThermalValueInternal: 0
-    
-    // TDP presets
-    readonly property var tdpPresets: [
-        { name: "Silent", stapm: 15, fast: 20, slow: 18 },
-        { name: "Eco", stapm: 25, fast: 30, slow: 28 },
-        { name: "Balanced", stapm: 45, fast: 55, slow: 50 },
-        { name: "Performance", stapm: 65, fast: 80, slow: 75 },
-        { name: "Max", stapm: 80, fast: 90, slow: 85 }
-    ]
+    // Lenovo Fn Lock
+    readonly property bool hasFnLock: hasFnLockInternal
+    readonly property bool fnLock: fnLockInternal === "1"
+    property bool hasFnLockInternal: false
+    property string fnLockInternal: "0"
     
     // =====================================================
     // GPU MODE PROPERTIES (Optimus/envycontrol)
@@ -305,6 +283,14 @@ Singleton {
     readonly property string rgbCurrentMode: rgbCurrentModeInternal.trim()
     readonly property var rgbZones: ["left", "left_center", "right_center", "right"]
     readonly property var rgbColors: rgbColorsInternal  // Array of 4 colors for each zone
+    readonly property int rgbSpeed: rgbSpeedInternal
+    readonly property string rgbBreathingColor: rgbBreathingColorInternal
+    
+    // Mode capabilities
+    readonly property bool rgbModeSupportsSpeed: ["Breathing", "Rainbow Wave", "Spectrum Cycle"].includes(rgbCurrentModeInternal)
+    readonly property bool rgbModeSupportsColor: ["Direct", "Breathing"].includes(rgbCurrentModeInternal)
+    readonly property bool rgbModeIsZoned: rgbCurrentModeInternal === "Direct"
+    
     // Default to true for Lenovo Legion - will be validated on startup
     property bool hasRgbKeyboardInternal: true
     property bool rgbEnabledInternal: true
@@ -313,6 +299,14 @@ Singleton {
     property string rgbCurrentModeInternal: "Direct"
     property var rgbColorsInternal: ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"]
     property var rgbLastColors: ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"]  // Store colors when turning off
+    property int rgbSpeedInternal: 50
+    property string rgbBreathingColorInternal: "#FF0000"
+    
+    // Saved state for revert functionality
+    property string rgbSavedMode: "Direct"
+    property var rgbSavedColors: ["#FF0000", "#00FF00", "#0000FF", "#FF00FF"]
+    property int rgbSavedSpeed: 50
+    property string rgbSavedBreathingColor: "#FF0000"
     
     // RGB presets
     readonly property var rgbPresets: [
@@ -327,6 +321,14 @@ Singleton {
         { name: "Off", colors: ["#000000", "#000000", "#000000", "#000000"] }
     ]
     
+    // RGB Command Queue - prevents race conditions
+    property var rgbCommandQueue: []
+    property bool rgbCommandRunning: false
+    property bool rgbServerReady: false  // OpenRGB server running and ready
+    
+    // RGB Server connection state (internal use)
+    property int rgbServerStateInternal: 0  // 0=Disconnected, 1=Connecting, 2=Connected
+
     // =====================================================
     // DEFAULT VALUES (for reset functionality)
     // =====================================================
@@ -336,10 +338,6 @@ Singleton {
         cpuBoost: true,
         cpuGovernor: "powersave",
         cpuEpp: "balance_performance",
-        tdpStapm: 45,
-        tdpFast: 55,
-        tdpSlow: 50,
-        thermalLimit: 100,
         conservationMode: false,
         gpuPersistence: true,
         rgbMode: "direct",
@@ -362,12 +360,6 @@ Singleton {
         }
     }
     
-    function resetTdpToDefault(): void {
-        console.log("[Hardware] Resetting TDP to defaults");
-        setTdp(defaults.tdpStapm, defaults.tdpFast, defaults.tdpSlow);
-        setThermalLimit(defaults.thermalLimit);
-    }
-    
     function resetBatteryToDefault(): void {
         console.log("[Hardware] Resetting battery to defaults");
         setConservationMode(defaults.conservationMode);
@@ -382,12 +374,29 @@ Singleton {
         console.log("[Hardware] Resetting RGB to defaults");
         setRgbMode(defaults.rgbMode);
         setRgbColors(defaults.rgbColors);
+        // Save as new checkpoint
+        saveRgbState();
+    }
+    
+    function saveRgbState(): void {
+        console.log("[Hardware] Saving RGB state checkpoint");
+        rgbSavedMode = rgbCurrentModeInternal;
+        rgbSavedColors = rgbColorsInternal.slice();  // Clone array
+        rgbSavedSpeed = rgbSpeedInternal;
+        rgbSavedBreathingColor = rgbBreathingColorInternal;
+    }
+    
+    function revertRgbChanges(): void {
+        console.log("[Hardware] Reverting RGB to saved state");
+        setRgbMode(rgbSavedMode);
+        setRgbColors(rgbSavedColors);
+        setRgbSpeed(rgbSavedSpeed);
+        setRgbBreathingColor(rgbSavedBreathingColor);
     }
     
     function resetAllToDefault(): void {
         console.log("[Hardware] Resetting ALL settings to defaults");
         resetCpuToDefault();
-        resetTdpToDefault();
         resetBatteryToDefault();
         resetGpuToDefault();
         resetRgbToDefault();
@@ -478,32 +487,22 @@ Singleton {
         conservationModeProcess.running = true;
     }
     
-    // =====================================================
-    // FUNCTIONS - TDP (RyzenAdj)
-    // =====================================================
-    
-    function setTdp(stapm: int, fast: int, slow: int): void {
-        if (!hasRyzenAdj) return;
-        console.log("[Hardware] Setting TDP - STAPM:", stapm, "Fast:", fast, "Slow:", slow);
-        tdpProcess.command = ["sudo", "ryzenadj", 
-            "--stapm-limit=" + (stapm * 1000).toString(),
-            "--fast-limit=" + (fast * 1000).toString(),
-            "--slow-limit=" + (slow * 1000).toString()
+    function setUsbCharging(enabled: bool): void {
+        if (!hasUsbCharging) return;
+        console.log("[Hardware] Setting USB charging to:", enabled);
+        usbChargingProcess.command = ["sh", "-c", 
+            `echo "${enabled ? "1" : "0"}" | sudo tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/usb_charging > /dev/null`
         ];
-        tdpProcess.running = true;
+        usbChargingProcess.running = true;
     }
     
-    function setTdpPreset(presetIndex: int): void {
-        if (presetIndex < 0 || presetIndex >= tdpPresets.length) return;
-        const preset = tdpPresets[presetIndex];
-        setTdp(preset.stapm, preset.fast, preset.slow);
-    }
-    
-    function setThermalLimit(temp: int): void {
-        if (!hasRyzenAdj || temp < 60 || temp > 105) return;
-        console.log("[Hardware] Setting thermal limit to:", temp);
-        tdpThermalProcess.command = ["sudo", "ryzenadj", "--tctl-temp=" + temp.toString()];
-        tdpThermalProcess.running = true;
+    function setFnLock(enabled: bool): void {
+        if (!hasFnLock) return;
+        console.log("[Hardware] Setting Fn Lock to:", enabled);
+        fnLockProcess.command = ["sh", "-c", 
+            `echo "${enabled ? "1" : "0"}" | sudo tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/fn_lock > /dev/null`
+        ];
+        fnLockProcess.running = true;
     }
     
     // =====================================================
@@ -559,8 +558,46 @@ Singleton {
     }
     
     // =====================================================
-    // FUNCTIONS - RGB KEYBOARD
+    // FUNCTIONS - RGB KEYBOARD (Queue-based to prevent race conditions)
     // =====================================================
+    
+    // Queue a command and process it
+    function queueRgbCommand(cmd: var, priority: bool): void {
+        const cmdStr = cmd.join(" ");
+        const isMode = cmdStr.includes("-m ");
+        const isBrightness = cmdStr.includes("-b ");
+        const isColor = cmdStr.includes("-c ");
+        
+        // Deduplicate: remove older commands of same type
+        if (isMode) {
+            rgbCommandQueue = rgbCommandQueue.filter(c => !c.join(" ").includes("-m "));
+        } else if (isBrightness) {
+            rgbCommandQueue = rgbCommandQueue.filter(c => !c.join(" ").includes("-b "));
+        } else if (isColor) {
+            // Remove older color commands
+            rgbCommandQueue = rgbCommandQueue.filter(c => !c.join(" ").includes("-c "));
+        }
+        
+        // Add to queue
+        if (priority) {
+            rgbCommandQueue.unshift(cmd);
+        } else {
+            rgbCommandQueue.push(cmd);
+        }
+        
+        processRgbQueue();
+    }
+    
+    // Process the queue - only run one command at a time
+    function processRgbQueue(): void {
+        if (rgbCommandRunning || rgbCommandQueue.length === 0 || !rgbServerReady) return;
+        
+        rgbCommandRunning = true;
+        const cmd = rgbCommandQueue.shift();
+        console.log("[Hardware] Running RGB command:", cmd.join(" "));
+        rgbProcess.command = cmd;
+        rgbProcess.running = true;
+    }
     
     function setRgbEnabled(enabled: bool): void {
         if (!hasRgbKeyboard) return;
@@ -584,40 +621,49 @@ Singleton {
     
     function setRgbMode(mode: string): void {
         if (!hasRgbKeyboard) return;
-        console.log("[Hardware] Setting RGB mode to:", mode);
+        console.log("[Hardware] Queueing RGB mode:", mode);
         rgbCurrentModeInternal = mode;
-        rgbModeProcess.command = ["openrgb", "-d", "0", "-m", mode];
-        rgbModeProcess.running = true;
+        // Priority command - goes to front of queue
+        queueRgbCommand(["openrgb", "-d", "0", "-m", mode], true);
     }
     
     function setRgbColor(zoneIndex: int, color: string): void {
         if (!hasRgbKeyboard || zoneIndex < 0 || zoneIndex > 3) return;
-        console.log("[Hardware] Setting RGB zone", zoneIndex, "to:", color);
-        // Update internal colors array
+        // Ensure color has # prefix for internal storage
+        const normalizedColor = color.startsWith("#") ? color : "#" + color;
+        console.log("[Hardware] Queueing RGB zone", zoneIndex, "color:", normalizedColor);
+        // Update internal colors array immediately for UI responsiveness
         let newColors = [...rgbColorsInternal];
-        newColors[zoneIndex] = color;
+        newColors[zoneIndex] = normalizedColor;
         rgbColorsInternal = newColors;
         if (rgbEnabled) rgbLastColors = [...newColors];
-        // Apply via openrgb
-        const colorHex = color.replace("#", "");
-        rgbColorProcess.command = ["openrgb", "-d", "0", "-z", zoneIndex.toString(), "-c", colorHex];
-        rgbColorProcess.running = true;
+        
+        // If not in Direct mode, queue mode change first
+        if (rgbCurrentModeInternal !== "Direct") {
+            rgbCurrentModeInternal = "Direct";
+            queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
+        }
+        
+        // Device has 1 zone with 4 LEDs - must set all colors at once
+        const colorString = newColors.map(c => c.replace("#", "")).join(",");
+        queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
     }
     
     function setRgbColors(colors: var): void {
         if (!hasRgbKeyboard || colors.length !== 4) return;
-        console.log("[Hardware] Setting all RGB colors");
+        console.log("[Hardware] Queueing all RGB colors");
         rgbColorsInternal = colors;
         // Only save to lastColors if not turning off
         const isOff = colors.every(c => c === "#000000");
         if (!isOff) rgbLastColors = [...colors];
-        // Build command to set all zones at once
-        const cmd = ["openrgb", "-d", "0"];
-        for (let i = 0; i < 4; i++) {
-            cmd.push("-z", i.toString(), "-c", colors[i].replace("#", ""));
-        }
-        rgbAllColorsProcess.command = cmd;
-        rgbAllColorsProcess.running = true;
+        rgbCurrentModeInternal = "Direct";
+        
+        // Queue mode change first (priority)
+        queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
+        
+        // Build comma-separated color string for all 4 LEDs
+        const colorString = colors.map(c => c.replace("#", "")).join(",");
+        queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
     }
     
     function setRgbPreset(presetIndex: int): void {
@@ -634,17 +680,33 @@ Singleton {
         }
     }
     
-    function setRgbBrightness(brightness: int): void {
-        if (!hasRgbKeyboard || brightness < 0 || brightness > 100) return;
-        console.log("[Hardware] Setting RGB brightness to:", brightness);
-        rgbBrightnessProcess.command = ["openrgb", "-d", "0", "-b", brightness.toString()];
-        rgbBrightnessProcess.running = true;
+    function setRgbSpeed(speed: int): void {
+        if (!hasRgbKeyboard || speed < 0 || speed > 100) return;
+        rgbSpeedInternal = speed;
+        console.log("[Hardware] Queueing RGB speed:", speed);
+        if (rgbModeSupportsSpeed) {
+            queueRgbCommand(["openrgb", "-d", "0", "-m", rgbCurrentModeInternal, "-s", speed.toString()], false);
+        }
+    }
+    
+    function setRgbBreathingColor(color: string): void {
+        if (!hasRgbKeyboard) return;
+        rgbBreathingColorInternal = color;
+        console.log("[Hardware] Setting breathing color:", color);
+        if (rgbCurrentModeInternal === "Breathing") {
+            queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-c", color.replace("#", "")], false);
+        }
     }
     
     function refreshRgb(): void {
-        rgbCheckProcess.running = true;
+        // Reconnect to OpenRGB server if disconnected
+        if (!rgbServerReady && !rgbConnectProcess.running) {
+            console.log("[Hardware] Reconnecting to OpenRGB server...");
+            rgbServerStateInternal = 1;  // Connecting
+            rgbConnectProcess.running = true;
+        }
     }
-    
+
     // =====================================================
     // REFRESH FUNCTIONS
     // =====================================================
@@ -661,10 +723,9 @@ Singleton {
         refreshPlatformProfile();
         refreshGpuInfo();
         refreshBattery();
-        refreshTdp();
         refreshGpuMode();
         refreshGpuProcesses();
-        refreshRgb();
+        // Note: refreshRgb() is called from shell.qml on startup
     }
     
     function refreshCpuInfo(): void {
@@ -716,10 +777,7 @@ Singleton {
     function refreshBattery(): void {
         batteryProcess.running = true;
         conservationModeReadProcess.running = true;
-    }
-    
-    function refreshTdp(): void {
-        ryzenAdjCheckProcess.running = true;
+        lenovoFeaturesReadProcess.running = true;
     }
     
     function refreshGpuMode(): void {
@@ -1175,72 +1233,36 @@ Singleton {
         }
     }
     
-    // =====================================================
-    // PROCESSES - TDP (RyzenAdj)
-    // =====================================================
-    
+    // Read all Lenovo features at once (USB charging and Fn Lock)
     Process {
-        id: ryzenAdjCheckProcess
-        command: ["which", "ryzenadj"]
-        onExited: (code, status) => {
-            root.hasRyzenAdjInternal = code === 0;
-            if (code === 0) {
-                tdpReadProcess.running = true;
-            }
-        }
-    }
-    
-    Process {
-        id: tdpReadProcess
-        command: ["sudo", "ryzenadj", "-i"]
+        id: lenovoFeaturesReadProcess
+        command: ["sh", "-c", "usb=$(cat /sys/bus/platform/drivers/ideapad_acpi/VPC*/usb_charging 2>/dev/null); fn=$(cat /sys/bus/platform/drivers/ideapad_acpi/VPC*/fn_lock 2>/dev/null); echo \"${usb:-x}|${fn:-x}\""]
         stdout: SplitParser {
-            splitMarker: ""
             onRead: data => {
-                const lines = data.split("\n");
-                for (const line of lines) {
-                    if (line.includes("STAPM LIMIT")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpStapmLimitInternal = parseFloat(match[1]);
-                    } else if (line.includes("STAPM VALUE")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpStapmValueInternal = parseFloat(match[1]);
-                    } else if (line.includes("PPT LIMIT FAST")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpFastLimitInternal = parseFloat(match[1]);
-                    } else if (line.includes("PPT VALUE FAST")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpFastValueInternal = parseFloat(match[1]);
-                    } else if (line.includes("PPT LIMIT SLOW") && !line.includes("APU")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpSlowLimitInternal = parseFloat(match[1]);
-                    } else if (line.includes("PPT VALUE SLOW") && !line.includes("APU")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpSlowValueInternal = parseFloat(match[1]);
-                    } else if (line.includes("THM LIMIT CORE")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpThermalLimitInternal = parseFloat(match[1]);
-                    } else if (line.includes("THM VALUE CORE")) {
-                        const match = line.match(/\|\s*([\d.]+)/);
-                        if (match) root.tdpThermalValueInternal = parseFloat(match[1]);
-                    }
+                const parts = data.split("|");
+                if (parts.length >= 2) {
+                    root.hasUsbChargingInternal = parts[0] !== "x";
+                    root.usbChargingInternal = parts[0] !== "x" ? parts[0].trim() : "0";
+                    root.hasFnLockInternal = parts[1] !== "x";
+                    root.fnLockInternal = parts[1] !== "x" ? parts[1].trim() : "0";
                 }
             }
         }
     }
     
     Process {
-        id: tdpProcess
+        id: usbChargingProcess
         onExited: (code, status) => {
-            console.log("[Hardware] TDP set, exit code:", code);
-            Qt.callLater(root.refreshTdp);
+            console.log("[Hardware] USB charging set, exit code:", code);
+            Qt.callLater(root.refreshBattery);
         }
     }
     
     Process {
-        id: tdpThermalProcess
+        id: fnLockProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Thermal limit set, exit code:", code);
-            Qt.callLater(root.refreshTdp);
+            console.log("[Hardware] Fn Lock set, exit code:", code);
+            Qt.callLater(root.refreshBattery);
         }
     }
     
@@ -1342,70 +1364,74 @@ Singleton {
     }
     
     // =====================================================
-    // PROCESSES - RGB KEYBOARD
+    // PROCESSES - RGB KEYBOARD (Simplified - systemd manages server)
     // =====================================================
     
+    // Connect to OpenRGB server (expects systemd service running)
     Process {
-        id: rgbCheckProcess
-        command: ["openrgb", "--list-devices"]
+        id: rgbConnectProcess
+        command: ["timeout", "2", "openrgb", "--list-devices"]
         property string outputBuffer: ""
         
         stdout: SplitParser {
             onRead: data => {
-                rgbCheckProcess.outputBuffer += data.toString();
+                rgbConnectProcess.outputBuffer += data.toString();
             }
         }
         
         onExited: (exitCode, exitStatus) => {
-            const output = rgbCheckProcess.outputBuffer.toLowerCase();
-            console.log("[Hardware] OpenRGB output length:", output.length, "exit:", exitCode);
-            rgbCheckProcess.outputBuffer = "";
+            const output = rgbConnectProcess.outputBuffer.toLowerCase();
+            rgbConnectProcess.outputBuffer = "";
             
             if (exitCode === 0 && (output.includes("lenovo") || output.includes("4-zone") || output.includes("keyboard"))) {
-                console.log("[Hardware] RGB keyboard detected!");
+                // Connected successfully!
+                console.log("[Hardware] Connected to OpenRGB server!");
                 root.hasRgbKeyboardInternal = true;
+                root.rgbServerReady = true;
+                root.rgbServerStateInternal = 2;  // Connected
                 
-                // Extract device name from output like "0: Lenovo 5 2021"
+                // Extract device name
                 const lines = output.split("\n");
                 for (const line of lines) {
                     if (line.includes("0:")) {
                         const match = line.match(/0:\s*(.+)/);
-                        if (match) {
-                            root.rgbDeviceNameInternal = match[1].trim();
-                        }
+                        if (match) root.rgbDeviceNameInternal = match[1].trim();
                         break;
                     }
                 }
+                
+                // FORCE SYNC: Apply current colors to keyboard
+                console.log("[Hardware] Syncing RGB state to keyboard...");
+                if (root.rgbEnabledInternal) {
+                    root.queueRgbCommand(["openrgb", "-d", "0", "-m", root.rgbCurrentModeInternal], true);
+                    const colorString = root.rgbColorsInternal.map(c => c.replace("#", "")).join(",");
+                    root.queueRgbCommand(["openrgb", "-d", "0", "-c", colorString], false);
+                } else {
+                    root.queueRgbCommand(["openrgb", "-d", "0", "-m", "Direct"], true);
+                    root.queueRgbCommand(["openrgb", "-d", "0", "-c", "000000,000000,000000,000000"], false);
+                }
+                
+                Qt.callLater(root.processRgbQueue);
             } else {
-                console.log("[Hardware] No RGB keyboard found or OpenRGB not available");
+                // Server not available
+                console.log("[Hardware] OpenRGB server not available. Start with: systemctl --user start openrgb-server");
                 root.hasRgbKeyboardInternal = false;
+                root.rgbServerReady = false;
+                root.rgbServerStateInternal = 0;  // Disconnected
             }
         }
     }
     
+    // RGB command executor
     Process {
-        id: rgbModeProcess
-        // Command set dynamically
+        id: rgbProcess
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
-                console.log("[Hardware] Failed to set RGB mode");
+                console.log("[Hardware] RGB command failed with code:", exitCode);
             }
+            root.rgbCommandRunning = false;
+            Qt.callLater(root.processRgbQueue);
         }
-    }
-    
-    Process {
-        id: rgbColorProcess
-        // Command set dynamically
-    }
-    
-    Process {
-        id: rgbAllColorsProcess
-        // Command set dynamically
-    }
-    
-    Process {
-        id: rgbBrightnessProcess
-        // Command set dynamically
     }
     
     // =====================================================
@@ -1443,7 +1469,6 @@ Singleton {
             root.refreshCpuEpp();
             root.refreshPowerProfile();
             root.refreshPlatformProfile();
-            root.refreshTdp();
             root.refreshGpuMode();
         }
     }

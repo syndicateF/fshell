@@ -28,7 +28,7 @@ Item {
             anchors.right: parent.right
             spacing: Appearance.spacing.normal
 
-            // Header
+            // Battery Icon & Percentage
             MaterialIcon {
                 Layout.alignment: Qt.AlignHCenter
                 text: Hardware.batteryCharging ? "battery_charging_full" : 
@@ -50,8 +50,24 @@ Item {
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: Hardware.batteryStatus
-                color: Hardware.batteryCharging ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                text: {
+                    if (Hardware.batteryNotCharging && Hardware.conservationMode) {
+                        return qsTr("Conservation Mode Active")
+                    }
+                    return Hardware.batteryStatus
+                }
+                color: Hardware.batteryCharging ? Colours.palette.m3primary : 
+                       Hardware.batteryNotCharging ? Colours.palette.m3tertiary : 
+                       Colours.palette.m3onSurfaceVariant
+            }
+            
+            // Conservation mode explanation when active and battery > 60%
+            StyledText {
+                Layout.alignment: Qt.AlignHCenter
+                visible: Hardware.conservationMode && Hardware.batteryPercent > 60
+                text: qsTr("Battery will drain to 60% before charging resumes")
+                font.pointSize: Appearance.font.size.small
+                color: Colours.palette.m3onSurfaceVariant
             }
             
             // Reset to Default button
@@ -322,9 +338,46 @@ Item {
                             }
                         }
                     }
+                    
+                    // USB Charging when laptop is off
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Appearance.spacing.normal
+                        visible: Hardware.hasUsbCharging
+                        spacing: Appearance.spacing.normal
+
+                        MaterialIcon {
+                            text: "usb"
+                            font.pointSize: Appearance.font.size.extraLarge
+                            color: Hardware.usbCharging ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+
+                            StyledText {
+                                text: qsTr("Always-on USB Charging")
+                                font.weight: 500
+                            }
+
+                            StyledText {
+                                Layout.fillWidth: true
+                                text: qsTr("Charge USB devices even when laptop is off or in sleep mode")
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                                wrapMode: Text.Wrap
+                            }
+                        }
+
+                        StyledSwitch {
+                            checked: Hardware.usbCharging
+                            onToggled: Hardware.setUsbCharging(checked)
+                        }
+                    }
                 }
             }
-
+            
             // =====================================================
             // Battery Info Section
             // =====================================================

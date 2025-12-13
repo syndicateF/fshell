@@ -4,6 +4,7 @@ import ".."
 import qs.components
 import qs.components.controls
 import qs.components.containers
+import qs.components.effects
 import qs.config
 import qs.services
 import QtQuick
@@ -13,7 +14,6 @@ Item {
     id: root
     required property Session session
     property int selectedZone: -1
-    implicitWidth: 400
 
     function getContrastColor(hexColor: string): color {
         if (!hexColor || hexColor.length < 7) return "#FFFFFF";
@@ -54,24 +54,14 @@ Item {
             // Subtitle
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: Hardware.rgbDeviceName || "OpenRGB"
+                text: qsTr("4-Zone Lighting Control")
                 color: Colours.palette.m3onSurfaceVariant
-                elide: Text.ElideMiddle
-                Layout.maximumWidth: parent.width - 20
-            }
-
-            // Reset Button
-            IconTextButton {
-                Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Reset")
-                icon: "restart_alt"
-                visible: Hardware.hasRgbKeyboard
-                onClicked: Hardware.resetRgbToDefault()
+                font.pointSize: Appearance.font.size.small
             }
 
             // Not Available Warning
             ColumnLayout {
-                Layout.fillWidth: true
+                width: mainCol.width
                 Layout.topMargin: 20
                 visible: !Hardware.hasRgbKeyboard
                 spacing: 10
@@ -84,33 +74,40 @@ Item {
                 }
                 StyledText {
                     Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("RGB not detected")
+                    text: qsTr("RGB keyboard not detected")
                     color: Colours.palette.m3error
                 }
             }
 
             // ========== MAIN CONTENT ==========
             ColumnLayout {
-                Layout.fillWidth: true
+                width: mainCol.width
                 visible: Hardware.hasRgbKeyboard
                 spacing: Appearance.spacing.normal
 
-                // Toggle Card
+                // Toggle Card - RGB ON/OFF
                 StyledRect {
                     Layout.fillWidth: true
                     implicitHeight: 70
                     radius: Appearance.rounding.normal
-                    color: Hardware.rgbEnabled ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainer
+                    color: Hardware.rgbEnabled ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 15
+                        anchors.margins: Appearance.padding.large
+
+                        MaterialIcon {
+                            text: "keyboard"
+                            font.pointSize: Appearance.font.size.large
+                            color: Hardware.rgbEnabled ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                        }
 
                         StyledText {
                             Layout.fillWidth: true
                             text: qsTr("RGB Lighting")
                             font.pointSize: Appearance.font.size.larger
-                            font.weight: 600
+                            font.weight: 500
+                            color: Hardware.rgbEnabled ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
                         }
 
                         StyledSwitch {
@@ -120,250 +117,332 @@ Item {
                     }
                 }
 
-                // Mode Selection
+                // ========== MODE SELECTION (GRID) ==========
                 StyledText {
-                    Layout.topMargin: 10
+                    Layout.topMargin: Appearance.spacing.large
                     text: qsTr("Mode")
                     font.pointSize: Appearance.font.size.larger
                     font.weight: 500
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
                 }
 
-                StyledRect {
+                // Mode Grid - 2 columns
+                Grid {
                     Layout.fillWidth: true
-                    implicitHeight: modeCol.height + 20
-                    radius: Appearance.rounding.normal
-                    color: Colours.tPalette.m3surfaceContainer
+                    columns: 2
+                    spacing: Appearance.spacing.small
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
 
-                    Column {
-                        id: modeCol
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.margins: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 5
+                    Repeater {
+                        model: Hardware.rgbModes
 
-                        Repeater {
-                            model: Hardware.rgbModes
-                            delegate: Rectangle {
-                                width: modeCol.width
-                                height: 45
-                                radius: 8
-                                color: Hardware.rgbCurrentMode === modelData ? Colours.palette.m3primaryContainer : "transparent"
-                                required property string modelData
+                        StyledRect {
+                            width: (mainCol.width - Appearance.spacing.small) / 2
+                            height: 56
+                            radius: Appearance.rounding.normal
+                            color: Hardware.rgbCurrentMode === modelData ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHighest
+                            required property string modelData
 
-                                StyledText {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.leftMargin: 15
-                                    anchors.rightMargin: 15
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData
-                                    elide: Text.ElideRight
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: Appearance.padding.normal
+                                spacing: Appearance.spacing.normal
+
+                                MaterialIcon {
+                                    text: {
+                                        switch (modelData) {
+                                            case "Direct": return "palette";
+                                            case "Breathing": return "air";
+                                            case "Rainbow Wave": return "waves";
+                                            case "Spectrum Cycle": return "colorize";
+                                            default: return "light_mode";
+                                        }
+                                    }
+                                    font.pointSize: Appearance.font.size.large
+                                    color: Hardware.rgbCurrentMode === modelData ? 
+                                           Colours.palette.m3onPrimaryContainer : 
+                                           Colours.palette.m3onSurface
                                 }
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    enabled: Hardware.rgbEnabled
-                                    onClicked: Hardware.setRgbMode(modelData)
+                                StyledText {
+                                    Layout.fillWidth: true
+                                    text: modelData
+                                    font.pointSize: Appearance.font.size.normal
+                                    elide: Text.ElideRight
+                                    color: Hardware.rgbCurrentMode === modelData ? 
+                                           Colours.palette.m3onPrimaryContainer : 
+                                           Colours.palette.m3onSurface
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: Hardware.rgbEnabled
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Hardware.setRgbMode(modelData)
+                            }
+                        }
+                    }
+                }
+
+                // ========== SPEED SLIDER (for animated modes) ==========
+                StyledText {
+                    Layout.topMargin: Appearance.spacing.large
+                    text: qsTr("Animation Speed") + " - " + Math.round(speedSlider.value) + "%"
+                    font.pointSize: Appearance.font.size.larger
+                    font.weight: 500
+                    visible: Hardware.rgbModeSupportsSpeed && Hardware.rgbEnabled
+                }
+
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: 60
+                    radius: Appearance.rounding.normal
+                    color: Colours.palette.m3surfaceContainerHighest
+                    visible: Hardware.rgbModeSupportsSpeed && Hardware.rgbEnabled
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 15
+
+                        MaterialIcon {
+                            text: "slow_motion_video"
+                            font.pointSize: Appearance.font.size.large
+                            color: Colours.palette.m3onSurface
+                        }
+
+                        StyledSlider {
+                            id: speedSlider
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            from: 0
+                            to: 100
+                            value: Hardware.rgbSpeed
+                            onMoved: Hardware.setRgbSpeed(Math.round(value))
+                        }
+
+                        MaterialIcon {
+                            text: "speed"
+                            font.pointSize: Appearance.font.size.large
+                            color: Colours.palette.m3onSurface
+                        }
+                    }
+                }
+
+                // ========== BREATHING COLOR (for Breathing mode) ==========
+                StyledText {
+                    Layout.topMargin: Appearance.spacing.large
+                    text: qsTr("Breathing Color")
+                    font.pointSize: Appearance.font.size.larger
+                    font.weight: 500
+                    visible: Hardware.rgbCurrentMode === "Breathing" && Hardware.rgbEnabled
+                }
+
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: breathingColorContent.height + Appearance.padding.large * 2
+                    radius: Appearance.rounding.normal
+                    color: Colours.palette.m3surfaceContainerHighest
+                    visible: Hardware.rgbCurrentMode === "Breathing" && Hardware.rgbEnabled
+
+                    ColumnLayout {
+                        id: breathingColorContent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: Appearance.padding.large
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Appearance.spacing.normal
+
+                        // Color picker grid
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.small
+
+                            Repeater {
+                                model: ["#FF0000", "#FF4400", "#FF8800", "#FFBB00", "#FFFF00",
+                                        "#88FF00", "#00FF00", "#00FF88", "#00FFFF", "#0088FF",
+                                        "#0000FF", "#4400FF", "#8800FF", "#FF00FF", "#FF0088",
+                                        "#FFFFFF"]
+
+                                Rectangle {
+                                    width: 36
+                                    height: 36
+                                    radius: Appearance.rounding.small
+                                    color: modelData
+                                    border.width: Hardware.rgbBreathingColor.toUpperCase() === modelData ? 3 : 1
+                                    border.color: Hardware.rgbBreathingColor.toUpperCase() === modelData ? Colours.palette.m3primary : Colours.palette.m3outline
+                                    required property string modelData
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: Hardware.setRgbBreathingColor(modelData)
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Zone Colors Title
+                // ========== ZONE COLORS (for Direct mode) ==========
                 StyledText {
-                    Layout.topMargin: 10
+                    Layout.topMargin: Appearance.spacing.large
                     text: qsTr("Zone Colors")
                     font.pointSize: Appearance.font.size.larger
                     font.weight: 500
+                    visible: Hardware.rgbModeIsZoned
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
                 }
 
-                // ========== ZONE COLORS - USING FIXED WIDTH ==========
-                StyledRect {
+                // Zone Colors Grid - 4 columns
+                Grid {
                     Layout.fillWidth: true
-                    implicitHeight: 70
-                    radius: Appearance.rounding.normal
-                    color: Colours.tPalette.m3surfaceContainer
+                    columns: 4
+                    spacing: Appearance.spacing.small
+                    visible: Hardware.rgbModeIsZoned
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
 
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: 5
-                        spacing: 5
+                    Repeater {
+                        model: [
+                            { zone: 0, name: "Left", fallback: "#FF0000" },
+                            { zone: 1, name: "L-Mid", fallback: "#00FF00" },
+                            { zone: 2, name: "R-Mid", fallback: "#0000FF" },
+                            { zone: 3, name: "Right", fallback: "#FF00FF" }
+                        ]
 
-                        // Zone 0
                         Rectangle {
-                            width: 80
-                            height: parent.height
-                            radius: 8
-                            color: Hardware.rgbColors[0] || "#FF0000"
-                            border.width: root.selectedZone === 0 ? 3 : 0
+                            width: (mainCol.width - Appearance.spacing.small * 3) / 4
+                            height: 56
+                            radius: Appearance.rounding.normal
+                            color: Hardware.rgbColors[modelData.zone] || modelData.fallback
+                            border.width: root.selectedZone === modelData.zone ? 3 : 0
                             border.color: Colours.palette.m3primary
+                            required property var modelData
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "Left"
+                                text: modelData.name
                                 font.bold: true
-                                font.pixelSize: 12
+                                font.pixelSize: Appearance.font.size.normal
                                 color: root.getContrastColor(parent.color.toString())
                             }
+
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: root.selectedZone = root.selectedZone === 0 ? -1 : 0
-                            }
-                        }
-
-                        // Zone 1
-                        Rectangle {
-                            width: 80
-                            height: parent.height
-                            radius: 8
-                            color: Hardware.rgbColors[1] || "#00FF00"
-                            border.width: root.selectedZone === 1 ? 3 : 0
-                            border.color: Colours.palette.m3primary
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "L-Mid"
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: root.getContrastColor(parent.color.toString())
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: root.selectedZone = root.selectedZone === 1 ? -1 : 1
-                            }
-                        }
-
-                        // Zone 2
-                        Rectangle {
-                            width: 80
-                            height: parent.height
-                            radius: 8
-                            color: Hardware.rgbColors[2] || "#0000FF"
-                            border.width: root.selectedZone === 2 ? 3 : 0
-                            border.color: Colours.palette.m3primary
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "R-Mid"
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: root.getContrastColor(parent.color.toString())
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: root.selectedZone = root.selectedZone === 2 ? -1 : 2
-                            }
-                        }
-
-                        // Zone 3
-                        Rectangle {
-                            width: 80
-                            height: parent.height
-                            radius: 8
-                            color: Hardware.rgbColors[3] || "#FF00FF"
-                            border.width: root.selectedZone === 3 ? 3 : 0
-                            border.color: Colours.palette.m3primary
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: "Right"
-                                font.bold: true
-                                font.pixelSize: 12
-                                color: root.getContrastColor(parent.color.toString())
-                            }
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: root.selectedZone = root.selectedZone === 3 ? -1 : 3
-                            }
-                        }
-                    }
-                }
-
-                // Quick Color Picker (when zone selected)
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    visible: root.selectedZone >= 0 && Hardware.rgbEnabled
-                    spacing: 8
-
-                    StyledText {
-                        text: qsTr("Pick color for Zone %1").arg(root.selectedZone + 1)
-                        font.weight: 500
-                    }
-
-                    // Color Grid - Fixed size boxes
-                    Flow {
-                        spacing: 8
-
-                        Repeater {
-                            model: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", 
-                                    "#00FFFF", "#FFFFFF", "#FF8800", "#8800FF", "#00FF88"]
-                            
-                            Rectangle {
-                                width: 45
-                                height: 45
-                                radius: 8
-                                color: modelData
-                                border.width: 2
-                                border.color: "#666666"
-                                required property string modelData
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    onClicked: Hardware.setRgbColor(root.selectedZone, modelData.substring(1))
+                                enabled: Hardware.rgbEnabled
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (root.selectedZone === modelData.zone) {
+                                        root.selectedZone = -1;
+                                    } else {
+                                        root.selectedZone = modelData.zone;
+                                    }
                                 }
                             }
                         }
                     }
                 }
 
-                // Presets
+                // Zone Color Picker (when zone selected)
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: zoneColorPickerContent.height + Appearance.padding.large * 2
+                    radius: Appearance.rounding.normal
+                    color: Colours.palette.m3surfaceContainerHighest
+                    visible: root.selectedZone >= 0 && Hardware.rgbEnabled && Hardware.rgbModeIsZoned
+
+                    ColumnLayout {
+                        id: zoneColorPickerContent
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: Appearance.padding.large
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 10
+
+                        StyledText {
+                            text: qsTr("Pick color for Zone %1").arg(root.selectedZone + 1)
+                            font.weight: 500
+                        }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.small
+
+                            Repeater {
+                                model: ["#FF0000", "#FF4400", "#FF8800", "#FFBB00", "#FFFF00",
+                                        "#88FF00", "#00FF00", "#00FF88", "#00FFFF", "#0088FF",
+                                        "#0000FF", "#4400FF", "#8800FF", "#FF00FF", "#FF0088",
+                                        "#FFFFFF"]
+
+                                Rectangle {
+                                    width: 36
+                                    height: 36
+                                    radius: Appearance.rounding.small
+                                    color: modelData
+                                    border.width: 1
+                                    border.color: Colours.palette.m3outline
+                                    required property string modelData
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            Hardware.setRgbColor(root.selectedZone, modelData);
+                                            root.selectedZone = -1; // Deselect after picking
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ========== PRESETS ==========
                 StyledText {
-                    Layout.topMargin: 15
-                    text: qsTr("Presets")
+                    Layout.topMargin: Appearance.spacing.large
+                    text: qsTr("Quick Presets")
                     font.pointSize: Appearance.font.size.larger
                     font.weight: 500
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
                 }
 
-                Flow {
+                Grid {
                     Layout.fillWidth: true
-                    spacing: 8
+                    columns: 3
+                    spacing: Appearance.spacing.small
                     opacity: Hardware.rgbEnabled ? 1 : 0.5
 
                     Repeater {
                         model: Hardware.rgbPresets
 
-                        Rectangle {
-                            width: 100
-                            height: 55
-                            radius: 8
-                            color: Colours.tPalette.m3surfaceContainer
+                        StyledRect {
+                            width: (mainCol.width - Appearance.spacing.small * 2) / 3
+                            height: 60
+                            radius: Appearance.rounding.normal
+                            color: Colours.palette.m3surfaceContainerHighest
                             required property var modelData
                             required property int index
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 3
+                                spacing: Appearance.spacing.smaller
 
                                 Row {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     spacing: 2
+
                                     Repeater {
                                         model: 4
+
                                         Rectangle {
-                                            width: 14
-                                            height: 14
-                                            radius: 3
+                                            width: 16
+                                            height: 16
+                                            radius: 4
                                             required property int index
                                             color: {
                                                 var c = modelData.colors;
-                                                return c && c[index] ? "#" + c[index] : "#888"
+                                                return c && c[index] ? c[index] : "#888";
                                             }
                                         }
                                     }
@@ -372,7 +451,7 @@ Item {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: modelData.name || "Preset"
-                                    font.pixelSize: 10
+                                    font.pixelSize: Appearance.font.size.small
                                     color: Colours.palette.m3onSurface
                                 }
                             }
@@ -380,14 +459,235 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 enabled: Hardware.rgbEnabled
-                                onClicked: Hardware.applyRgbPreset(index)
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: Hardware.setRgbPreset(index)
                             }
                         }
                     }
                 }
 
-                Item { Layout.preferredHeight: 30 }
+                // Bottom padding for FAB
+                Item { Layout.preferredHeight: 80 }
             }
         }
+    }
+
+    // =====================================================
+    // FAB Menu for quick actions (like Monitor)
+    // =====================================================
+    ColumnLayout {
+        anchors.right: fabRoot.right
+        anchors.bottom: fabRoot.top
+        anchors.bottomMargin: Appearance.padding.normal
+        visible: Hardware.hasRgbKeyboard
+
+        Repeater {
+            id: fabMenu
+
+            model: ListModel {
+                ListElement {
+                    name: "revert"
+                    icon: "undo"
+                    action: "revert"
+                }
+                ListElement {
+                    name: "reset"
+                    icon: "restart_alt"
+                    action: "reset"
+                }
+            }
+
+            StyledClippingRect {
+                id: fabMenuItem
+
+                required property var modelData
+                required property int index
+
+                readonly property bool isRevert: modelData.action === "revert"
+                readonly property bool isReset: modelData.action === "reset"
+
+                Layout.alignment: Qt.AlignRight
+
+                implicitHeight: fabMenuItemInner.implicitHeight + Appearance.padding.larger * 2
+
+                radius: Appearance.rounding.full
+                color: isReset ? Colours.palette.m3errorContainer : Colours.palette.m3secondaryContainer
+
+                opacity: 0
+
+                states: State {
+                    name: "visible"
+                    when: root.session.hw.fabMenuOpen
+
+                    PropertyChanges {
+                        fabMenuItem.implicitWidth: fabMenuItemInner.implicitWidth + Appearance.padding.large * 2
+                        fabMenuItem.opacity: 1
+                        fabMenuItemInner.opacity: 1
+                    }
+                }
+
+                transitions: [
+                    Transition {
+                        to: "visible"
+
+                        SequentialAnimation {
+                            PauseAnimation {
+                                duration: (fabMenu.count - 1 - fabMenuItem.index) * Appearance.anim.durations.small / 8
+                            }
+                            ParallelAnimation {
+                                FabAnim {
+                                    property: "implicitWidth"
+                                    duration: Appearance.anim.durations.expressiveFastSpatial
+                                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                                }
+                                FabAnim {
+                                    property: "opacity"
+                                    duration: Appearance.anim.durations.small
+                                }
+                            }
+                        }
+                    },
+                    Transition {
+                        from: "visible"
+
+                        SequentialAnimation {
+                            PauseAnimation {
+                                duration: fabMenuItem.index * Appearance.anim.durations.small / 8
+                            }
+                            ParallelAnimation {
+                                FabAnim {
+                                    property: "implicitWidth"
+                                    duration: Appearance.anim.durations.expressiveFastSpatial
+                                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                                }
+                                FabAnim {
+                                    property: "opacity"
+                                    duration: Appearance.anim.durations.small
+                                }
+                            }
+                        }
+                    }
+                ]
+
+                StateLayer {
+                    color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+
+                    function onClicked(): void {
+                        root.session.hw.fabMenuOpen = false;
+
+                        const action = fabMenuItem.modelData.action;
+                        if (action === "revert") {
+                            Hardware.revertRgbChanges();
+                        } else if (action === "reset") {
+                            Hardware.resetRgbToDefault();
+                        }
+                    }
+                }
+
+                RowLayout {
+                    id: fabMenuItemInner
+
+                    anchors.centerIn: parent
+                    spacing: Appearance.spacing.normal
+                    opacity: 0
+
+                    MaterialIcon {
+                        text: fabMenuItem.modelData.icon
+                        color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+                        fill: 1
+                    }
+
+                    StyledText {
+                        animate: true
+                        text: fabMenuItem.isReset ? qsTr("Reset") : qsTr("Revert")
+                        color: fabMenuItem.isReset ? Colours.palette.m3onErrorContainer : Colours.palette.m3onSecondaryContainer
+                        font.capitalization: Font.Capitalize
+                        Layout.preferredWidth: implicitWidth
+                    }
+                }
+            }
+        }
+    }
+
+    // FAB Button
+    Item {
+        id: fabRoot
+
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        visible: Hardware.hasRgbKeyboard
+
+        implicitWidth: 64
+        implicitHeight: 64
+
+        StyledRect {
+            id: fabBg
+
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            implicitWidth: 64
+            implicitHeight: 64
+
+            radius: Appearance.rounding.normal
+            color: root.session.hw.fabMenuOpen ? Colours.palette.m3primary : Colours.palette.m3primaryContainer
+
+            states: State {
+                name: "expanded"
+                when: root.session.hw.fabMenuOpen
+
+                PropertyChanges {
+                    fabBg.implicitWidth: 48
+                    fabBg.implicitHeight: 48
+                    fabBg.radius: 48 / 2
+                    fab.font.pointSize: Appearance.font.size.larger
+                }
+            }
+
+            transitions: Transition {
+                FabAnim {
+                    properties: "implicitWidth,implicitHeight"
+                    duration: Appearance.anim.durations.expressiveFastSpatial
+                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                }
+                FabAnim {
+                    properties: "radius,font.pointSize"
+                }
+            }
+
+            Elevation {
+                anchors.fill: parent
+                radius: parent.radius
+                z: -1
+                level: fabState.containsMouse && !fabState.pressed ? 4 : 3
+            }
+
+            StateLayer {
+                id: fabState
+
+                color: root.session.hw.fabMenuOpen ? Colours.palette.m3onPrimary : Colours.palette.m3onPrimaryContainer
+
+                function onClicked(): void {
+                    root.session.hw.fabMenuOpen = !root.session.hw.fabMenuOpen;
+                }
+            }
+
+            MaterialIcon {
+                id: fab
+
+                anchors.centerIn: parent
+                animate: true
+                text: root.session.hw.fabMenuOpen ? "close" : "more_vert"
+                color: root.session.hw.fabMenuOpen ? Colours.palette.m3onPrimary : Colours.palette.m3onPrimaryContainer
+                font.pointSize: Appearance.font.size.large
+                fill: 1
+            }
+        }
+    }
+
+    component FabAnim: NumberAnimation {
+        duration: Appearance.anim.durations.normal
+        easing.type: Easing.BezierSpline
+        easing.bezierCurve: Appearance.anim.curves.standard
     }
 }

@@ -7,7 +7,9 @@ import "modules/drawers"
 import "modules/background"
 import "modules/areapicker"
 import "modules/lock"
+import qs.services
 import Quickshell
+import QtQuick
 
 ShellRoot {
     Background {}
@@ -21,5 +23,16 @@ ShellRoot {
     BatteryMonitor {}
     IdleMonitors {
         lock: lock
+    }
+    
+    // Initialize RGB keyboard on shell start
+    // Only calls RGB connect, doesn't load all Hardware refreshes
+    // Uses small delay to let shell fully initialize first
+    Timer {
+        id: rgbInitTimer
+        interval: 500
+        running: true
+        repeat: false
+        onTriggered: Hardware.refreshRgb()
     }
 }
