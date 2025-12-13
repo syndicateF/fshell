@@ -2,6 +2,7 @@ pragma Singleton
 
 import qs.components.misc
 import qs.config
+import qs.utils
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -215,6 +216,20 @@ Singleton {
     // Current render GPU
     readonly property string currentRenderGpu: currentRenderGpuInternal.trim()
     property string currentRenderGpuInternal: "Unknown"
+    
+    // =====================================================
+    // GPU PRIORITY PROPERTIES (Hyprland DRM device order)
+    // =====================================================
+    
+    // GPU Priority - which GPU is primary for compositor rendering
+    // "integrated" = AMD iGPU primary (battery saving)
+    // "nvidia" = NVIDIA dGPU primary (performance)
+    readonly property string gpuPriority: gpuPriorityInternal.trim()
+    readonly property var gpuPrioritiesAvailable: ["integrated", "nvidia"]
+    property string gpuPriorityInternal: "integrated"
+    
+    // Whether GPU priority switching is available (hybrid mode + symlinks exist)
+    readonly property bool hasGpuPriority: gpuMode === "hybrid" && gpuPriorityInternal !== "unknown"
     
     // =====================================================
     // GPU PROCESSES
@@ -517,6 +532,31 @@ Singleton {
     }
     
     // =====================================================
+    // FUNCTIONS - GPU PRIORITY (Hyprland DRM device order)
+    // =====================================================
+    
+    function setGpuPriority(priority: string): void {
+        if (!hasGpuPriority || !gpuPrioritiesAvailable.includes(priority)) return;
+        console.log("[Hardware] Setting GPU priority to:", priority, "(requires logout)");
+        gpuPriorityProcess.command = [
+            Paths.scriptsDir + "/gpu-priority.sh", 
+            "set", 
+            priority
+        ];
+        gpuPriorityProcess.running = true;
+    }
+    
+    function toggleGpuPriority(): void {
+        if (!hasGpuPriority) return;
+        const newPriority = gpuPriority === "nvidia" ? "integrated" : "nvidia";
+        setGpuPriority(newPriority);
+    }
+    
+    function refreshGpuPriority(): void {
+        gpuPriorityReadProcess.running = true;
+    }
+    
+    // =====================================================
     // FUNCTIONS - GPU PROCESSES
     // =====================================================
     
@@ -724,6 +764,7 @@ Singleton {
         refreshGpuInfo();
         refreshBattery();
         refreshGpuMode();
+        refreshGpuPriority();
         refreshGpuProcesses();
         // Note: refreshRgb() is called from shell.qml on startup
     }
@@ -1296,6 +1337,29 @@ Singleton {
         onExited: (code, status) => {
             console.log("[Hardware] GPU mode set, exit code:", code);
             Qt.callLater(root.refreshGpuMode);
+        }
+    }
+    
+    // =====================================================
+    // PROCESSES - GPU PRIORITY
+    // =====================================================
+    
+    Process {
+        id: gpuPriorityReadProcess
+        command: [Paths.scriptsDir + "/gpu-priority.sh", "get"]
+        stdout: SplitParser {
+            onRead: data => {
+                root.gpuPriorityInternal = data.trim();
+                console.log("[Hardware] GPU priority:", root.gpuPriorityInternal);
+            }
+        }
+    }
+    
+    Process {
+        id: gpuPriorityProcess
+        onExited: (code, status) => {
+            console.log("[Hardware] GPU priority set, exit code:", code);
+            Qt.callLater(root.refreshGpuPriority);
         }
     }
     

@@ -21,6 +21,7 @@ Singleton {
     readonly property string wallsdir: Quickshell.env("CAELESTIA_WALLPAPERS_DIR") || absolutePath(Config.paths.wallpaperDir)
     readonly property string recsdir: Quickshell.env("CAELESTIA_RECORDINGS_DIR") || `${videos}/Recordings`
     readonly property string libdir: Quickshell.env("CAELESTIA_LIB_DIR") || "/usr/lib/caelestia"
+    readonly property string scriptsDir: `${Quickshell.env("XDG_CONFIG_HOME") || `${home}/.config`}/quickshell/x-shell/utils/scripts`
 
     function toLocalFile(path: url): string {
         path = Qt.resolvedUrl(path);

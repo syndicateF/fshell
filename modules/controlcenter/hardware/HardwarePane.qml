@@ -209,6 +209,53 @@ RowLayout {
                             barColor: Colours.palette.m3secondary
                             barHeight: 6
                         }
+
+                        // GPU Priority Toggle (only in hybrid mode)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Appearance.spacing.normal
+                            visible: Hardware.hasGpuPriority
+                            spacing: Appearance.spacing.normal
+
+                            MaterialIcon {
+                                text: Hardware.gpuPriority === "nvidia" ? "memory" : "eco"
+                                font.pointSize: Appearance.font.size.normal
+                                color: Hardware.gpuPriority === "nvidia" ? 
+                                       Colours.palette.m3tertiary : Colours.palette.m3primary
+                            }
+
+                            StyledText {
+                                text: qsTr("Primary GPU")
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            StyledText {
+                                text: Hardware.gpuPriority === "nvidia" ? "NVIDIA" : "Integrated"
+                                font.pointSize: Appearance.font.size.small
+                                font.weight: Font.Medium
+                                color: Hardware.gpuPriority === "nvidia" ? 
+                                       Colours.palette.m3tertiary : Colours.palette.m3primary
+                            }
+
+                            StyledSwitch {
+                                checked: Hardware.gpuPriority === "nvidia"
+                                onClicked: Hardware.setGpuPriority(checked ? "nvidia" : "integrated")
+                            }
+                        }
+
+                        // Hint text for GPU Priority
+                        StyledText {
+                            Layout.fillWidth: true
+                            visible: Hardware.hasGpuPriority
+                            text: qsTr("⚠ Requires logout to apply")
+                            font.pointSize: Appearance.font.size.smaller
+                            color: Colours.palette.m3onSurfaceVariant
+                            opacity: 0.7
+                            horizontalAlignment: Text.AlignRight
+                        }
                     }
                 }
 
@@ -520,12 +567,12 @@ RowLayout {
 
         implicitHeight: cardLayout.implicitHeight + Appearance.padding.large * 2
         radius: Appearance.rounding.normal
-        color: isSelected ? Colours.palette.m3surfaceContainerHighest: Colours.tPalette.m3surfaceContainer 
+        color: isSelected ? Colours.tPalette.m3surfaceContainerHigh : Colours.tPalette.m3surfaceContainer
 
         // Hover
         StateLayer {
             radius: cardRoot.radius
-            color: isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+            color: Colours.palette.m3onSurface
             onClicked: cardRoot.clicked()
         }
 
@@ -544,12 +591,12 @@ RowLayout {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: Appearance.rounding.small
-                    color: cardRoot.isSelected ? Colours.palette.m3secondary : Colours.palette.m3primaryContainer
+                    color: cardRoot.isSelected ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainerHighest
 
                     MaterialIcon {
                         anchors.centerIn: parent
                         text: cardRoot.icon
-                        color: cardRoot.isSelected ? Colours.palette.m3onSecondary : Colours.palette.m3onPrimaryContainer
+                        color: cardRoot.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
                     }
                 }
 
@@ -561,21 +608,21 @@ RowLayout {
                         text: cardRoot.title
                         font.pointSize: Appearance.font.size.normal
                         font.weight: 600
-                        color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
+                        color: Colours.palette.m3onSurface
                     }
 
                     StyledText {
                         Layout.fillWidth: true
                         text: cardRoot.subtitle
                         font.pointSize: Appearance.font.size.small
-                        color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
+                        color: Colours.palette.m3onSurfaceVariant
                         elide: Text.ElideRight
                     }
                 }
 
                 MaterialIcon {
                     text: "chevron_right"
-                    color: cardRoot.isSelected ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
+                    color: Colours.palette.m3onSurfaceVariant
                 }
             }
 
