@@ -98,7 +98,7 @@ Item {
                         MaterialIcon {
                             text: tabBtn.modelData.icon
                             color: tabBtn.isActive ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
-                            font.pixelSize: 15
+                            font.pointSize: Config.launcher.sizes.font.tabIcon
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on color {
@@ -109,7 +109,7 @@ Item {
                         Text {
                             text: tabBtn.modelData.name
                             color: tabBtn.isActive ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
-                            font.pixelSize: 15
+                            font.pointSize: Config.launcher.sizes.font.tabText
                             font.family: Appearance.font.family.sans
                             font.hintingPreference: Font.PreferDefaultHinting
                             font.variableAxes: ({ "wght": 450, "wdth": 100 })

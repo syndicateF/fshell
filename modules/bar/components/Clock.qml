@@ -45,7 +45,7 @@ StyledRect {
 
                     Layout.alignment: Qt.AlignHCenter
                     text: modelData.padStart(2, "0")
-                    font.pixelSize: modelData.match(/am|pm/i) ? 12 : 17
+                    font.pointSize: modelData.match(/am|pm/i) ? Config.bar.sizes.font.clockAmPm : Config.bar.sizes.font.clockDigits
                     font.family: Appearance.font.family.clock
                     font.hintingPreference: Font.PreferDefaultHinting
                     font.variableAxes: ({ "wght": 450 })
@@ -98,7 +98,7 @@ StyledRect {
                     top: parent.top
                     left: parent.left
                 }
-                font.pixelSize: 13
+                font.pointSize: Config.bar.sizes.font.clockDate
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
                 font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
@@ -113,7 +113,7 @@ StyledRect {
                     bottom: parent.bottom
                     right: parent.right
                 }
-                font.pixelSize: 13
+                font.pointSize: Config.bar.sizes.font.clockDate
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
                 font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })

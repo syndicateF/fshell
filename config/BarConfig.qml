@@ -18,6 +18,7 @@ JsonObject {
     property list<var> topEntries: [
         { id: "networkIcon", enabled: true },
         { id: "networkTraffic", enabled: true },
+        { id: "tray", enabled: true },
     ]
     
     property list<var> centerEntries: [
@@ -27,7 +28,6 @@ JsonObject {
     ]
     
     property list<var> bottomEntries: [
-        { id: "tray", enabled: true },
         { id: "statusIcons", enabled: true },
         { id: "powerMode", enabled: true },
         { id: "batteryIcon", enabled: true },
@@ -82,7 +82,7 @@ JsonObject {
     component Status: JsonObject {
         property bool showAudio: false
         property bool showMicrophone: false
-        property bool showKbLayout: false
+        property bool showKbLayout: true
         property bool showNetwork: true
         property bool showBluetooth: true
         property bool showBattery: true
@@ -97,15 +97,28 @@ JsonObject {
         property int innerWidth: 40
         property int itemPadding: 10  // Vertical padding untuk items (kecuali workspaces)
         property int iconSize: 22  // Icon size for app icons (pixelSize)
-        property int materialIconSize: 15  // Material icon size (pointSize) - same as Appearance.font.size.larger
         property int windowPreviewSize: 400
         property int trayMenuWidth: 300
         property int batteryWidth: 250
         property int networkWidth: 320
         
-        // Bar text style (PowerMode style) - untuk semua teks di bar
-        property int textPixelSize: 15  // font.pixelSize
+        // Font sizes for bar (using pointSize, ~0.75x of pixelSize equivalent)
+        property BarFontSizes font: BarFontSizes {}
+        
+        // Bar text style
         property int textWeight: 450    // font.variableAxes wght
         property int textWidth: 100     // font.variableAxes wdth
+    }
+    
+    // Bar font sizes with DESCRIPTIVE names
+    component BarFontSizes: JsonObject {
+        property int batteryPercentage: 7     // Battery % text inside icon (was 10px)
+        property int clockAmPm: 9             // AM/PM indicator in clock (was 12px)
+        property int clockDigits: 12          // Main clock time digits (was 17px)
+        property int clockDate: 10            // Date text in clock (was 13px)
+        property int networkTraffic: 10       // Network traffic labels (was 13px)
+        property int windowTitle: 11          // Window title text (was 15px)
+        property int materialIcon: 15         // Material icons in bar
+        property int powerModeLabel: 11       // Power mode text label (was 15px)
     }
 }

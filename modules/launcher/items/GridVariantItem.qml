@@ -37,7 +37,7 @@ Item {
             id: icon
 
             text: root.modelData?.icon ?? ""
-            font.pointSize: 16
+            font.pointSize: Config.launcher.sizes.font.gridItemIcon
             color: root.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
 
             anchors.verticalCenter: parent.verticalCenter
@@ -46,7 +46,7 @@ Item {
         Text {
             text: root.modelData?.name ?? ""
             // EXACT same style as ActiveWindow title
-            font.pixelSize: 15
+            font.pointSize: Config.launcher.sizes.font.gridItemName
             font.family: Appearance.font.family.sans
             font.hintingPreference: Font.PreferDefaultHinting
             font.variableAxes: ({ "wght": 450, "wdth": 100 })
@@ -64,7 +64,7 @@ Item {
             visible: root.modelData?.variant === Schemes.currentVariant
             text: "check"
             color: root.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3primary
-            font.pointSize: 16
+            font.pointSize: Config.launcher.sizes.font.gridCheckmark
 
             anchors.verticalCenter: parent.verticalCenter
         }

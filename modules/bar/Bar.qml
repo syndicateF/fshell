@@ -163,7 +163,7 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: root.vPadding
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Appearance.spacing.normal
+        spacing: Appearance.spacing.small
 
         Repeater {
             id: topRepeater
@@ -176,7 +176,7 @@ Item {
     ColumnLayout {
         id: centerSection
         anchors.centerIn: parent
-        spacing: Appearance.spacing.normal
+        spacing: Appearance.spacing.small
 
         Repeater {
             id: centerRepeater
@@ -191,7 +191,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: root.vPadding
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Appearance.spacing.normal
+        spacing: Appearance.spacing.small
 
         Repeater {
             id: bottomRepeater

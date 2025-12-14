@@ -14,15 +14,15 @@ Item {
     readonly property alias items: items
     readonly property alias expandIcon: expandIcon
 
-    readonly property int padding: Appearance.padding.small
+    readonly property int padding: 0
     readonly property int spacing: 0
 
     property bool expanded
 
     readonly property real nonAnimHeight: {
         if (!Config.bar.tray.compact)
-            return layout.implicitHeight + padding * 2;
-        return (expanded ? expandIcon.implicitHeight + layout.implicitHeight + spacing : expandIcon.implicitHeight) + padding * 2;
+            return layout.implicitHeight;
+        return (expanded ? expandIcon.implicitHeight + layout.implicitHeight : expandIcon.implicitHeight);
     }
 
     clip: true

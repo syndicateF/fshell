@@ -24,7 +24,7 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        spacing: Appearance.spacing.smaller
+        spacing: 0
 
         // Lock keys status
         WrappedLoader {
@@ -48,7 +48,7 @@ Item {
 
                         text: "keyboard_capslock_badge"
                         color: root.colour
-                        font.pointSize: Config.bar.sizes.materialIconSize
+                        font.pointSize: Config.bar.sizes.font.materialIcon
 
                         Behavior on opacity {
                             Anim {}
@@ -80,7 +80,7 @@ Item {
 
                         text: "looks_one"
                         color: root.colour
-                        font.pointSize: Config.bar.sizes.materialIconSize
+                        font.pointSize: Config.bar.sizes.font.materialIcon
 
                         Behavior on opacity {
                             Anim {}
@@ -107,7 +107,7 @@ Item {
                 animate: true
                 text: Icons.getVolumeIcon(Audio.volume, Audio.muted)
                 color: root.colour
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
@@ -120,7 +120,7 @@ Item {
                 animate: true
                 text: Icons.getMicVolumeIcon(Audio.sourceVolume, Audio.sourceMuted)
                 color: root.colour
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
@@ -134,7 +134,7 @@ Item {
                 text: Hypr.kbLayout
                 color: root.colour
                 font.family: Appearance.font.family.mono
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
     }

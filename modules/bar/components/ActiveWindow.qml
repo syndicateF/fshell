@@ -136,8 +136,8 @@ StyledRect {
         id: metrics
 
         text: Hypr.activeToplevel?.title ?? qsTr("Desktop")
-        // Style sesuai ii - pakai pixelSize dan main font (sans)
-        font.pixelSize: 15
+        // Style sesuai ii - pakai pointSize dan main font (sans)
+        font.pointSize: Config.bar.sizes.font.windowTitle
         font.family: Appearance.font.family.sans
         elide: Qt.ElideRight
         elideWidth: root.maxHeight - icon.height
@@ -165,7 +165,7 @@ StyledRect {
         anchors.topMargin: Appearance.spacing.smaller
 
         // Style persis ii StyledText dengan variable font axes
-        font.pixelSize: metrics.font.pixelSize
+        font.pointSize: metrics.font.pointSize
         font.family: metrics.font.family
         font.hintingPreference: Font.PreferDefaultHinting
         font.variableAxes: ({ "wght": 450, "wdth": 100 })

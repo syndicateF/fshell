@@ -12,7 +12,7 @@ StyledRect {
     id: root
 
     implicitWidth: Config.bar.sizes.innerWidth
-    implicitHeight: mainLayout.implicitHeight + Config.bar.sizes.itemPadding * 2
+    implicitHeight: mainLayout.implicitHeight + Config.bar.sizes.itemPadding
     
     radius: Appearance.rounding.small
     color: Colours.palette.m3surfaceContainerHigh
@@ -42,7 +42,7 @@ StyledRect {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "arrow_upward"
                 color: Colours.palette.m3primary
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
 
             // Upload label - rotated 90° (PowerMode style)
@@ -54,7 +54,7 @@ StyledRect {
                 Text {
                     id: uploadLabel
                     text: root.formatSpeed(Network.uploadSpeed)
-                    font.pixelSize: 13
+                    font.pointSize: Config.bar.sizes.font.networkTraffic
                     font.family: Appearance.font.family.sans
                     font.hintingPreference: Font.PreferDefaultHinting
                     font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
@@ -96,7 +96,7 @@ StyledRect {
                 Text {
                     id: downloadLabel
                     text: root.formatSpeed(Network.downloadSpeed)
-                    font.pixelSize: 13
+                    font.pointSize: Config.bar.sizes.font.networkTraffic
                     font.family: Appearance.font.family.sans
                     font.hintingPreference: Font.PreferDefaultHinting
                     font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
@@ -117,7 +117,7 @@ StyledRect {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "arrow_downward"
                 color: Colours.palette.m3primary
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
     }

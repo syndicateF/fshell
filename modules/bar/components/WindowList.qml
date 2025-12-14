@@ -156,7 +156,7 @@ StyledRect {
             Text {
                 id: emptyTitle
                 text: "Desktop"
-                font.pixelSize: Config.bar.sizes.textPixelSize
+                font.pointSize: Config.bar.sizes.font.windowTitle
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
                 font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
@@ -427,7 +427,7 @@ StyledRect {
         TextMetrics {
             id: titleMetrics
             text: windowItem.displayTitle
-            font.pixelSize: Config.bar.sizes.textPixelSize
+            font.pointSize: Config.bar.sizes.font.windowTitle
             font.family: Appearance.font.family.sans
             elide: Qt.ElideRight
             elideWidth: windowItem.maxTitleLength
@@ -450,7 +450,7 @@ StyledRect {
             Text {
                 id: titleText
                 text: titleMetrics.elidedText
-                font.pixelSize: Config.bar.sizes.textPixelSize
+                font.pointSize: Config.bar.sizes.font.windowTitle
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
                 font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })

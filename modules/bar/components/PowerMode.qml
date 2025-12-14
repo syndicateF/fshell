@@ -10,7 +10,7 @@ import QtQuick
 StyledRect {
     id: root
 
-    // Warna ngikutin battery fill color scheme
+    // Tokyo Night color scheme
     readonly property color colour: {
         const charging = [
             UPowerDeviceState.Charging,
@@ -19,11 +19,11 @@ StyledRect {
         ].includes(UPower.displayDevice.state);
         const pct = UPower.displayDevice.percentage * 100;
         
-        if (charging) return "#34C759";  // Green when charging
-        if (pct <= 20) return "#FF3B30";  // Red (critical)
-        if (pct <= 100) return "#FF9500";  // Orange (low)
-        // if (pct <= 100) return '#62ff00';  // Orange (low)
-        return Colours.palette.m3onSurface;  // Neutral white/gray (discharge normal)
+        // Tokyo Night colors
+        if (charging) return "#9ece6a";  // Tokyo Night Green
+        if (pct <= 20) return "#f7768e";  // Tokyo Night Red/Pink (critical)
+        if (pct <= 100) return "#7aa2f7";  // Tokyo Night Blue (normal discharge)
+        return Colours.palette.m3onSurface;  // Neutral (fallback)
     }
 
     // Current mode info
@@ -64,7 +64,7 @@ StyledRect {
             animate: true
             text: root.currentIcon
             color: root.colour
-            font.pointSize: Config.bar.sizes.materialIconSize
+            font.pointSize: Config.bar.sizes.font.materialIcon
             fill: 1
             
             Behavior on color { ColorAnimation { duration: 300 } }
@@ -80,7 +80,7 @@ StyledRect {
             Text {
                 id: modeLabel
                 text: root.currentLabel
-                font.pixelSize: Config.bar.sizes.textPixelSize
+                font.pointSize: Config.bar.sizes.font.powerModeLabel
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
                 font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })

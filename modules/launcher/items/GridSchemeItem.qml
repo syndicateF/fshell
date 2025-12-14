@@ -70,7 +70,7 @@ Item {
         Text {
             text: `${root.modelData?.name ?? ""} ${root.modelData?.flavour ?? ""}`
             // EXACT same style as ActiveWindow title
-            font.pixelSize: 15
+            font.pointSize: Config.launcher.sizes.font.gridItemName
             font.family: Appearance.font.family.sans
             font.hintingPreference: Font.PreferDefaultHinting
             font.variableAxes: ({ "wght": 450, "wdth": 100 })
@@ -88,7 +88,7 @@ Item {
             visible: `${root.modelData?.name} ${root.modelData?.flavour}` === Schemes.currentScheme
             text: "check"
             color: root.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3primary
-            font.pointSize: 16
+            font.pointSize: Config.launcher.sizes.font.gridCheckmark
 
             anchors.verticalCenter: parent.verticalCenter
         }

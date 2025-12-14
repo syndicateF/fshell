@@ -58,10 +58,10 @@ Item {
 
             anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left
-            anchors.leftMargin: Appearance.padding.large
+            anchors.leftMargin: Config.launcher.sizes.padding.searchBarHorizontal
 
             text: "search"
-            font.pointSize: Appearance.font.size.small
+            font.pointSize: Config.launcher.sizes.font.searchBarIcon
             color: Colours.palette.m3onSurfaceVariant
         }
 
@@ -178,7 +178,7 @@ Item {
 
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
-            anchors.rightMargin: root.padding
+            anchors.rightMargin: Config.launcher.sizes.padding.searchBarHorizontal
 
             width: search.text ? implicitWidth : implicitWidth / 2
             opacity: {
@@ -192,7 +192,7 @@ Item {
             }
 
             text: "close"
-            font.pointSize: Appearance.font.size.small
+            font.pointSize: Config.launcher.sizes.font.searchBarIcon
             color: Colours.palette.m3onSurfaceVariant
 
             MouseArea {

@@ -27,12 +27,18 @@ Item {
             UPowerDeviceState.PendingCharge
         ].includes(UPower.displayDevice.state)
 
-        readonly property color frameColor: Colours.palette.m3outline
+        readonly property color frameColor: {
+            // Frame color juga ikut state - much darker version for contrast
+            if (charging) return Qt.darker("#9ece6a", 2.5);  // Tokyo Night Green (very dark)
+            if (pct <= 20) return Qt.darker("#f7768e", 2.5);  // Tokyo Night Red (very dark)
+            return Qt.darker("#7aa2f7", 2.5);  // Tokyo Night Blue (very dark) for normal
+        }
         readonly property color fillColor: {
-            if (charging) return "#34C759";  // Green when charging
-            if (pct <= 20) return "#FF3B30";  // Red (critical)
-            if (pct <= 100) return "#FF9500";  // Orange (low)
-            return Colours.palette.m3onSurface;  // Neutral white/gray (discharge normal)
+            // Tokyo Night color scheme
+            if (charging) return "#9ece6a";  // Tokyo Night Green
+            if (pct <= 20) return "#f7768e";  // Tokyo Night Red/Pink (critical)
+            if (pct <= 100) return "#7aa2f7";  // Tokyo Night Blue (normal discharge)
+            return Colours.palette.m3onSurface;  // Neutral (fallback)
         }
 
         // BODY tanpa outline (iOS Solid Capsule)
@@ -101,7 +107,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: Math.round(batteryIOS.pct).toString()
-                font.pixelSize: 10
+                font.pointSize: Config.bar.sizes.font.batteryPercentage
                 font.bold: true
                 color: Colours.palette.m3surface
             }

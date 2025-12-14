@@ -113,7 +113,7 @@ ColumnLayout {
                             grade: 0
                             text: Icons.getAppCategoryIcon(windowIconLoader.appClass, "terminal")
                             color: Colours.palette.m3onSurfaceVariant
-                            font.pointSize: Config.bar.sizes.materialIconSize
+                            font.pointSize: Config.bar.sizes.font.materialIcon
                         }
                     }
                     
@@ -122,7 +122,7 @@ ColumnLayout {
                         StyledText {
                             text: Config.bar.workspaces.windowIconCustomSymbol
                             color: Colours.palette.m3onSurfaceVariant
-                            font.pointSize: Config.bar.sizes.materialIconSize
+                            font.pointSize: Config.bar.sizes.font.materialIcon
                             horizontalAlignment: Text.AlignHCenter
                             width: contentWidth
                         }
@@ -132,7 +132,7 @@ ColumnLayout {
                         id: appIconComp
                         IconImage {
                             source: Icons.getAppIcon(windowIconLoader.appClass, "application-x-executable")
-                            implicitSize: Config.bar.sizes.materialIconSize
+                            implicitSize: Config.bar.sizes.font.materialIcon
                         }
                     }
                 }

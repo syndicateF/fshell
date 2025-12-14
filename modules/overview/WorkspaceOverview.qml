@@ -134,7 +134,7 @@ FocusScope {
                                 Text {
                                     anchors.centerIn: parent
                                     text: wsRect.wsNum
-                                    font.pixelSize: 20
+                                    font.pointSize: Config.overview.sizes.workspaceNumberWatermark
                                     font.weight: Font.Bold
                                     color: Qt.rgba(1, 1, 1, 0.1)
                                 }
@@ -231,7 +231,7 @@ FocusScope {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: specialWsRect.appInfo.app ?? specialWsRect.wsName
-                                    font.pixelSize: Appearance.font.size.smaller
+                                    font.pointSize: Appearance.font.size.smaller
                                     font.weight: Font.DemiBold
                                     font.family: Appearance.font.family.sans
                                     color: specialWsRect.isActive ? Colours.palette.m3primary : Colours.palette.m3onSurface
@@ -243,7 +243,7 @@ FocusScope {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: specialWsRect.wsName
-                                    font.pixelSize: Appearance.font.size.small
+                                    font.pointSize: Appearance.font.size.small
                                     font.weight: Font.Normal
                                     font.family: Appearance.font.family.sans
                                     font.capitalization: Font.AllUppercase

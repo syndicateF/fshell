@@ -30,6 +30,27 @@ JsonObject {
         property int itemHeight: 48
         property int wallpaperWidth: 320
         property int wallpaperHeight: 200
+        
+        // Font sizes for launcher with DESCRIPTIVE names
+        property LauncherFontSizes font: LauncherFontSizes {}
+        
+        // Padding for launcher
+        property LauncherPadding padding: LauncherPadding {}
+    }
+    
+    // Launcher font sizes - values converted from pixelSize (pointSize ~= 0.75 * pixelSize)
+    component LauncherFontSizes: JsonObject {
+        property int searchBarIcon: 14    // Search and clear icon in search bar
+        property int tabIcon: 14          // Tab icon in TabBar
+        property int tabText: 11          // Tab text in TabBar
+        property int gridItemName: 11     // App/command/variant name in grid items
+        property int gridItemIcon: 16     // Icon size in grid items
+        property int gridCheckmark: 14    // Checkmark icon in scheme/variant
+    }
+    
+    // Launcher padding
+    component LauncherPadding: JsonObject {
+        property int searchBarHorizontal: 12  // Left/right padding for search bar icons
     }
 
     // Tab definitions for the launcher - 6 tabs

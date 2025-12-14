@@ -47,7 +47,7 @@ StyledRect {
             sourceComponent: MaterialIcon {
                 text: "dashboard"
                 color: root.colour
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
@@ -58,7 +58,7 @@ StyledRect {
             sourceComponent: MaterialIcon {
                 text: "music_note"
                 color: root.colour
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
@@ -69,7 +69,7 @@ StyledRect {
             sourceComponent: MaterialIcon {
                 text: "monitoring"
                 color: root.colour
-                font.pointSize: Config.bar.sizes.materialIconSize
+                font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
@@ -107,7 +107,7 @@ StyledRect {
                         return "bluetooth";
                     }
                     color: root.colour
-                    font.pointSize: Config.bar.sizes.materialIconSize
+                    font.pointSize: Config.bar.sizes.font.materialIcon
                 }
 
                 // Connected bluetooth devices
@@ -126,7 +126,7 @@ StyledRect {
                         text: Icons.getBluetoothIcon(modelData?.icon)
                         color: root.colour
                         fill: 1
-                        font.pointSize: Config.bar.sizes.materialIconSize
+                        font.pointSize: Config.bar.sizes.font.materialIcon
 
                         SequentialAnimation on opacity {
                             running: device.modelData?.state !== BluetoothDeviceState.Connected

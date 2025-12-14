@@ -179,7 +179,7 @@ Item {
                         fill: 1
                         text: ws.icon
                         horizontalAlignment: Qt.AlignHCenter
-                        font.pointSize: Config.bar.sizes.materialIconSize
+                        font.pointSize: Config.bar.sizes.font.materialIcon
                     }
                 }
 
@@ -253,7 +253,7 @@ Item {
                                     grade: 0
                                     text: Icons.getAppCategoryIcon(specialWindowIconLoader.appClass, "terminal")
                                     color: Colours.palette.m3onSurfaceVariant
-                                    font.pointSize: Config.bar.sizes.materialIconSize
+                                    font.pointSize: Config.bar.sizes.font.materialIcon
                                 }
                             }
 
@@ -262,7 +262,7 @@ Item {
                                 StyledText {
                                     text: Config.bar.workspaces.windowIconCustomSymbol
                                     color: Colours.palette.m3onSurfaceVariant
-                                    font.pointSize: Config.bar.sizes.materialIconSize
+                                    font.pointSize: Config.bar.sizes.font.materialIcon
                                     horizontalAlignment: Text.AlignHCenter
                                     width: contentWidth
                                 }
@@ -272,7 +272,7 @@ Item {
                                 id: appIconComp
                                 IconImage {
                                     source: Icons.getAppIcon(specialWindowIconLoader.appClass)
-                                    implicitSize: Config.bar.sizes.materialIconSize
+                                    implicitSize: Config.bar.sizes.font.materialIcon
                                 }
                             }
                         }

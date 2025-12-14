@@ -32,5 +32,8 @@ JsonObject {
         readonly property int mediaCoverArtSize: 150
         readonly property int mediaVisualiserSize: 80
         readonly property int resourceSize: 200
+        
+        // Font sizes with DESCRIPTIVE names
+        readonly property int workspaceNumberWatermark: 15  // Faded workspace number (was 20px → 15pt)
     }
 }
