@@ -72,7 +72,7 @@ JsonObject {
             icon: "palette"
         }
         property Tab wallpapers: Tab {
-            name: "Wallpaperss"
+            name: "Wallss"
             icon: "image"
         }
         property Tab variants: Tab {

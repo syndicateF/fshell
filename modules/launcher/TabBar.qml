@@ -39,10 +39,10 @@ Item {
         StyledRect {
             id: activeIndicator
 
-            // Direct binding - repeaterReady forces re-evaluation
-            x: tabContainer.repeaterReady, tabRepeater.itemAt(root.currentTab)?.x ?? 0
+            readonly property var targetItem: tabContainer.repeaterReady ? tabRepeater.itemAt(root.currentTab) : null
+            x: targetItem?.x ?? 0
             y: 0
-            width: tabContainer.repeaterReady, tabRepeater.itemAt(root.currentTab)?.width ?? 0
+            width: targetItem?.width ?? 0
             height: tabRow.height
 
             radius: Config.border.rounding

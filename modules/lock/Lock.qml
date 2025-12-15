@@ -4,10 +4,12 @@ import qs.components.misc
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import QtQuick
 
 Scope {
+    id: root
     property alias lock: lock
-
+    
     WlSessionLock {
         id: lock
 

@@ -67,14 +67,12 @@ Item {
             root.vulkanLoading = false;
             if (exitCode !== 0) {
                 root.vulkanError = true;
-                console.log("[SysInfo] vulkaninfo failed:", exitCode);
                 return;
             }
             parseVulkanOutput(root.vulkanRawOutput);
         }
 
         function parseVulkanOutput(output: string): void {
-            console.log("[SysInfo] Parsing vulkan output, length:", output.length);
             const lines = output.split("\n");
             let devices = [];
             let currentDevice = null;
@@ -87,7 +85,6 @@ Item {
                     const match = line.match(/(\d+\.\d+\.\d+)/);
                     if (match) {
                         root.vulkanVersion = match[1];
-                        console.log("[SysInfo] Found Vulkan version:", match[1]);
                     }
                 }
 
@@ -165,7 +162,6 @@ Item {
 
             if (currentDevice && currentDevice.name) devices.push(currentDevice);
             root.vulkanDevices = devices;
-            console.log("[SysInfo] Found", devices.length, "Vulkan devices");
         }
     }
 
@@ -199,7 +195,6 @@ Item {
         }
 
         function parseVaapiOutput(output: string): void {
-            console.log("[SysInfo] Parsing VA-API output, length:", output.length);
             const lines = output.split("\n");
             let profiles = [];
 
@@ -270,7 +265,6 @@ Item {
             }
 
             root.vaapiProfiles = profiles;
-            console.log("[SysInfo] Found", profiles.length, "VA-API profiles");
         }
     }
 

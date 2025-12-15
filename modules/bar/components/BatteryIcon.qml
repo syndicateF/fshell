@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 
-import qs.components
 import qs.services
 import qs.config
 import Quickshell.Services.UPower
@@ -28,16 +27,16 @@ Item {
         ].includes(UPower.displayDevice.state)
 
         readonly property color frameColor: {
-            // Frame color juga ikut state - much darker version for contrast
-            if (charging) return Qt.darker("#9ece6a", 2.5);  // Tokyo Night Green (very dark)
-            if (pct <= 20) return Qt.darker("#f7768e", 2.5);  // Tokyo Night Red (very dark)
-            return Qt.darker("#7aa2f7", 2.5);  // Tokyo Night Blue (very dark) for normal
+            // Frame color dari color scheme - darker version for contrast
+            if (charging) return Qt.darker(Colours.palette.m3secondary, 2.5);  // Secondary (charging)
+            if (pct <= 20) return Qt.darker(Colours.palette.m3error, 2.5);  // Error (critical)
+            return Qt.darker(Colours.palette.m3primary, 2.5);  // Primary (normal discharge)
         }
         readonly property color fillColor: {
-            // Tokyo Night color scheme
-            if (charging) return "#9ece6a";  // Tokyo Night Green
-            if (pct <= 20) return "#f7768e";  // Tokyo Night Red/Pink (critical)
-            if (pct <= 100) return "#7aa2f7";  // Tokyo Night Blue (normal discharge)
+            // Fill color dari color scheme
+            if (charging) return Colours.palette.m3secondary;  // Secondary (charging)
+            if (pct <= 20) return Colours.palette.m3error;  // Error (critical)
+            if (pct <= 100) return Colours.palette.m3primary;  // Primary (normal discharge)
             return Colours.palette.m3onSurface;  // Neutral (fallback)
         }
 

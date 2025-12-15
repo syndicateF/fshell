@@ -26,13 +26,19 @@ Item {
     implicitWidth: gridContent.implicitWidth + padding * 2
     implicitHeight: searchWrapper.implicitHeight + gridContent.implicitHeight + tabBar.implicitHeight + padding * 2 + Appearance.spacing.large * 2
 
-    // Reset tab when launcher closes
+    // Reset tab and cleanup when launcher closes
     Connections {
         target: root.visibilities
 
         function onLauncherChanged(): void {
             if (!root.visibilities.launcher) {
                 root.currentTab = 0;
+                // Reset visited tabs flags to free memory from lazy-loaded components
+                gridContent.tab1Visited = false;
+                gridContent.tab2Visited = false;
+                gridContent.tab3Visited = false;
+                gridContent.tab4Visited = false;
+                gridContent.tab5Visited = false;
             }
         }
     }

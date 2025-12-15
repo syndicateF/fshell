@@ -5,6 +5,7 @@ import qs.components.containers
 import qs.services
 import qs.config
 import qs.modules.bar as Bar
+import qs.modules.overview as Overview
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -53,9 +54,15 @@ Variants {
             screen: scope.modelData
             name: "drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session || visibilities.overview ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session || visibilities.overview || visibilities.spiralOverview ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            // Switch to Overlay layer when spiral is active (above all Hyprland windows)
+            WlrLayershell.layer: visibilities.spiralOverview ? WlrLayer.Overlay : WlrLayer.Top
 
-            mask: Region {
+            // Disable mask when spiral is active (fullscreen overlay)
+            mask: visibilities.spiralOverview ? null : normalMask
+
+            Region {
+                id: normalMask
                 x: bar.implicitWidth + win.dragMaskPadding
                 y: Config.border.thickness + win.dragMaskPadding
                 width: win.width - bar.implicitWidth - Config.border.thickness - win.dragMaskPadding * 2
@@ -89,7 +96,7 @@ Variants {
             HyprlandFocusGrab {
                 id: focusGrab
 
-                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.session && Config.session.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
+                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.session && Config.session.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
                 windows: [win]
                 onCleared: {
                     visibilities.launcher = false;
@@ -98,6 +105,7 @@ Variants {
                     visibilities.sidebar = false;
                     visibilities.dashboard = false;
                     visibilities.overview = false;
+                    visibilities.spiralOverview = false;
                     panels.popouts.hasCurrent = false;
                     bar.closeTray();
                 }
@@ -170,6 +178,7 @@ Variants {
                 property bool utilities
                 property bool sidebar
                 property bool overview
+                property bool spiralOverview
                 property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
@@ -216,6 +225,56 @@ Variants {
                     popouts: panels.popouts
 
                     Component.onCompleted: Visibilities.bars.set(scope.modelData, this)
+                }
+            }
+
+            // Spiral Overview - TRUE fullscreen overlay (outside Panels to ignore margins)
+            // Manages its own loading state to allow exit animations
+            Item {
+                id: spiralOverviewContainer
+                anchors.fill: parent
+                
+                property bool shouldShow: visibilities.spiralOverview
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+                
+                // Load when requested, or close with animation if already open
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        if (!isLoaded) {
+                            // Open: load the component
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            // Was closing, cancel close - already loaded
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        // Close requested via toggle - trigger animation
+                        if (isLoaded && !isAnimatingOut && spiralOverviewLoader.item) {
+                            isAnimatingOut = true
+                            spiralOverviewLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+                
+                Loader {
+                    id: spiralOverviewLoader
+                    anchors.fill: parent
+                    active: spiralOverviewContainer.isLoaded
+                    visible: active
+                    
+                    sourceComponent: Overview.SpiralOverview {
+                        screen: scope.modelData
+                        visibilities: visibilities
+                        
+                        // Called by exitAnimTimer when animation done
+                        onExitAnimationDone: {
+                            spiralOverviewContainer.isLoaded = false
+                            spiralOverviewContainer.isAnimatingOut = false
+                            visibilities.spiralOverview = false
+                        }
+                    }
                 }
             }
         }

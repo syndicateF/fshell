@@ -1,5 +1,4 @@
 import Quickshell.Bluetooth
-import qs.services
 import QtQuick
 
 QtObject {

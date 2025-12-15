@@ -227,7 +227,6 @@ Singleton {
 
     // Select a monitor for editing
     function selectMonitor(monitor: var): void {
-        console.log("[Monitors] selectMonitor called. Current:", selectedMonitor?.name ?? "null", "New:", monitor?.name ?? "null");
         selectedMonitor = monitor;
         pendingChanges = {};
         applyError = "";
@@ -235,7 +234,6 @@ Singleton {
         if (monitor) {
             refreshMonitorData();
         }
-        console.log("[Monitors] selectedMonitor is now:", selectedMonitor?.name ?? "null");
     }
 
     // Refresh monitor data from hyprctl
@@ -320,8 +318,6 @@ Singleton {
         const newChanges = Object.assign({}, pendingChanges);
         newChanges[key] = value;
         pendingChanges = newChanges;
-        console.log("[Monitors] Set pending change:", key, "=", JSON.stringify(value));
-        console.log("[Monitors] All pending changes:", JSON.stringify(pendingChanges));
     }
 
     // Set resolution (adds to pending changes)
@@ -520,7 +516,6 @@ Singleton {
         previewCountdown = 15;
         
         const config = buildMonitorConfig(selectedMonitor, pendingChanges);
-        console.log("[Monitors] Starting preview with config:", config);
         
         previewProcess.command = ["hyprctl", "keyword", "monitor", config];
         previewProcess.running = true;
@@ -553,7 +548,6 @@ Singleton {
         
         // Restore original config
         if (previewConfigBackup) {
-            console.log("[Monitors] Reverting to:", previewConfigBackup);
             revertProcess.command = ["hyprctl", "keyword", "monitor", previewConfigBackup];
             revertProcess.running = true;
         }
@@ -730,7 +724,6 @@ Singleton {
         
         pendingChanges = newPending;
         pendingChangesChanged();
-        console.log("[Monitors] Cleared pending changes for:", name);
     }
 
     // Check if a monitor has any pending changes
@@ -772,7 +765,6 @@ Singleton {
 
     // Set global VRR (misc:vrr)
     function setGlobalVrr(value: int): void {
-        console.log("[Monitors] Setting global VRR to:", value);
         vrrProcess.command = ["hyprctl", "keyword", "misc:vrr", String(value)];
         vrrProcess.running = true;
     }

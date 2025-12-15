@@ -75,9 +75,9 @@ ClippingRectangle {
 
             anchors.fill: parent
             clip: true
-            asynchronous: false
-            // Pre-load semua pane agar switch instan
-            active: true
+            asynchronous: true
+            // Lazy load: only load current pane + adjacent panes for smooth transitions
+            active: Math.abs(root.session.activeIndex - pane.index) <= 1
         }
     }
 }

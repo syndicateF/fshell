@@ -398,7 +398,6 @@ Singleton {
     // =====================================================
     
     function resetCpuToDefault(): void {
-        console.log("[Hardware] Resetting CPU to defaults");
         setPowerProfile(defaults.powerProfile);
         setCpuBoost(defaults.cpuBoost);
         if (cpuGovernorsAvailable.includes(defaults.cpuGovernor)) {
@@ -410,17 +409,14 @@ Singleton {
     }
     
     function resetBatteryToDefault(): void {
-        console.log("[Hardware] Resetting battery to defaults");
         setConservationMode(defaults.conservationMode);
     }
     
     function resetGpuToDefault(): void {
-        console.log("[Hardware] Resetting GPU to defaults");
         setGpuPersistenceMode(defaults.gpuPersistence);
     }
     
     function resetRgbToDefault(): void {
-        console.log("[Hardware] Resetting RGB to defaults");
         setRgbMode(defaults.rgbMode);
         setRgbColors(defaults.rgbColors);
         rgbEnabledInternal = true;
@@ -430,7 +426,6 @@ Singleton {
     }
     
     function saveRgbState(): void {
-        console.log("[Hardware] Saving RGB state checkpoint");
         rgbSavedMode = rgbCurrentModeInternal;
         rgbSavedColors = rgbColorsInternal.slice();  // Clone array
         rgbSavedSpeed = rgbSpeedInternal;
@@ -440,7 +435,6 @@ Singleton {
     }
     
     function revertRgbChanges(): void {
-        console.log("[Hardware] Reverting RGB to persisted state");
         // Revert to persisted state (from file)
         setRgbMode(rgbPersistedMode);
         setRgbColors(rgbPersistedColors);
@@ -455,7 +449,6 @@ Singleton {
     }
     
     function resetAllToDefault(): void {
-        console.log("[Hardware] Resetting ALL settings to defaults");
         resetCpuToDefault();
         resetBatteryToDefault();
         resetGpuToDefault();
@@ -468,7 +461,6 @@ Singleton {
     
     function setCpuGovernor(governor: string): void {
         if (!cpuGovernorsAvailable.includes(governor)) return;
-        console.log("[Hardware] Setting CPU governor to:", governor);
         cpuGovernorProcess.command = ["sh", "-c", 
             `echo "${governor}" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null`
         ];
@@ -477,7 +469,6 @@ Singleton {
     
     function setCpuBoost(enabled: bool): void {
         if (!cpuBoostSupported) return;
-        console.log("[Hardware] Setting CPU boost to:", enabled);
         cpuBoostProcess.command = ["sh", "-c", 
             `echo "${enabled ? "1" : "0"}" | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null`
         ];
@@ -486,7 +477,6 @@ Singleton {
     
     function setCpuEpp(epp: string): void {
         if (!cpuEppAvailable.includes(epp)) return;
-        console.log("[Hardware] Setting CPU EPP to:", epp);
         cpuEppProcess.command = ["sh", "-c", 
             `echo "${epp}" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference > /dev/null`
         ];
@@ -499,14 +489,12 @@ Singleton {
     
     function setPowerProfile(profile: string): void {
         if (!powerProfilesAvailable.includes(profile)) return;
-        console.log("[Hardware] Setting power profile to:", profile);
         powerProfileProcess.command = ["powerprofilesctl", "set", profile];
         powerProfileProcess.running = true;
     }
     
     function setPlatformProfile(profile: string): void {
         if (!platformProfilesAvailable.includes(profile)) return;
-        console.log("[Hardware] Setting platform profile to:", profile);
         platformProfileProcess.command = ["sh", "-c", 
             `echo "${profile}" | sudo tee /sys/firmware/acpi/platform_profile > /dev/null`
         ];
@@ -519,7 +507,6 @@ Singleton {
     
     function setGpuPowerLimit(watts: int): void {
         if (watts < gpuPowerMin || watts > gpuPowerMax) return;
-        console.log("[Hardware] Setting GPU power limit to:", watts, "W");
         gpuPowerLimitProcess.command = ["sudo", "nvidia-smi", "-pl", watts.toString()];
         gpuPowerLimitProcess.running = true;
     }
@@ -529,7 +516,6 @@ Singleton {
     }
     
     function setGpuPersistenceMode(enabled: bool): void {
-        console.log("[Hardware] Setting GPU persistence mode to:", enabled);
         gpuPersistenceProcess.command = ["sudo", "nvidia-smi", "-pm", enabled ? "1" : "0"];
         gpuPersistenceProcess.running = true;
     }
@@ -540,7 +526,6 @@ Singleton {
     
     function setConservationMode(enabled: bool): void {
         if (!hasConservationMode) return;
-        console.log("[Hardware] Setting conservation mode to:", enabled);
         conservationModeProcess.command = ["sh", "-c", 
             `echo "${enabled ? "1" : "0"}" | sudo tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/conservation_mode > /dev/null`
         ];
@@ -549,7 +534,6 @@ Singleton {
     
     function setUsbCharging(enabled: bool): void {
         if (!hasUsbCharging) return;
-        console.log("[Hardware] Setting USB charging to:", enabled);
         usbChargingProcess.command = ["sh", "-c", 
             `echo "${enabled ? "1" : "0"}" | sudo tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/usb_charging > /dev/null`
         ];
@@ -558,7 +542,6 @@ Singleton {
     
     function setFnLock(enabled: bool): void {
         if (!hasFnLock) return;
-        console.log("[Hardware] Setting Fn Lock to:", enabled);
         fnLockProcess.command = ["sh", "-c", 
             `echo "${enabled ? "1" : "0"}" | sudo tee /sys/bus/platform/drivers/ideapad_acpi/VPC*/fn_lock > /dev/null`
         ];
@@ -571,7 +554,6 @@ Singleton {
     
     function setGpuMode(mode: string): void {
         if (!hasEnvyControl || !gpuModesAvailable.includes(mode)) return;
-        console.log("[Hardware] Setting GPU mode to:", mode, "(requires reboot)");
         gpuModeProcess.command = ["sudo", "envycontrol", "-s", mode];
         gpuModeProcess.running = true;
     }
@@ -582,7 +564,6 @@ Singleton {
     
     function setGpuPriority(priority: string): void {
         if (!hasGpuPriority || !gpuPrioritiesAvailable.includes(priority)) return;
-        console.log("[Hardware] Setting GPU priority to:", priority, "(requires logout)");
         gpuPriorityProcess.command = [
             Paths.scriptsDir + "/gpu-priority.sh", 
             "set", 
@@ -606,7 +587,6 @@ Singleton {
     // =====================================================
     
     function killGpuProcess(pid: int): void {
-        console.log("[Hardware] Killing GPU process:", pid);
         killProcessProcess.command = ["kill", "-9", pid.toString()];
         killProcessProcess.running = true;
     }
@@ -618,7 +598,6 @@ Singleton {
     function applyProfile(profileIndex: int): void {
         if (profileIndex < 0 || profileIndex >= appProfiles.length) return;
         const profile = appProfiles[profileIndex];
-        console.log("[Hardware] Applying profile:", profile.name);
         
         // Apply actions
         for (const action of profile.actions) {
@@ -679,14 +658,12 @@ Singleton {
         
         rgbCommandRunning = true;
         const cmd = rgbCommandQueue.shift();
-        console.log("[Hardware] Running RGB command:", cmd.join(" "));
         rgbProcess.command = cmd;
         rgbProcess.running = true;
     }
     
     function setRgbEnabled(enabled: bool): void {
         if (!hasRgbKeyboard) return;
-        console.log("[Hardware] Setting RGB enabled:", enabled);
         rgbEnabledInternal = enabled;
         
         if (enabled) {
@@ -706,7 +683,6 @@ Singleton {
     
     function setRgbMode(mode: string): void {
         if (!hasRgbKeyboard) return;
-        console.log("[Hardware] Queueing RGB mode:", mode);
         rgbCurrentModeInternal = mode;
         // Priority command - goes to front of queue
         // Include appropriate parameters for each mode type
@@ -726,7 +702,6 @@ Singleton {
         if (!hasRgbKeyboard || zoneIndex < 0 || zoneIndex > 3) return;
         // Ensure color has # prefix for internal storage
         const normalizedColor = color.startsWith("#") ? color : "#" + color;
-        console.log("[Hardware] Setting RGB zone", zoneIndex, "color:", normalizedColor);
         // Update internal colors array immediately for UI responsiveness
         let newColors = [...rgbColorsInternal];
         newColors[zoneIndex] = normalizedColor;
@@ -741,7 +716,6 @@ Singleton {
     
     function setRgbColors(colors: var): void {
         if (!hasRgbKeyboard || colors.length !== 4) return;
-        console.log("[Hardware] Setting RGB colors");
         rgbColorsInternal = colors;
         // Only save to lastColors if not turning off
         const isOff = colors.every(c => c === "#000000");
@@ -756,7 +730,6 @@ Singleton {
     function setRgbPreset(presetIndex: int): void {
         if (presetIndex < 0 || presetIndex >= rgbPresets.length) return;
         const preset = rgbPresets[presetIndex];
-        console.log("[Hardware] Applying RGB preset:", preset.name);
         
         rgbEnabledInternal = true;
         setRgbColors(preset.colors);
@@ -765,7 +738,6 @@ Singleton {
     function setRgbSpeed(speed: int): void {
         if (!hasRgbKeyboard || speed < 0 || speed > 100) return;
         rgbSpeedInternal = speed;
-        console.log("[Hardware] Queueing RGB speed:", speed);
         if (rgbModeSupportsSpeed) {
             const mode = rgbCurrentModeInternal;
             if (mode === "Breathing") {
@@ -782,7 +754,6 @@ Singleton {
     function setRgbBreathingColor(color: string): void {
         if (!hasRgbKeyboard) return;
         rgbBreathingColorInternal = color;
-        console.log("[Hardware] Setting breathing color:", color);
         if (rgbCurrentModeInternal === "Breathing") {
             // Include speed for complete state
             queueRgbCommand(["openrgb", "-d", "0", "-m", "Breathing", "-s", rgbSpeedInternal.toString(), "-c", color.replace("#", "")], false);
@@ -792,7 +763,6 @@ Singleton {
     function refreshRgb(): void {
         // Reconnect to OpenRGB server if disconnected
         if (!rgbServerReady && !rgbConnectProcess.running && !rgbRetryTimer.running) {
-            console.log("[Hardware] Manual refresh - connecting to OpenRGB server...");
             rgbRetryCount = 0;  // Reset retry count on manual refresh
             rgbServerStateInternal = 1;  // Connecting
             rgbConnectProcess.running = true;
@@ -983,7 +953,6 @@ Singleton {
     Process {
         id: cpuGovernorProcess
         onExited: (code, status) => {
-            console.log("[Hardware] CPU governor set, exit code:", code);
             Qt.callLater(root.refreshCpuGovernor);
         }
     }
@@ -1017,7 +986,6 @@ Singleton {
     Process {
         id: cpuBoostProcess
         onExited: (code, status) => {
-            console.log("[Hardware] CPU boost set, exit code:", code);
             Qt.callLater(root.refreshCpuBoost);
         }
     }
@@ -1047,7 +1015,6 @@ Singleton {
     Process {
         id: cpuEppProcess
         onExited: (code, status) => {
-            console.log("[Hardware] CPU EPP set, exit code:", code);
             Qt.callLater(root.refreshCpuEpp);
         }
     }
@@ -1111,7 +1078,6 @@ Singleton {
     Process {
         id: powerProfileProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Power profile set, exit code:", code);
             Qt.callLater(root.refreshPowerProfile);
             Qt.callLater(root.refreshCpuGovernor);
             Qt.callLater(root.refreshCpuEpp);
@@ -1143,7 +1109,6 @@ Singleton {
     Process {
         id: platformProfileProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Platform profile set, exit code:", code);
             Qt.callLater(root.refreshPlatformProfile);
         }
     }
@@ -1239,7 +1204,6 @@ Singleton {
     Process {
         id: gpuPowerLimitProcess
         onExited: (code, status) => {
-            console.log("[Hardware] GPU power limit set, exit code:", code);
             Qt.callLater(root.refreshGpuInfo);
         }
     }
@@ -1247,7 +1211,6 @@ Singleton {
     Process {
         id: gpuPersistenceProcess
         onExited: (code, status) => {
-            console.log("[Hardware] GPU persistence mode set, exit code:", code);
             Qt.callLater(root.refreshGpuInfo);
         }
     }
@@ -1321,7 +1284,6 @@ Singleton {
     Process {
         id: conservationModeProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Conservation mode set, exit code:", code);
             Qt.callLater(root.refreshBattery);
         }
     }
@@ -1346,7 +1308,6 @@ Singleton {
     Process {
         id: usbChargingProcess
         onExited: (code, status) => {
-            console.log("[Hardware] USB charging set, exit code:", code);
             Qt.callLater(root.refreshBattery);
         }
     }
@@ -1354,7 +1315,6 @@ Singleton {
     Process {
         id: fnLockProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Fn Lock set, exit code:", code);
             Qt.callLater(root.refreshBattery);
         }
     }
@@ -1387,7 +1347,6 @@ Singleton {
     Process {
         id: gpuModeProcess
         onExited: (code, status) => {
-            console.log("[Hardware] GPU mode set, exit code:", code);
             Qt.callLater(root.refreshGpuMode);
         }
     }
@@ -1402,7 +1361,6 @@ Singleton {
         stdout: SplitParser {
             onRead: data => {
                 root.gpuPriorityInternal = data.trim();
-                console.log("[Hardware] GPU priority:", root.gpuPriorityInternal);
             }
         }
     }
@@ -1410,7 +1368,6 @@ Singleton {
     Process {
         id: gpuPriorityProcess
         onExited: (code, status) => {
-            console.log("[Hardware] GPU priority set, exit code:", code);
             Qt.callLater(root.refreshGpuPriority);
         }
     }
@@ -1465,7 +1422,6 @@ Singleton {
     Process {
         id: killProcessProcess
         onExited: (code, status) => {
-            console.log("[Hardware] Process killed, exit code:", code);
             Qt.callLater(root.refreshGpuProcesses);
         }
     }
@@ -1501,7 +1457,6 @@ Singleton {
             
             if (exitCode === 0 && (output.includes("lenovo") || output.includes("4-zone") || output.includes("keyboard"))) {
                 // Connected successfully!
-                console.log("[Hardware] Connected to OpenRGB server after", root.rgbRetryCount, "retries");
                 root.hasRgbKeyboardInternal = true;
                 root.rgbServerReady = true;
                 root.rgbServerStateInternal = 2;  // Connected
@@ -1518,7 +1473,6 @@ Singleton {
                 }
                 
                 // FORCE SYNC: Apply current state to keyboard
-                console.log("[Hardware] Syncing RGB state to keyboard...");
                 if (root.rgbEnabledInternal) {
                     const mode = root.rgbCurrentModeInternal;
                     // Build command based on mode
@@ -1547,14 +1501,12 @@ Singleton {
                 // Schedule retry if we haven't exceeded max retries
                 if (root.rgbRetryCount < root.rgbMaxRetries) {
                     const delay = root.rgbRetryDelays[root.rgbRetryCount];
-                    console.log("[Hardware] OpenRGB not ready, retry", root.rgbRetryCount + 1, "of", root.rgbMaxRetries, "in", delay, "ms");
                     root.rgbRetryCount++;
                     root.rgbServerStateInternal = 1;  // Connecting (retry in progress)
                     rgbRetryTimer.interval = delay;
                     rgbRetryTimer.start();
                 } else {
                     // Exhausted retries
-                    console.log("[Hardware] OpenRGB server not available after", root.rgbMaxRetries, "retries. Use refresh button to retry.");
                     root.rgbServerStateInternal = 0;  // Disconnected
                     root.rgbRetryCount = 0;  // Reset for future manual refresh
                 }
@@ -1567,7 +1519,6 @@ Singleton {
         id: rgbRetryTimer
         repeat: false
         onTriggered: {
-            console.log("[Hardware] Retrying OpenRGB connection...");
             root.rgbServerStateInternal = 1;  // Connecting
             rgbConnectProcess.running = true;
         }
@@ -1578,7 +1529,6 @@ Singleton {
         id: rgbProcess
         onExited: (exitCode, exitStatus) => {
             if (exitCode !== 0) {
-                console.log("[Hardware] RGB command failed with code:", exitCode);
             }
             root.rgbCommandRunning = false;
             Qt.callLater(root.processRgbQueue);
@@ -1589,11 +1539,15 @@ Singleton {
     // REFRESH TIMER
     // =====================================================
     
+    // Control whether real-time monitoring is active
+    // Set to true when control center Hardware pane is visible
+    property bool monitoringActive: false
+    
     Timer {
         id: refreshTimer
         interval: 2000
         repeat: true
-        running: true
+        running: root.monitoringActive
         
         onTriggered: {
             root.refreshCpuFreq();
@@ -1617,7 +1571,6 @@ Singleton {
         path: `${Paths.state}/rgb-keyboard.json`
         
         onLoaded: {
-            console.log("[Hardware] Loading RGB settings from file");
             try {
                 const data = JSON.parse(text());
                 // Apply persisted settings
@@ -1642,16 +1595,13 @@ Singleton {
                 root.rgbSavedBreathingColor = root.rgbPersistedBreathingColor;
                 
                 root.rgbSettingsLoaded = true;
-                console.log("[Hardware] RGB settings loaded:", JSON.stringify(data));
             } catch (e) {
-                console.log("[Hardware] Failed to parse RGB settings:", e);
                 root.rgbSettingsLoaded = true;
             }
         }
         
         onLoadFailed: err => {
             if (err === FileViewError.FileNotFound) {
-                console.log("[Hardware] No RGB settings file, using defaults");
                 root.rgbSettingsLoaded = true;
                 // Save defaults to create the file
                 root.persistRgbSettings();
@@ -1670,7 +1620,6 @@ Singleton {
                 breathingColor: root.rgbBreathingColorInternal,
                 enabled: root.rgbEnabledInternal
             };
-            console.log("[Hardware] Persisting RGB settings:", JSON.stringify(data));
             rgbStorage.setText(JSON.stringify(data, null, 2));
             
             // Update persisted state
@@ -1693,7 +1642,7 @@ Singleton {
         id: slowRefreshTimer
         interval: 10000
         repeat: true
-        running: true
+        running: root.monitoringActive
         
         onTriggered: {
             root.refreshCpuGovernor();

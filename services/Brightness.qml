@@ -90,7 +90,6 @@ Singleton {
                 break;
                 
             default:
-                console.log("[Brightness] No gamma backend available");
         }
     }
     
@@ -205,10 +204,8 @@ Singleton {
                 const backend = lines[lines.length - 1].trim();
                 if (["hyprsunset", "wlsunset", "gammastep"].includes(backend)) {
                     root.gammaBackend = backend;
-                    console.log("[Brightness] Gamma backend detected:", backend);
                 } else {
                     root.gammaBackend = "none";
-                    console.log("[Brightness] No gamma backend available");
                 }
             }
         }
@@ -219,7 +216,6 @@ Singleton {
         id: gammaRunProcess
         
         onExited: (exitCode, exitStatus) => {
-            console.log("[Brightness] Gamma process exited:", exitCode);
         }
     }
 

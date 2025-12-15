@@ -51,6 +51,18 @@ Scope {
         }
     }
 
+    // Spiral Overview - ALT+TAB
+    CustomShortcut {
+        name: "spiralOverview"
+        description: "Toggle spiral window overview (ALT+TAB)"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            visibilities.spiralOverview = !visibilities.spiralOverview;
+        }
+    }
+
     CustomShortcut {
         name: "session"
         description: "Toggle session menu"

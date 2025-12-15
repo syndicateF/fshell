@@ -16,6 +16,10 @@ Item {
     signal clicked()
     signal hovered()
 
+    // Cache scheme name for efficient comparison
+    readonly property string schemeName: `${root.modelData?.name ?? ""} ${root.modelData?.flavour ?? ""}`
+    readonly property bool isCurrentScheme: schemeName === Schemes.currentScheme
+
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
@@ -85,7 +89,7 @@ Item {
         MaterialIcon {
             id: current
 
-            visible: `${root.modelData?.name} ${root.modelData?.flavour}` === Schemes.currentScheme
+            visible: root.isCurrentScheme
             text: "check"
             color: root.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3primary
             font.pointSize: Config.launcher.sizes.font.gridCheckmark

@@ -6,7 +6,6 @@ import qs.config
 import "popouts" as BarPopouts
 import Quickshell
 import QtQuick
-import QtQuick.Effects
 
 Item {
     id: root

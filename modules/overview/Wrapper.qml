@@ -1,10 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import qs.components
-import qs.components.filedialog
 import qs.config
-import qs.utils
-import Caelestia
 import Quickshell
 import QtQuick
 
@@ -14,23 +11,6 @@ Item {
     required property ShellScreen screen
     required property PersistentProperties visibilities
     required property var popouts
-    readonly property PersistentProperties dashState: PersistentProperties {
-        property int currentTab
-        property date currentDate: new Date()
-
-        reloadableId: "dashboardState"
-    }
-    readonly property FileDialog facePicker: FileDialog {
-        title: qsTr("Select a profile picture")
-        filterLabel: qsTr("Image files")
-        filters: Images.validImageExtensions
-        onAccepted: path => {
-            if (CUtils.copyFile(Qt.resolvedUrl(path), Qt.resolvedUrl(`${Paths.home}/.face`)))
-                Quickshell.execDetached(["notify-send", "-a", "caelestia-shell", "-u", "low", "-h", `STRING:image-path:${path}`, "Profile picture changed", `Profile picture changed to ${Paths.shortenHome(path)}`]);
-            else
-                Quickshell.execDetached(["notify-send", "-a", "caelestia-shell", "-u", "critical", "Unable to change profile picture", `Failed to change profile picture to ${Paths.shortenHome(path)}`]);
-        }
-    }
 
     readonly property real nonAnimHeight: isVisible ? (content.item?.nonAnimHeight ?? 0) : 0
     
@@ -44,8 +24,6 @@ Item {
     visible: height > 0
     implicitHeight: targetImplicitHeight
     // Pakai content.implicitWidth, fallback ke calculated width saat belum loaded
-    // Default width = (monitor_width * scale * columns) + padding + spacing
-    // Approximate: 1920 * 0.13 * 5 + 40 + 20 ≈ 1300px
     implicitWidth: content.implicitWidth > 0 ? content.implicitWidth : defaultOverviewWidth
     
     // Calculated default width untuk hover area sebelum content loaded
@@ -55,7 +33,6 @@ Item {
         const columns = 5
         const spacing = 5
         const padding = 20
-        // wsWidth * columns + (columns-1) * spacing + padding * 2
         return (monitorWidth * scale * columns) + ((columns - 1) * spacing) + (padding * 2)
     }
     
@@ -63,7 +40,6 @@ Item {
     onIsVisibleChanged: {
         if (isVisible) {
             isOpening = true
-            // Delay sedikit untuk pastikan content sudah loaded
             Qt.callLater(() => {
                 targetImplicitHeight = content.item?.implicitHeight ?? 0
             })
@@ -89,7 +65,6 @@ Item {
     // Behavior untuk animate implicitHeight
     Behavior on implicitHeight {
         Anim {
-            // Opening: pakai expressiveDefaultSpatial, Closing: pakai emphasized
             duration: root.isOpening ? Appearance.anim.durations.expressiveDefaultSpatial : Appearance.anim.durations.normal
             easing.bezierCurve: root.isOpening ? Appearance.anim.curves.expressiveDefaultSpatial : Appearance.anim.curves.emphasized
         }
@@ -119,8 +94,6 @@ Item {
             screen: root.screen
             visibilities: root.visibilities
             popouts: root.popouts
-            state: root.dashState
-            facePicker: root.facePicker
         }
     }
 }

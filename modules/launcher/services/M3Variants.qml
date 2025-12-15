@@ -79,6 +79,8 @@ Searcher {
         required property string description
 
         function onClicked(gridContent: var): void {
+            // Optimistically update current variant for immediate checkmark feedback
+            Schemes.currentVariant = variant;
             // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-v", variant]);
         }

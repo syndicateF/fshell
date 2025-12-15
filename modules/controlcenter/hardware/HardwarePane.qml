@@ -19,6 +19,10 @@ RowLayout {
     anchors.fill: parent
     spacing: 0
 
+    // Enable hardware monitoring when this pane is visible
+    Component.onCompleted: Hardware.monitoringActive = true
+    Component.onDestruction: Hardware.monitoringActive = false
+
     // Left panel - Overview/Quick Stats
     Item {
         Layout.preferredWidth: Math.floor(parent.width * 0.4)

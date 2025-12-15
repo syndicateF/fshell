@@ -16,6 +16,9 @@ Item {
     signal clicked()
     signal hovered()
 
+    // Cache variant for efficient comparison
+    readonly property bool isCurrentVariant: root.modelData?.variant === Schemes.currentVariant
+
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
@@ -61,7 +64,7 @@ Item {
         MaterialIcon {
             id: current
 
-            visible: root.modelData?.variant === Schemes.currentVariant
+            visible: root.isCurrentVariant
             text: "check"
             color: root.isSelected ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3primary
             font.pointSize: Config.launcher.sizes.font.gridCheckmark

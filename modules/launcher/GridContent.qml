@@ -37,50 +37,41 @@ Item {
     // Track previous tab for animation direction
     property int previousTab: 0
 
+    // Track which tabs have been visited (for lazy loading)
+    // Using individual bools because JS Set is not reactive in QML
+    property bool tab1Visited: false
+    property bool tab2Visited: false
+    property bool tab3Visited: false
+    property bool tab4Visited: false
+    property bool tab5Visited: false
+    
     // 6 tabs: 0=Apps, 1=Commands, 2=Calc, 3=Schemes, 4=Wallpapers, 5=Variants
     readonly property var currentList: {
         switch (currentTab) {
             case 0: return appsGrid;
-            case 1: return commandsGrid;
-            case 2: return calcGrid;
-            case 3: return schemesGrid;
-            case 4: return wallpapersPathView;
-            case 5: return variantsGrid;
+            case 1: return commandsLoader.item;
+            case 2: return calcLoader.item;
+            case 3: return schemesLoader.item;
+            case 4: return wallpapersLoader.item;
+            case 5: return variantsLoader.item;
             default: return appsGrid;
         }
     }
 
-    // Dynamic height per tab - wrap to content!
-    // Formula: itemHeight * min(rows, ceil(count/columns))
-    readonly property int appsRows: Math.max(1, Math.min(rows, Math.ceil(appsGrid.count / columns)))
-    readonly property int appsHeight: itemHeight * appsRows
-
-    readonly property int commandsRows: Math.max(1, Math.min(rows, Math.ceil(commandsGrid.count / columns)))
-    readonly property int commandsHeight: itemHeight * commandsRows
-
-    readonly property int calcHeight: itemHeight
-
-    readonly property int schemesRows: Math.max(1, Math.min(rows, Math.ceil(schemesGrid.count / columns)))
-    readonly property int schemesHeight: itemHeight * schemesRows
-
+    // Wallpapers height constant - only this needs to be different
     readonly property int wallpapersHeight: Config.launcher.sizes.wallpaperHeight + Appearance.font.size.normal * 3
 
-    readonly property int variantsRows: Math.max(1, Math.min(rows, Math.ceil(variantsGrid.count / columns)))
-    readonly property int variantsHeight: itemHeight * variantsRows
+    // Single function to calculate height - avoids 6 separate bindings
+    function getTabHeight(tab: int, count: int): int {
+        if (tab === 2) return itemHeight; // Calc is always 1 row
+        if (tab === 4) return wallpapersHeight;
+        const rowCount = Math.max(1, Math.min(rows, Math.ceil(count / columns)));
+        return itemHeight * rowCount;
+    }
 
     // Current dimensions based on active tab
     readonly property int currentWidth: currentTab === 4 ? fixedWallpaperWidth : fixedWidth
-    readonly property int currentHeight: {
-        switch (currentTab) {
-            case 0: return appsHeight;
-            case 1: return commandsHeight;
-            case 2: return calcHeight;
-            case 3: return schemesHeight;
-            case 4: return wallpapersHeight;
-            case 5: return variantsHeight;
-            default: return appsHeight;
-        }
-    }
+    readonly property int currentHeight: getTabHeight(currentTab, currentList?.count ?? 0)
 
     implicitWidth: currentWidth
     implicitHeight: currentHeight
@@ -174,6 +165,13 @@ Item {
     // Handle tab change animation
     onCurrentTabChanged: {
         previousTab = currentTab;
+        // Mark tab as visited for lazy loading
+        if (currentTab === 1) tab1Visited = true;
+        else if (currentTab === 2) tab2Visited = true;
+        else if (currentTab === 3) tab3Visited = true;
+        else if (currentTab === 4) tab4Visited = true;
+        else if (currentTab === 5) tab5Visited = true;
+        
         if (currentTab === 3) {
             Schemes.reload();
         }
@@ -224,7 +222,8 @@ Item {
                     cellHeight: root.itemHeight
 
                     model: ScriptModel {
-                        values: Apps.search(root.search.text)
+                        // Only query when Apps tab is active - avoid unnecessary searches
+                        values: root.currentTab === 0 ? Apps.search(root.search.text) : Apps.search("")
                         onValuesChanged: appsGrid.currentIndex = 0
                     }
 
@@ -232,8 +231,9 @@ Item {
                     interactive: true
                     boundsBehavior: Flickable.StopAtBounds
 
-                    // Smooth scroll when navigating with keyboard
+                    // Only animate scroll when this tab is active
                     Behavior on contentY {
+                        enabled: root.currentTab === 0
                         Anim {
                             duration: Appearance.anim.durations.expressiveDefaultSpatial
                             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
@@ -266,258 +266,280 @@ Item {
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // TAB 1: COMMANDS
+            // TAB 1: COMMANDS (Lazy loaded)
             // ═══════════════════════════════════════════════════════════════
             Item {
                 Layout.preferredWidth: root.fixedWidth
                 Layout.preferredHeight: root.currentHeight
 
-                GridView {
-                    id: commandsGrid
+                Loader {
+                    id: commandsLoader
                     anchors.fill: parent
+                    active: root.tab1Visited || root.currentTab === 1
+                    
+                    sourceComponent: GridView {
+                        id: commandsGrid
+                        
+                        cellWidth: root.itemWidth
+                        cellHeight: root.itemHeight
 
-                    cellWidth: root.itemWidth
-                    cellHeight: root.itemHeight
-
-                    model: ScriptModel {
-                        values: Actions.query(root.search.text)
-                        onValuesChanged: commandsGrid.currentIndex = 0
-                    }
-
-                    clip: true
-                    interactive: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    // Smooth scroll when navigating with keyboard
-                    Behavior on contentY {
-                        Anim {
-                            duration: Appearance.anim.durations.expressiveDefaultSpatial
-                            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
-                        }
-                    }
-
-                    highlight: GridHighlight { targetGrid: commandsGrid }
-                    highlightFollowsCurrentItem: false
-
-                    delegate: GridCommandItem {
-                        id: commandDelegate
-                        width: root.itemWidth
-                        height: root.itemHeight
-                        isSelected: GridView.isCurrentItem
-                        gridContent: root
-
-                        onClicked: {
-                            commandsGrid.currentIndex = commandDelegate.index;
-                            commandDelegate.modelData.onClicked(root);
+                        model: ScriptModel {
+                            values: root.currentTab === 1 ? Actions.query(root.search.text) : []
+                            onValuesChanged: commandsGrid.currentIndex = 0
                         }
 
-                        onHovered: commandsGrid.currentIndex = commandDelegate.index
-                    }
+                        clip: true
+                        interactive: true
+                        boundsBehavior: Flickable.StopAtBounds
 
-                    StyledScrollBar.vertical: StyledScrollBar {
-                        flickable: commandsGrid
+                        Behavior on contentY {
+                            enabled: root.currentTab === 1
+                            Anim {
+                                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+                            }
+                        }
+
+                        highlight: GridHighlight { targetGrid: commandsGrid }
+                        highlightFollowsCurrentItem: false
+
+                        delegate: GridCommandItem {
+                            id: commandDelegate
+                            width: root.itemWidth
+                            height: root.itemHeight
+                            isSelected: GridView.isCurrentItem
+                            gridContent: root
+
+                            onClicked: {
+                                commandsGrid.currentIndex = commandDelegate.index;
+                                commandDelegate.modelData.onClicked(root);
+                            }
+
+                            onHovered: commandsGrid.currentIndex = commandDelegate.index
+                        }
+
+                        StyledScrollBar.vertical: StyledScrollBar {
+                            flickable: commandsGrid
+                        }
                     }
                 }
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // TAB 2: CALCULATOR
+            // TAB 2: CALCULATOR (Lazy loaded)
             // ═══════════════════════════════════════════════════════════════
             Item {
                 Layout.preferredWidth: root.fixedWidth
                 Layout.preferredHeight: root.currentHeight
 
-                GridView {
-                    id: calcGrid
+                Loader {
+                    id: calcLoader
                     anchors.fill: parent
+                    active: root.tab2Visited || root.currentTab === 2
+                    
+                    sourceComponent: GridView {
+                        id: calcGrid
+                        
+                        cellWidth: root.fixedWidth
+                        cellHeight: root.itemHeight
 
-                    cellWidth: root.fixedWidth
-                    cellHeight: root.itemHeight
+                        model: 1
+                        clip: true
 
-                    model: ScriptModel {
-                        values: [0]
-                    }
-
-                    clip: true
-
-                    delegate: GridCalcItem {
-                        width: root.fixedWidth
-                        height: root.itemHeight
-                        isSelected: GridView.isCurrentItem
-                        search: root.search
+                        delegate: GridCalcItem {
+                            width: root.fixedWidth
+                            height: root.itemHeight
+                            isSelected: GridView.isCurrentItem
+                            search: root.search
+                        }
                     }
                 }
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // TAB 3: SCHEMES
+            // TAB 3: SCHEMES (Lazy loaded)
             // ═══════════════════════════════════════════════════════════════
             Item {
                 Layout.preferredWidth: root.fixedWidth
                 Layout.preferredHeight: root.currentHeight
 
-                GridView {
-                    id: schemesGrid
+                Loader {
+                    id: schemesLoader
                     anchors.fill: parent
+                    active: root.tab3Visited || root.currentTab === 3
+                    
+                    sourceComponent: GridView {
+                        id: schemesGrid
+                        
+                        cellWidth: root.itemWidth
+                        cellHeight: root.itemHeight
 
-                    cellWidth: root.itemWidth
-                    cellHeight: root.itemHeight
-
-                    model: ScriptModel {
-                        values: Schemes.query(root.search.text)
-                        onValuesChanged: schemesGrid.currentIndex = 0
-                    }
-
-                    clip: true
-                    interactive: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    // Smooth scroll when navigating with keyboard
-                    Behavior on contentY {
-                        Anim {
-                            duration: Appearance.anim.durations.expressiveDefaultSpatial
-                            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
-                        }
-                    }
-
-                    highlight: GridHighlight { targetGrid: schemesGrid }
-                    highlightFollowsCurrentItem: false
-
-                    delegate: GridSchemeItem {
-                        id: schemeDelegate
-                        width: root.itemWidth
-                        height: root.itemHeight
-                        isSelected: GridView.isCurrentItem
-                        visibilities: root.visibilities
-
-                        onClicked: {
-                            schemesGrid.currentIndex = schemeDelegate.index;
-                            schemeDelegate.modelData.onClicked(root);
+                        model: ScriptModel {
+                            values: root.currentTab === 3 ? Schemes.query(root.search.text) : []
+                            onValuesChanged: schemesGrid.currentIndex = 0
                         }
 
-                        onHovered: schemesGrid.currentIndex = schemeDelegate.index
-                    }
+                        clip: true
+                        interactive: true
+                        boundsBehavior: Flickable.StopAtBounds
 
-                    StyledScrollBar.vertical: StyledScrollBar {
-                        flickable: schemesGrid
+                        Behavior on contentY {
+                            enabled: root.currentTab === 3
+                            Anim {
+                                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+                            }
+                        }
+
+                        highlight: GridHighlight { targetGrid: schemesGrid }
+                        highlightFollowsCurrentItem: false
+
+                        delegate: GridSchemeItem {
+                            id: schemeDelegate
+                            width: root.itemWidth
+                            height: root.itemHeight
+                            isSelected: GridView.isCurrentItem
+                            visibilities: root.visibilities
+
+                            onClicked: {
+                                schemesGrid.currentIndex = schemeDelegate.index;
+                                schemeDelegate.modelData.onClicked(root);
+                            }
+
+                            onHovered: schemesGrid.currentIndex = schemeDelegate.index
+                        }
+
+                        StyledScrollBar.vertical: StyledScrollBar {
+                            flickable: schemesGrid
+                        }
                     }
                 }
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // TAB 4: WALLPAPERS (PathView style with zoom)
+            // TAB 4: WALLPAPERS (Lazy loaded)
             // ═══════════════════════════════════════════════════════════════
             Item {
                 Layout.preferredWidth: root.fixedWallpaperWidth
                 Layout.preferredHeight: root.currentHeight
 
-                PathView {
-                    id: wallpapersPathView
+                Loader {
+                    id: wallpapersLoader
                     anchors.fill: parent
+                    active: root.tab4Visited || root.currentTab === 4
+                    
+                    sourceComponent: PathView {
+                        id: wallpapersPathView
+                        
+                        readonly property int wallpaperItemWidth: Config.launcher.sizes.wallpaperWidth + Appearance.padding.normal * 2
 
-                    readonly property int wallpaperItemWidth: Config.launcher.sizes.wallpaperWidth + Appearance.padding.normal * 2
+                        model: ScriptModel {
+                            id: wallpaperModel
+                            readonly property string searchText: root.currentTab === 4 ? root.search.text : ""
 
-                    model: ScriptModel {
-                        id: wallpaperModel
-                        readonly property string searchText: root.search.text
-
-                        values: Wallpapers.query(searchText)
-                        onValuesChanged: wallpapersPathView.currentIndex = searchText ? 0 : values.findIndex(w => w.path === Wallpapers.actualCurrent)
-                    }
-
-                    Component.onCompleted: currentIndex = Wallpapers.list.findIndex(w => w.path === Wallpapers.actualCurrent)
-
-                    onCurrentItemChanged: {
-                        if (currentItem && root.currentTab === 4)
-                            Wallpapers.preview(currentItem.modelData.path);
-                    }
-
-                    pathItemCount: Math.min(Math.floor(root.width / wallpaperItemWidth), count) | 1
-                    cacheItemCount: 4
-
-                    snapMode: PathView.SnapToItem
-                    preferredHighlightBegin: 0.5
-                    preferredHighlightEnd: 0.5
-                    highlightRangeMode: PathView.StrictlyEnforceRange
-
-                    delegate: WallpaperPathItem {
-                        visibilities: root.visibilities
-                    }
-
-                    path: Path {
-                        startY: wallpapersPathView.height / 2
-
-                        PathAttribute {
-                            name: "z"
-                            value: 0
+                            values: Wallpapers.query(searchText)
+                            onValuesChanged: wallpapersPathView.currentIndex = searchText ? 0 : values.findIndex(w => w.path === Wallpapers.actualCurrent)
                         }
-                        PathLine {
-                            x: wallpapersPathView.width / 2
-                            relativeY: 0
+
+                        Component.onCompleted: currentIndex = Wallpapers.list.findIndex(w => w.path === Wallpapers.actualCurrent)
+
+                        onCurrentItemChanged: {
+                            if (currentItem && root.currentTab === 4)
+                                Wallpapers.preview(currentItem.modelData.path);
                         }
-                        PathAttribute {
-                            name: "z"
-                            value: 1
+
+                        pathItemCount: Math.min(Math.floor(root.width / wallpaperItemWidth), count) | 1
+                        cacheItemCount: 2  // Reduced from 4
+
+                        snapMode: PathView.SnapToItem
+                        preferredHighlightBegin: 0.5
+                        preferredHighlightEnd: 0.5
+                        highlightRangeMode: PathView.StrictlyEnforceRange
+
+                        delegate: WallpaperPathItem {
+                            visibilities: root.visibilities
                         }
-                        PathLine {
-                            x: wallpapersPathView.width
-                            relativeY: 0
+
+                        path: Path {
+                            startY: wallpapersPathView.height / 2
+
+                            PathAttribute {
+                                name: "z"
+                                value: 0
+                            }
+                            PathLine {
+                                x: wallpapersPathView.width / 2
+                                relativeY: 0
+                            }
+                            PathAttribute {
+                                name: "z"
+                                value: 1
+                            }
+                            PathLine {
+                                x: wallpapersPathView.width
+                                relativeY: 0
+                            }
                         }
                     }
                 }
             }
 
             // ═══════════════════════════════════════════════════════════════
-            // TAB 5: VARIANTS
+            // TAB 5: VARIANTS (Lazy loaded)
             // ═══════════════════════════════════════════════════════════════
             Item {
                 Layout.preferredWidth: root.fixedWidth
                 Layout.preferredHeight: root.currentHeight
 
-                GridView {
-                    id: variantsGrid
+                Loader {
+                    id: variantsLoader
                     anchors.fill: parent
+                    active: root.tab5Visited || root.currentTab === 5
+                    
+                    sourceComponent: GridView {
+                        id: variantsGrid
+                        
+                        cellWidth: root.itemWidth
+                        cellHeight: root.itemHeight
 
-                    cellWidth: root.itemWidth
-                    cellHeight: root.itemHeight
-
-                    model: ScriptModel {
-                        values: M3Variants.query(root.search.text)
-                        onValuesChanged: variantsGrid.currentIndex = 0
-                    }
-
-                    clip: true
-                    interactive: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    // Smooth scroll when navigating with keyboard
-                    Behavior on contentY {
-                        Anim {
-                            duration: Appearance.anim.durations.expressiveDefaultSpatial
-                            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
-                        }
-                    }
-
-                    highlight: GridHighlight { targetGrid: variantsGrid }
-                    highlightFollowsCurrentItem: false
-
-                    delegate: GridVariantItem {
-                        id: variantDelegate
-                        width: root.itemWidth
-                        height: root.itemHeight
-                        isSelected: GridView.isCurrentItem
-                        visibilities: root.visibilities
-
-                        onClicked: {
-                            variantsGrid.currentIndex = variantDelegate.index;
-                            variantDelegate.modelData.onClicked(root);
+                        model: ScriptModel {
+                            values: root.currentTab === 5 ? M3Variants.query(root.search.text) : []
+                            onValuesChanged: variantsGrid.currentIndex = 0
                         }
 
-                        onHovered: variantsGrid.currentIndex = variantDelegate.index
-                    }
+                        clip: true
+                        interactive: true
+                        boundsBehavior: Flickable.StopAtBounds
 
-                    StyledScrollBar.vertical: StyledScrollBar {
-                        flickable: variantsGrid
+                        Behavior on contentY {
+                            enabled: root.currentTab === 5
+                            Anim {
+                                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+                            }
+                        }
+
+                        highlight: GridHighlight { targetGrid: variantsGrid }
+                        highlightFollowsCurrentItem: false
+
+                        delegate: GridVariantItem {
+                            id: variantDelegate
+                            width: root.itemWidth
+                            height: root.itemHeight
+                            isSelected: GridView.isCurrentItem
+                            visibilities: root.visibilities
+
+                            onClicked: {
+                                variantsGrid.currentIndex = variantDelegate.index;
+                                variantDelegate.modelData.onClicked(root);
+                            }
+
+                            onHovered: variantsGrid.currentIndex = variantDelegate.index
+                        }
+
+                        StyledScrollBar.vertical: StyledScrollBar {
+                            flickable: variantsGrid
+                        }
                     }
                 }
             }

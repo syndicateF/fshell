@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 
-import qs.components
 import qs.config
 import Quickshell
 import QtQuick
@@ -11,8 +10,6 @@ Item {
     required property ShellScreen screen
     required property PersistentProperties visibilities
     required property var popouts
-    required property PersistentProperties state
-    required property var facePicker
 
     readonly property real nonAnimWidth: overview.implicitWidth
     readonly property real nonAnimHeight: overview.implicitHeight

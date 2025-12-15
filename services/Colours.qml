@@ -24,6 +24,10 @@ Singleton {
     readonly property Transparency transparency: Transparency {}
     readonly property alias wallLuminance: analyser.luminance
 
+    // Signals for real-time checkmark updates
+    signal schemePropertyChanged()
+    signal flavourPropertyChanged()
+
     function getLuminance(c: color): real {
         if (c.r == 0 && c.g == 0 && c.b == 0)
             return 0;
@@ -61,7 +65,9 @@ Singleton {
 
         if (!isPreview) {
             root.scheme = scheme.name;
+            root.schemePropertyChanged();
             flavour = scheme.flavour;
+            root.flavourPropertyChanged();
             currentLight = scheme.mode === "light";
         } else {
             previewLight = scheme.mode === "light";

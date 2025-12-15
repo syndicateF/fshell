@@ -3,6 +3,7 @@ pragma Singleton
 import ".."
 import qs.config
 import qs.utils
+import qs.services
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -12,6 +13,9 @@ Searcher {
 
     property string currentScheme
     property string currentVariant
+
+    // Signals for real-time checkmark updates
+    signal currentVariantPropertyChanged()
 
     function transformSearch(search: string): string {
         // No longer need to strip prefix since we use tabs now
@@ -24,6 +28,19 @@ Searcher {
 
     function reload(): void {
         getCurrent.running = true;
+    }
+
+    // Listen to Colours service changes for real-time checkmark updates
+    Connections {
+        target: Colours
+
+        function onSchemePropertyChanged(): void {
+            root.currentScheme = `${Colours.scheme} ${Colours.flavour}`;
+        }
+
+        function onFlavourPropertyChanged(): void {
+            root.currentScheme = `${Colours.scheme} ${Colours.flavour}`;
+        }
     }
 
     list: schemes.instances
@@ -71,6 +88,7 @@ Searcher {
                 const [name, flavour, variant] = text.trim().split("\n");
                 root.currentScheme = `${name} ${flavour}`;
                 root.currentVariant = variant;
+                root.currentVariantPropertyChanged();
             }
         }
     }
@@ -82,6 +100,8 @@ Searcher {
         readonly property var colours: modelData.colours
 
         function onClicked(gridContent: var): void {
+            // Optimistically update current scheme for immediate checkmark feedback
+            root.currentScheme = `${name} ${flavour}`;
             // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-n", name, "-f", flavour]);
         }

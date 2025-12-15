@@ -366,7 +366,6 @@ Item {
                     onClicked: mouse => {
                         mouse.accepted = true;  // Prevent propagation
                         const targetName = monitorCard.modelData;
-                        console.log("[GlobalInfo] Navigating to monitor settings:", targetName);
                         
                         // Find and select the monitor using Qt.callLater to avoid race conditions
                         Qt.callLater(() => {

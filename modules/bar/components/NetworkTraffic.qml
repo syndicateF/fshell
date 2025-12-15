@@ -4,7 +4,6 @@ import qs.components
 import qs.services
 import qs.config
 import QtQuick
-import QtQuick.Layouts
 
 // Network Traffic Indicator - displays upload/download speed in bar
 // Style: rotated 90° vertical text with unit indicator (PowerMode style)

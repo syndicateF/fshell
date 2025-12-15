@@ -10,7 +10,7 @@ import QtQuick
 StyledRect {
     id: root
 
-    // Tokyo Night color scheme
+    // Warna dari color scheme
     readonly property color colour: {
         const charging = [
             UPowerDeviceState.Charging,
@@ -19,10 +19,10 @@ StyledRect {
         ].includes(UPower.displayDevice.state);
         const pct = UPower.displayDevice.percentage * 100;
         
-        // Tokyo Night colors
-        if (charging) return "#9ece6a";  // Tokyo Night Green
-        if (pct <= 20) return "#f7768e";  // Tokyo Night Red/Pink (critical)
-        if (pct <= 100) return "#7aa2f7";  // Tokyo Night Blue (normal discharge)
+        // Color scheme colors
+        if (charging) return Colours.palette.m3secondary;  // Secondary (charging)
+        if (pct <= 20) return Colours.palette.m3error;  // Error (critical)
+        if (pct <= 100) return Colours.palette.m3primary;  // Primary (normal discharge)
         return Colours.palette.m3onSurface;  // Neutral (fallback)
     }
 
