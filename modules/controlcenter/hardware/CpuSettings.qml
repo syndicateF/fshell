@@ -230,15 +230,12 @@ Item {
                     id: boostLayout
 
                     anchors.fill: parent
-                    anchors.leftMargin: Appearance.padding.large
-                    anchors.topMargin: Appearance.padding.large
-                    anchors.bottomMargin: Appearance.padding.large
-                    anchors.rightMargin: Appearance.padding.small
+                    anchors.margins: Appearance.padding.large
                     spacing: Appearance.spacing.normal
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 0
+                        spacing: 2
 
                         StyledText {
                             text: qsTr("Turbo Boost")
@@ -255,6 +252,7 @@ Item {
                     }
 
                     StyledSwitch {
+                        Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                         checked: Hardware.cpuBoostEnabled
                         onToggled: {
                             Hardware.setCpuBoost(checked);

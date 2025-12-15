@@ -14,6 +14,11 @@ Item {
     id: root
 
     required property Session session
+    
+    // Confirmation dialog state
+    property bool showKillConfirm: false
+    property int pendingKillPid: 0
+    property string pendingKillCommand: ""
 
     StyledFlickable {
         anchors.fill: parent
@@ -319,7 +324,9 @@ Item {
                             processType: modelData.type
 
                             onKillRequested: {
-                                Hardware.killGpuProcess(modelData.pid);
+                                root.pendingKillPid = modelData.pid;
+                                root.pendingKillCommand = modelData.command;
+                                root.showKillConfirm = true;
                             }
                         }
                     }
@@ -357,6 +364,174 @@ Item {
             }
 
             Item { Layout.preferredHeight: Appearance.spacing.large }
+        }
+    }
+
+    // Confirmation Dialog Overlay for Kill Process
+    Item {
+        id: killConfirmOverlay
+        
+        anchors.fill: parent
+        visible: root.showKillConfirm
+        z: 100
+        
+        // Scrim background
+        Rectangle {
+            anchors.fill: parent
+            color: Qt.alpha(Colours.palette.m3scrim, root.showKillConfirm ? 0.5 : 0)
+            
+            Behavior on color {
+                ColorAnimation { duration: Appearance.anim.durations.normal }
+            }
+            
+            MouseArea {
+                anchors.fill: parent
+                onClicked: root.showKillConfirm = false
+            }
+        }
+        
+        // Dialog
+        StyledRect {
+            id: killDialogContent
+            
+            anchors.centerIn: parent
+            implicitWidth: Math.min(400, parent.width - Appearance.padding.large * 4)
+            implicitHeight: killDialogLayout.implicitHeight + Appearance.padding.large * 2
+            
+            radius: Appearance.rounding.large
+            color: Colours.palette.m3surfaceContainerHigh
+            opacity: root.showKillConfirm ? 1 : 0
+            scale: root.showKillConfirm ? 1 : 0.8
+            visible: opacity > 0
+            
+            Behavior on opacity {
+                NumberAnimation { duration: Appearance.anim.durations.normal }
+            }
+            
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
+                }
+            }
+            
+            ColumnLayout {
+                id: killDialogLayout
+                
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.large
+                spacing: Appearance.spacing.normal
+                
+                // Icon
+                MaterialIcon {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: "warning"
+                    color: Colours.palette.m3error
+                    font.pointSize: Appearance.font.size.extraLarge * 2
+                }
+                
+                // Title
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("Terminate Process?")
+                    font.pointSize: Appearance.font.size.larger
+                    font.weight: 600
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+                
+                // Process info
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: processInfoLayout.implicitHeight + Appearance.padding.normal * 2
+                    radius: Appearance.rounding.small
+                    color: Colours.palette.m3surfaceContainerHighest
+                    
+                    ColumnLayout {
+                        id: processInfoLayout
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.normal
+                        spacing: 4
+                        
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: root.pendingKillCommand
+                            font.weight: 600
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideMiddle
+                        }
+                        
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: qsTr("PID: %1").arg(root.pendingKillPid)
+                            font.pointSize: Appearance.font.size.small
+                            color: Colours.palette.m3onSurfaceVariant
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                }
+                
+                // Warning message
+                StyledText {
+                    Layout.fillWidth: true
+                    text: qsTr("This will forcefully terminate the process. Unsaved data may be lost.")
+                    font.pointSize: Appearance.font.size.small
+                    color: Colours.palette.m3onSurfaceVariant
+                    horizontalAlignment: Text.AlignHCenter
+                    wrapMode: Text.WordWrap
+                }
+                
+                // Buttons
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Appearance.spacing.normal
+                    spacing: Appearance.spacing.normal
+                    
+                    // Cancel button
+                    StyledRect {
+                        Layout.fillWidth: true
+                        implicitHeight: 44
+                        
+                        radius: Appearance.rounding.full
+                        color: Colours.palette.m3surfaceContainerHighest
+                        
+                        StateLayer {
+                            color: Colours.palette.m3onSurface
+                            function onClicked(): void {
+                                root.showKillConfirm = false;
+                            }
+                        }
+                        
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: qsTr("Cancel")
+                        }
+                    }
+                    
+                    // Confirm kill button
+                    StyledRect {
+                        Layout.fillWidth: true
+                        implicitHeight: 44
+                        
+                        radius: Appearance.rounding.full
+                        color: Colours.palette.m3error
+                        
+                        StateLayer {
+                            color: Colours.palette.m3onError
+                            function onClicked(): void {
+                                Hardware.killGpuProcess(root.pendingKillPid);
+                                root.showKillConfirm = false;
+                            }
+                        }
+                        
+                        StyledText {
+                            anchors.centerIn: parent
+                            text: qsTr("Terminate")
+                            color: Colours.palette.m3onError
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -533,6 +708,7 @@ Item {
             }
 
             IconButton {
+                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                 icon: "close"
                 type: IconButton.Tonal
                 activeColour: Colours.palette.m3errorContainer

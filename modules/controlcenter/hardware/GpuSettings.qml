@@ -434,10 +434,7 @@ Item {
                         id: persistenceLayout
 
                         anchors.fill: parent
-                        anchors.leftMargin: Appearance.padding.large
-                        anchors.topMargin: Appearance.padding.large
-                        anchors.bottomMargin: Appearance.padding.large
-                        anchors.rightMargin: Appearance.padding.small
+                        anchors.margins: Appearance.padding.large
                         spacing: Appearance.spacing.normal
 
                         ColumnLayout {
@@ -459,6 +456,7 @@ Item {
                         }
 
                         StyledSwitch {
+                            Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
                             checked: Hardware.gpuPersistenceMode
                             onToggled: {
                                 Hardware.setGpuPersistenceMode(checked);

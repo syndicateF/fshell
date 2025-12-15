@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import ".."
 import qs.components
 import qs.components.controls
-import qs.components.effects
 import qs.components.containers
 import qs.config
 import qs.services
@@ -151,72 +150,6 @@ Item {
                 }
             }
 
-            // =====================================================
-            // Quick Actions
-            // =====================================================
-            StyledText {
-                Layout.topMargin: Appearance.spacing.large
-                text: qsTr("Quick Actions")
-                font.pointSize: Appearance.font.size.larger
-                font.weight: 500
-            }
-
-            Flow {
-                Layout.fillWidth: true
-                spacing: Appearance.spacing.small
-
-                QuickAction {
-                    icon: "bolt"
-                    label: qsTr("Performance")
-                    active: Hardware.customPowerMode === "performance"
-
-                    onClicked: {
-                        Hardware.setCustomPowerMode("performance");
-                    }
-                }
-
-                QuickAction {
-                    icon: "balance"
-                    label: qsTr("Balanced")
-                    active: Hardware.customPowerMode === "balanced"
-
-                    onClicked: {
-                        Hardware.setCustomPowerMode("balanced");
-                    }
-                }
-
-                QuickAction {
-                    icon: "eco"
-                    label: qsTr("Power Saver")
-                    active: Hardware.customPowerMode === "power-saver"
-
-                    onClicked: {
-                        Hardware.setCustomPowerMode("power-saver");
-                    }
-                }
-
-                QuickAction {
-                    icon: Hardware.cpuBoostEnabled ? "flash_on" : "flash_off"
-                    label: qsTr("CPU Boost")
-                    active: Hardware.cpuBoostEnabled
-
-                    onClicked: {
-                        Hardware.setCpuBoost(!Hardware.cpuBoostEnabled);
-                    }
-                }
-
-                QuickAction {
-                    icon: "battery_saver"
-                    label: qsTr("Conservation")
-                    active: Hardware.conservationMode
-                    visible: Hardware.hasConservationMode
-
-                    onClicked: {
-                        Hardware.setConservationMode(!Hardware.conservationMode);
-                    }
-                }
-            }
-
             Item { Layout.preferredHeight: Appearance.spacing.large }
         }
     }
@@ -245,10 +178,7 @@ Item {
             id: profileLayout
 
             anchors.fill: parent
-            anchors.leftMargin: Appearance.padding.large
-            anchors.topMargin: Appearance.padding.large
-            anchors.bottomMargin: Appearance.padding.large
-            anchors.rightMargin: Appearance.padding.small
+            anchors.margins: Appearance.padding.large
             spacing: Appearance.spacing.normal
 
             // Header
@@ -257,15 +187,15 @@ Item {
                 spacing: Appearance.spacing.normal
 
                 StyledRect {
-                    implicitWidth: 48
-                    implicitHeight: 48
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 48
                     radius: Appearance.rounding.full
                     color: Colours.palette.m3primaryContainer
 
                     MaterialIcon {
                         anchors.centerIn: parent
                         text: profileCard.icon
-                        font.pointSize: Appearance.font.size.extraLarge
+                        font.pointSize: Appearance.font.size.larger
                         color: Colours.palette.m3onPrimaryContainer
                     }
                 }
@@ -286,6 +216,8 @@ Item {
                         color: Colours.palette.m3onSurfaceVariant
                     }
                 }
+
+                Item { Layout.fillWidth: true }
 
                 IconTextButton {
                     icon: "play_arrow"
@@ -375,7 +307,7 @@ Item {
                                 implicitWidth: appText.implicitWidth + Appearance.padding.small * 2
                                 implicitHeight: appText.implicitHeight + 4
                                 radius: Appearance.rounding.small
-                                color: Colours.palette.m3secondaryContainer
+                                // color: Colours.palette.m3secondaryContainer
 
                                 StyledText {
                                     id: appText
@@ -419,47 +351,6 @@ Item {
                 text: parent.parent.value
                 font.weight: 500
                 color: parent.parent.valueColor
-            }
-        }
-    }
-
-    component QuickAction: StyledRect {
-        id: quickAction
-
-        property string icon
-        property string label
-        property bool active: false
-
-        signal clicked()
-
-        implicitWidth: quickLayout.implicitWidth + Appearance.padding.normal * 2
-        implicitHeight: quickLayout.implicitHeight + Appearance.padding.small * 2
-        radius: Appearance.rounding.full
-        color: active ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainer
-
-        StateLayer {
-            radius: quickAction.radius
-            color: active ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
-
-            onClicked: {
-                quickAction.clicked();
-            }
-        }
-
-        RowLayout {
-            id: quickLayout
-            anchors.centerIn: parent
-            spacing: Appearance.spacing.small
-
-            MaterialIcon {
-                text: quickAction.icon
-                color: quickAction.active ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurfaceVariant
-            }
-
-            StyledText {
-                text: quickAction.label
-                font.weight: 500
-                color: quickAction.active ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
             }
         }
     }

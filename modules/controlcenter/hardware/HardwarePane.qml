@@ -671,10 +671,7 @@ RowLayout {
         Loader {
             id: loader
             anchors.fill: parent
-            anchors.topMargin: Appearance.padding.large * 2
-            anchors.bottomMargin: Appearance.padding.large * 2
-            anchors.leftMargin: Appearance.padding.large * 2
-            anchors.rightMargin: Appearance.padding.large
+            anchors.margins: Appearance.padding.large * 2
         }
     }
 
