@@ -28,76 +28,307 @@ Item {
             anchors.right: parent.right
             spacing: Appearance.spacing.normal
 
-            // Header
+            // Header - Neutral for both GPUs
             MaterialIcon {
                 Layout.alignment: Qt.AlignHCenter
-                text: "videogame_asset"
+                text: "memory"
                 font.pointSize: Appearance.font.size.extraLarge * 3
                 font.bold: true
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: Hardware.gpuModel
+                text: qsTr("Graphics Configuration")
                 font.pointSize: Appearance.font.size.large
                 font.bold: true
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Driver: %1").arg(Hardware.gpuDriver)
+                text: {
+                    let gpus = [];
+                    if (Hardware.hasAmdIGpu) gpus.push("AMD Radeon (Integrated)");
+                    if (Hardware.hasNvidiaGpu) gpus.push("NVIDIA (Discrete)");
+                    return gpus.length > 0 ? gpus.join(" + ") : qsTr("No GPU detected");
+                }
                 color: Colours.palette.m3onSurfaceVariant
             }
-            
-            // Reset to Default button
-            IconTextButton {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: Appearance.spacing.small
-                text: qsTr("Reset to Default")
-                icon: "restart_alt"
-                visible: Hardware.hasNvidiaGpu
-                onClicked: Hardware.resetGpuToDefault()
-            }
 
-            // No GPU fallback
+            // =====================================================
+            // AMD iGPU Section (Radeon Vega)
+            // =====================================================
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.topMargin: Appearance.spacing.extraLarge
-                visible: !Hardware.hasNvidiaGpu
+                Layout.topMargin: Appearance.spacing.large
+                visible: Hardware.hasAmdIGpu
                 spacing: Appearance.spacing.normal
 
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "videocam_off"
-                    font.pointSize: Appearance.font.size.extraLarge * 2
-                    color: Colours.palette.m3onSurfaceVariant
+                // AMD Header Card
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: amdHeaderLayout.implicitHeight + Appearance.padding.large * 2
+                    radius: Appearance.rounding.normal
+                    color: Qt.alpha("#ED1C24", 0.15)  // AMD Red
+
+                    RowLayout {
+                        id: amdHeaderLayout
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.large
+                        spacing: Appearance.spacing.normal
+
+                        // AMD Icon
+                        StyledRect {
+                            implicitWidth: 48
+                            implicitHeight: 48
+                            radius: Appearance.rounding.small
+                            color: "#ED1C24"  // AMD Red
+
+                            StyledText {
+                                anchors.centerIn: parent
+                                text: "AMD"
+                                font.pointSize: Appearance.font.size.small
+                                font.weight: 700
+                                color: "white"
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: 2
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignLeft
+                                Layout.fillWidth: true
+                                text: qsTr("AMD Radeon™ Graphics")
+                                font.pointSize: Appearance.font.size.larger
+                                font.weight: 600
+                            }
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignLeft
+                                text: qsTr("Integrated GPU • Cezanne")
+                                Layout.fillWidth: true
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+                        }
+                    }
                 }
 
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("No NVIDIA GPU detected")
-                    font.pointSize: Appearance.font.size.larger
-                    color: Colours.palette.m3onSurfaceVariant
+                // AMD iGPU Stats
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: amdStatsLayout.implicitHeight + Appearance.padding.large * 2
+
+                    radius: Appearance.rounding.normal
+                    color: Colours.tPalette.m3surfaceContainer
+
+                    GridLayout {
+                        id: amdStatsLayout
+
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.large
+                        columns: 2
+                        rowSpacing: Appearance.spacing.normal
+                        columnSpacing: Appearance.spacing.large
+
+                        // GPU Busy
+                        StatRow {
+                            Layout.fillWidth: true
+                            icon: "speed"
+                            label: qsTr("GPU Usage")
+                            value: Hardware.amdIGpuBusy + "%"
+                            valueColor: Hardware.amdIGpuBusy > 80 ? Colours.palette.m3error : 
+                                       Hardware.amdIGpuBusy > 50 ? Colours.palette.m3tertiary : 
+                                       Colours.palette.m3onSurface
+                        }
+
+                        // Current Profile
+                        StatRow {
+                            Layout.fillWidth: true
+                            icon: "tune"
+                            label: qsTr("Power Profile")
+                            value: Hardware.amdIGpuPowerProfile || "N/A"
+                        }
+
+                        // DPM Level
+                        StatRow {
+                            Layout.fillWidth: true
+                            icon: "bolt"
+                            label: qsTr("DPM Level")
+                            value: Hardware.amdIGpuDpmLevel
+                        }
+                    }
                 }
 
+                // Power Profile Mode selector
                 StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Make sure nvidia-smi is installed and working")
-                    color: Colours.palette.m3outline
+                    Layout.topMargin: Appearance.spacing.normal
+                    text: qsTr("Power Profile Mode")
+                    font.weight: 500
+                }
+
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.small
+
+                    Repeater {
+                        model: Hardware.amdIGpuPowerProfilesAvailable
+
+                        StyledRect {
+                            required property string modelData
+                            required property int index
+
+                            implicitWidth: profileText.implicitWidth + Appearance.padding.normal * 2
+                            implicitHeight: 36
+                            radius: Appearance.rounding.full
+                            color: Hardware.amdIGpuPowerProfile === modelData ? 
+                                   Colours.palette.m3primaryContainer : 
+                                   Colours.tPalette.m3surfaceContainer
+
+                            StateLayer {
+                                radius: parent.radius
+                                color: Hardware.amdIGpuPowerProfile === modelData ?
+                                       Colours.palette.m3onPrimaryContainer :
+                                       Colours.palette.m3onSurface
+                                function onClicked(): void {
+                                    Hardware.setAmdIGpuPowerProfile(modelData);
+                                }
+                            }
+
+                            StyledText {
+                                id: profileText
+                                anchors.centerIn: parent
+                                text: modelData
+                                font.weight: Hardware.amdIGpuPowerProfile === modelData ? 600 : 400
+                                color: Hardware.amdIGpuPowerProfile === modelData ?
+                                       Colours.palette.m3onPrimaryContainer :
+                                       Colours.palette.m3onSurface
+                            }
+                        }
+                    }
+                }
+
+                // DPM Force Level selector
+                StyledText {
+                    Layout.topMargin: Appearance.spacing.normal
+                    text: qsTr("DPM Performance Level")
+                    font.weight: 500
+                }
+
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.small
+
+                    Repeater {
+                        model: ["auto", "low", "high"]
+
+                        StyledRect {
+                            required property string modelData
+
+                            implicitWidth: dpmText.implicitWidth + Appearance.padding.normal * 2
+                            implicitHeight: 36
+                            radius: Appearance.rounding.full
+                            color: Hardware.amdIGpuDpmLevel === modelData ? 
+                                   Colours.palette.m3secondaryContainer : 
+                                   Colours.tPalette.m3surfaceContainer
+
+                            StateLayer {
+                                radius: parent.radius
+                                color: Hardware.amdIGpuDpmLevel === modelData ?
+                                       Colours.palette.m3onSecondaryContainer :
+                                       Colours.palette.m3onSurface
+                                function onClicked(): void {
+                                    Hardware.setAmdIGpuDpmLevel(modelData);
+                                }
+                            }
+
+                            StyledText {
+                                id: dpmText
+                                anchors.centerIn: parent
+                                text: {
+                                    switch(modelData) {
+                                        case "auto": return qsTr("Auto");
+                                        case "low": return qsTr("Low Power");
+                                        case "high": return qsTr("High Performance");
+                                        default: return modelData;
+                                    }
+                                }
+                                font.weight: Hardware.amdIGpuDpmLevel === modelData ? 600 : 400
+                                color: Hardware.amdIGpuDpmLevel === modelData ?
+                                       Colours.palette.m3onSecondaryContainer :
+                                       Colours.palette.m3onSurface
+                            }
+                        }
+                    }
                 }
             }
 
-            // GPU Content (only show if NVIDIA GPU exists)
+            // =====================================================
+            // NVIDIA dGPU Section
+            // =====================================================
             ColumnLayout {
                 Layout.fillWidth: true
+                Layout.topMargin: Appearance.spacing.large
                 visible: Hardware.hasNvidiaGpu
                 spacing: Appearance.spacing.normal
+
+                // NVIDIA Header Card
+                StyledRect {
+                    Layout.fillWidth: true
+                    implicitHeight: nvidiaHeaderLayout.implicitHeight + Appearance.padding.large * 2
+                    radius: Appearance.rounding.normal
+                    color: Qt.alpha("#76B900", 0.15)  // NVIDIA Green
+
+                    RowLayout {
+                        id: nvidiaHeaderLayout
+                        anchors.fill: parent
+                        anchors.margins: Appearance.padding.large
+                        spacing: Appearance.spacing.normal
+
+                        // NVIDIA Icon
+                        StyledRect {
+                            implicitWidth: 48
+                            implicitHeight: 48
+                            radius: Appearance.rounding.small
+                            color: "#76B900"  // NVIDIA Green
+
+                            MaterialIcon {
+                                anchors.centerIn: parent
+                                text: "videogame_asset"
+                                font.pointSize: Appearance.font.size.larger
+                                color: "white"
+                            }
+                        }
+
+                        ColumnLayout {
+                            Layout.alignment: Qt.AlignVCenter
+                            spacing: 2
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignLeft
+                                Layout.fillWidth: true
+                                text: Hardware.gpuModel
+                                font.pointSize: Appearance.font.size.larger
+                                font.weight: 600
+                            }
+
+                            StyledText {
+                                Layout.alignment: Qt.AlignLeft
+                                Layout.fillWidth: true
+                                text: qsTr("Discrete GPU • Driver: %1").arg(Hardware.gpuDriver)
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+                        }
+                    }
+                }
 
                 // =====================================================
                 // Real-time Stats Section
                 // =====================================================
                 StyledText {
-                    Layout.topMargin: Appearance.spacing.large
+                    Layout.topMargin: Appearance.spacing.normal
                     text: qsTr("Real-time Statistics")
                     font.pointSize: Appearance.font.size.larger
                     font.weight: 500

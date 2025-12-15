@@ -166,6 +166,29 @@ Singleton {
     property bool gpuPowerLimitSupportedInternal: false
     
     // =====================================================
+    // AMD iGPU PROPERTIES (Radeon Vega)
+    // =====================================================
+    
+    // AMD iGPU detection
+    readonly property bool hasAmdIGpu: amdIGpuPathInternal !== ""
+    property string amdIGpuPathInternal: ""
+    
+    // AMD iGPU Power Profile Mode
+    readonly property string amdIGpuPowerProfile: amdIGpuPowerProfileInternal.trim()
+    readonly property var amdIGpuPowerProfilesAvailable: amdIGpuPowerProfilesAvailableInternal
+    property string amdIGpuPowerProfileInternal: ""
+    property var amdIGpuPowerProfilesAvailableInternal: []
+    
+    // AMD iGPU DPM Force Performance Level
+    readonly property string amdIGpuDpmLevel: amdIGpuDpmLevelInternal.trim()
+    readonly property var amdIGpuDpmLevelsAvailable: ["auto", "low", "high", "manual", "profile_standard", "profile_min_sclk", "profile_min_mclk", "profile_peak"]
+    property string amdIGpuDpmLevelInternal: "auto"
+    
+    // AMD iGPU Utilization
+    readonly property int amdIGpuBusy: amdIGpuBusyInternal
+    property int amdIGpuBusyInternal: 0
+    
+    // =====================================================
     // DETECTION FLAGS
     // =====================================================
     
@@ -1714,6 +1737,7 @@ Singleton {
             refreshCpuBoost();
             refreshCpuEpp();
             refreshCustomPowerMode();
+            detectAmdIGpu();  // Detect AMD iGPU
         });
     }
     
@@ -1741,6 +1765,9 @@ Singleton {
                 root.refreshGpuInfo();
                 root.refreshGpuProcesses();
             }
+            if (root.hasAmdIGpu) {
+                root.refreshAmdIGpu();
+            }
         }
     }
     
@@ -1754,6 +1781,8 @@ Singleton {
     
     Process {
         id: cpuCStatesProcess
+        property var tempStates: []
+        
         command: ["sh", "-c", `
             driver=$(cat /sys/devices/system/cpu/cpuidle/current_driver 2>/dev/null || echo "N/A")
             echo "DRIVER:$driver"
@@ -1768,6 +1797,7 @@ Singleton {
         stdout: SplitParser {
             onRead: data => {
                 if (data.startsWith("DRIVER:")) {
+                    cpuCStatesProcess.tempStates = [];  // Clear temp array at start
                     root.cpuIdleDriverInternal = data.substring(7);
                 } else if (data.startsWith("STATE:")) {
                     const parts = data.substring(6).split("|");
@@ -1778,13 +1808,138 @@ Singleton {
                             latency: parseInt(parts[2]) || 0,
                             disabled: parts[3] === "1"
                         };
-                        root.cpuCStatesInternal = [...root.cpuCStatesInternal, newState];
+                        cpuCStatesProcess.tempStates.push(newState);
                     }
                 }
             }
         }
         onExited: (code, status) => {
-            // States collected, no further action needed
+            // Only update the main array when process completes
+            root.cpuCStatesInternal = cpuCStatesProcess.tempStates;
+        }
+    }
+    
+    // =====================================================
+    // AMD iGPU CONTROL (Radeon Vega)
+    // =====================================================
+    
+    // Detect AMD iGPU device path
+    function detectAmdIGpu(): void {
+        amdIGpuDetectProcess.running = true;
+    }
+    
+    Process {
+        id: amdIGpuDetectProcess
+        command: ["sh", "-c", `
+            for card in /sys/class/drm/card*/device; do
+                if [ -f "$card/vendor" ]; then
+                    vendor=$(cat "$card/vendor")
+                    if [ "$vendor" = "0x1002" ]; then
+                        echo "$card"
+                        exit 0
+                    fi
+                fi
+            done
+        `]
+        stdout: SplitParser {
+            onRead: data => {
+                root.amdIGpuPathInternal = data.trim();
+                if (root.amdIGpuPathInternal !== "") {
+                    root.refreshAmdIGpu();
+                }
+            }
+        }
+    }
+    
+    // Refresh AMD iGPU status
+    function refreshAmdIGpu(): void {
+        if (root.amdIGpuPathInternal === "") return;
+        amdIGpuRefreshProcess.running = true;
+    }
+    
+    Process {
+        id: amdIGpuRefreshProcess
+        command: ["sh", "-c", `
+            path="${root.amdIGpuPathInternal}"
+            
+            # Get current DPM level
+            echo "DPM:$(cat "$path/power_dpm_force_performance_level" 2>/dev/null || echo "N/A")"
+            
+            # Get GPU busy percent
+            echo "BUSY:$(cat "$path/gpu_busy_percent" 2>/dev/null || echo "0")"
+            
+            # Get available power profile modes
+            if [ -f "$path/pp_power_profile_mode" ]; then
+                cat "$path/pp_power_profile_mode" 2>/dev/null | while read line; do
+                    # Parse: "NUM NAME *" or "NUM NAME"
+                    num=$(echo "$line" | awk '{print $1}')
+                    name=$(echo "$line" | awk '{print $2}')
+                    active=$(echo "$line" | grep -c '\\*$')
+                    if [ -n "$name" ] && [ "$name" != "NUM" ]; then
+                        if [ "$active" -eq 1 ]; then
+                            echo "PROFILE_ACTIVE:$name"
+                        fi
+                        echo "PROFILE:$name"
+                    fi
+                done
+            fi
+        `]
+        stdout: SplitParser {
+            property var tempProfiles: []
+            onRead: data => {
+                if (data.startsWith("DPM:")) {
+                    amdIGpuRefreshProcess.stdout.tempProfiles = [];
+                    root.amdIGpuDpmLevelInternal = data.substring(4);
+                } else if (data.startsWith("BUSY:")) {
+                    root.amdIGpuBusyInternal = parseInt(data.substring(5)) || 0;
+                } else if (data.startsWith("PROFILE_ACTIVE:")) {
+                    root.amdIGpuPowerProfileInternal = data.substring(15);
+                } else if (data.startsWith("PROFILE:")) {
+                    amdIGpuRefreshProcess.stdout.tempProfiles.push(data.substring(8));
+                }
+            }
+        }
+        onExited: (code, status) => {
+            if (amdIGpuRefreshProcess.stdout.tempProfiles.length > 0) {
+                root.amdIGpuPowerProfilesAvailableInternal = amdIGpuRefreshProcess.stdout.tempProfiles;
+            }
+        }
+    }
+    
+    // Set AMD iGPU Power Profile Mode
+    function setAmdIGpuPowerProfile(profile: string): void {
+        if (root.amdIGpuPathInternal === "") return;
+        
+        // Find profile number from available profiles
+        const index = root.amdIGpuPowerProfilesAvailable.indexOf(profile);
+        if (index === -1) return;
+        
+        amdIGpuSetProfileProcess.profileIndex = index;
+        amdIGpuSetProfileProcess.running = true;
+    }
+    
+    Process {
+        id: amdIGpuSetProfileProcess
+        property int profileIndex: 0
+        command: ["pkexec", "sh", "-c", `echo ${profileIndex} > ${root.amdIGpuPathInternal}/pp_power_profile_mode`]
+        onExited: (code, status) => {
+            root.refreshAmdIGpu();
+        }
+    }
+    
+    // Set AMD iGPU DPM Force Performance Level
+    function setAmdIGpuDpmLevel(level: string): void {
+        if (root.amdIGpuPathInternal === "") return;
+        amdIGpuSetDpmProcess.level = level;
+        amdIGpuSetDpmProcess.running = true;
+    }
+    
+    Process {
+        id: amdIGpuSetDpmProcess
+        property string level: "auto"
+        command: ["pkexec", "sh", "-c", `echo ${level} > ${root.amdIGpuPathInternal}/power_dpm_force_performance_level`]
+        onExited: (code, status) => {
+            root.refreshAmdIGpu();
         }
     }
     

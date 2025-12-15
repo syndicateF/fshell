@@ -398,7 +398,7 @@ Item {
         id: dialogOverlay
 
         anchors.fill: parent
-        visible: root.session.nw.connectDialogOpen || root.session.nw.forgetDialogOpen || Network.warningMessage.length > 0
+        visible: root.session.nw.connectDialogOpen || root.session.nw.forgetDialogOpen || Network.warningMessage.length > 0 || dialog.opacity > 0 || forgetDialog.opacity > 0
         z: 100
 
         // Scrim background
@@ -552,13 +552,13 @@ Item {
             scale: root.session.nw.connectDialogOpen ? 1 : 0.8
 
             Behavior on opacity {
-                Anim { duration: Appearance.anim.durations.normal }
+                NumberAnimation { duration: Appearance.anim.durations.normal }
             }
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
         }
@@ -574,16 +574,17 @@ Item {
             color: Colours.palette.m3surfaceContainerHigh
             opacity: root.session.nw.connectDialogOpen ? 1 : 0
             scale: root.session.nw.connectDialogOpen ? 1 : 0.8
-            visible: opacity > 0
+            visible: opacity > 0 || nwConnectCloseAnim.running
 
             Behavior on opacity {
-                Anim { duration: Appearance.anim.durations.normal }
+                NumberAnimation { duration: Appearance.anim.durations.normal }
             }
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    id: nwConnectCloseAnim
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
 
@@ -866,13 +867,13 @@ Item {
             scale: root.session.nw.forgetDialogOpen ? 1 : 0.8
 
             Behavior on opacity {
-                Anim { duration: Appearance.anim.durations.normal }
+                NumberAnimation { duration: Appearance.anim.durations.normal }
             }
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
         }
@@ -888,16 +889,17 @@ Item {
             color: Colours.palette.m3surfaceContainerHigh
             opacity: root.session.nw.forgetDialogOpen ? 1 : 0
             scale: root.session.nw.forgetDialogOpen ? 1 : 0.8
-            visible: opacity > 0
+            visible: opacity > 0 || nwForgetCloseAnim.running
 
             Behavior on opacity {
-                Anim { duration: Appearance.anim.durations.normal }
+                NumberAnimation { duration: Appearance.anim.durations.normal }
             }
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    id: nwForgetCloseAnim
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
 
@@ -1050,14 +1052,14 @@ Item {
     StyledRect {
         id: hiddenNetworkDialog
 
-        visible: opacity > 0
+        visible: opacity > 0 || hiddenDialogCloseAnim.running
         opacity: root.session.nw.hiddenNetworkDialogOpen ? 1 : 0
         anchors.fill: parent
         z: 100
         color: Qt.rgba(Colours.palette.m3scrim.r, Colours.palette.m3scrim.g, Colours.palette.m3scrim.b, 0.5)
 
         Behavior on opacity {
-            Anim { duration: Appearance.anim.durations.normal }
+            NumberAnimation { duration: Appearance.anim.durations.normal }
         }
 
         MouseArea {
@@ -1074,12 +1076,13 @@ Item {
             implicitHeight: hiddenContent.implicitHeight + Appearance.padding.large * 2
             radius: Appearance.rounding.large
             color: Colours.palette.m3surfaceContainerHigh
-            scale: root.session.nw.hiddenNetworkDialogOpen ? 1 : 0.9
+            scale: root.session.nw.hiddenNetworkDialogOpen ? 1 : 0.8
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    id: hiddenDialogCloseAnim
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
 
@@ -1192,14 +1195,14 @@ Item {
     StyledRect {
         id: hotspotDialog
 
-        visible: opacity > 0
+        visible: opacity > 0 || hotspotDialogCloseAnim.running
         opacity: root.session.nw.hotspotDialogOpen ? 1 : 0
         anchors.fill: parent
         z: 100
         color: Qt.rgba(Colours.palette.m3scrim.r, Colours.palette.m3scrim.g, Colours.palette.m3scrim.b, 0.5)
 
         Behavior on opacity {
-            Anim { duration: Appearance.anim.durations.normal }
+            NumberAnimation { duration: Appearance.anim.durations.normal }
         }
 
         MouseArea {
@@ -1216,12 +1219,13 @@ Item {
             implicitHeight: hotspotContent.implicitHeight + Appearance.padding.large * 2
             radius: Appearance.rounding.large
             color: Colours.palette.m3surfaceContainerHigh
-            scale: root.session.nw.hotspotDialogOpen ? 1 : 0.9
+            scale: root.session.nw.hotspotDialogOpen ? 1 : 0.8
 
             Behavior on scale {
-                Anim {
-                    duration: Appearance.anim.durations.expressiveFastSpatial
-                    easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                NumberAnimation {
+                    id: hotspotDialogCloseAnim
+                    duration: Appearance.anim.durations.normal
+                    easing.type: Easing.OutBack
                 }
             }
 

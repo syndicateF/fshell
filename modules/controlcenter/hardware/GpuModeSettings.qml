@@ -372,7 +372,7 @@ Item {
         id: killConfirmOverlay
         
         anchors.fill: parent
-        visible: root.showKillConfirm
+        visible: root.showKillConfirm || killDialogContent.opacity > 0
         z: 100
         
         // Scrim background
@@ -402,14 +402,17 @@ Item {
             color: Colours.palette.m3surfaceContainerHigh
             opacity: root.showKillConfirm ? 1 : 0
             scale: root.showKillConfirm ? 1 : 0.8
-            visible: opacity > 0
+            visible: opacity > 0 || closeAnim.running
             
             Behavior on opacity {
-                NumberAnimation { duration: Appearance.anim.durations.normal }
+                NumberAnimation { 
+                    duration: Appearance.anim.durations.normal
+                }
             }
             
             Behavior on scale {
                 NumberAnimation {
+                    id: closeAnim
                     duration: Appearance.anim.durations.normal
                     easing.type: Easing.OutBack
                 }
@@ -680,10 +683,8 @@ Item {
 
             anchors.fill: parent
             anchors.leftMargin: Appearance.padding.small
-            anchors.topMargin: Appearance.padding.small
-            anchors.bottomMargin: Appearance.padding.small
-            anchors.rightMargin: Appearance.padding.smaller
-            spacing: Appearance.spacing.normal
+            anchors.rightMargin: Appearance.padding.small
+            spacing: Appearance.spacing.small
 
             MaterialIcon {
                 text: processRow.processType === "G" ? "videogame_asset" : "memory"
@@ -691,16 +692,19 @@ Item {
             }
 
             ColumnLayout {
-                Layout.fillWidth: true
                 spacing: 0
 
                 StyledText {
+                    Layout.alignment: Qt.AlignLeft
+                    Layout.fillWidth: true
                     text: processRow.command
                     font.weight: 500
                     elide: Text.ElideMiddle
                 }
 
                 StyledText {
+                    Layout.alignment: Qt.AlignLeft
+                    Layout.fillWidth: true
                     text: qsTr("PID: %1 | GPU: %2% | MEM: %3%").arg(processRow.pid).arg(processRow.gpuUsage).arg(processRow.memUsage)
                     font.pointSize: Appearance.font.size.small
                     color: Colours.palette.m3onSurfaceVariant

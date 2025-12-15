@@ -239,9 +239,14 @@ RowLayout {
                 // GPU Overview Card
                 HardwareCard {
                     Layout.fillWidth: true
-                    icon: "videogame_asset"
-                    title: "GPU"
-                    subtitle: Hardware.gpuModel
+                    icon: "memory"
+                    title: qsTr("Graphics")
+                    subtitle: {
+                        let gpus = [];
+                        if (Hardware.hasAmdIGpu) gpus.push("AMD Radeon");
+                        if (Hardware.hasNvidiaGpu) gpus.push("NVIDIA RTX");
+                        return gpus.length > 0 ? gpus.join(" + ") : qsTr("No GPU");
+                    }
                     isSelected: root.session.hw.view === "gpu" && !root.session.hw.showSysInfo
                     onClicked: { root.session.hw.view = "gpu"; root.session.hw.showSysInfo = false; }
 

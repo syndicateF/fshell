@@ -130,7 +130,7 @@ RowLayout {
             id: confirmDialogOverlay
             
             anchors.fill: parent
-            visible: Monitors.showConfirmDialog
+            visible: Monitors.showConfirmDialog || confirmDialogContent.opacity > 0
             z: 100
             
             // Scrim background
@@ -164,9 +164,8 @@ RowLayout {
                 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.anim.durations.expressiveFastSpatial
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                        duration: Appearance.anim.durations.normal
+                        easing.type: Easing.OutBack
                     }
                 }
             }
@@ -182,7 +181,7 @@ RowLayout {
                 color: Colours.palette.m3surfaceContainerHigh
                 opacity: Monitors.showConfirmDialog ? 1 : 0
                 scale: Monitors.showConfirmDialog ? 1 : 0.8
-                visible: opacity > 0
+                visible: opacity > 0 || monitorCloseAnim.running
                 
                 Behavior on opacity {
                     NumberAnimation { duration: Appearance.anim.durations.normal }
@@ -190,9 +189,9 @@ RowLayout {
                 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.anim.durations.expressiveFastSpatial
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Appearance.anim.curves.expressiveFastSpatial
+                        id: monitorCloseAnim
+                        duration: Appearance.anim.durations.normal
+                        easing.type: Easing.OutBack
                     }
                 }
                 

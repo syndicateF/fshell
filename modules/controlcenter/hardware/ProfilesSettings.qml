@@ -281,13 +281,16 @@ Item {
                     }
                 }
 
+                Item { Layout.fillWidth: true }
+
                 // Apps to launch
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignRight | Qt.AlignTop
                     visible: profileCard.apps.length > 0
                     spacing: 4
 
                     StyledText {
+                        Layout.alignment: Qt.AlignRight
                         text: qsTr("Launch Apps")
                         font.pointSize: Appearance.font.size.small
                         font.weight: 500
@@ -295,7 +298,8 @@ Item {
                     }
 
                     Flow {
-                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignRight
+                        layoutDirection: Qt.RightToLeft
                         spacing: 4
 
                         Repeater {
@@ -307,7 +311,7 @@ Item {
                                 implicitWidth: appText.implicitWidth + Appearance.padding.small * 2
                                 implicitHeight: appText.implicitHeight + 4
                                 radius: Appearance.rounding.small
-                                // color: Colours.palette.m3secondaryContainer
+                                color: Colours.palette.m3secondaryContainer
 
                                 StyledText {
                                     id: appText

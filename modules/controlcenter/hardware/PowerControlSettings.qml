@@ -229,12 +229,14 @@ Item {
 
                             Layout.fillWidth: true
 
-                            icon: modelData === "performance" ? "bolt" :
+                            icon: modelData === "default" ? "settings_suggest" :
+                                  modelData === "performance" ? "bolt" :
                                   modelData === "balance_performance" ? "speed" :
                                   modelData === "balance_power" ? "eco" :
                                   modelData === "power" ? "battery_saver" : "tune"
                             label: modelData.replace(/_/g, " ")
-                            description: modelData === "performance" ? qsTr("Maximum CPU performance") :
+                            description: modelData === "default" ? qsTr("System managed (recommended)") :
+                                        modelData === "performance" ? qsTr("Maximum CPU performance") :
                                         modelData === "balance_performance" ? qsTr("Prefer performance, save power when idle") :
                                         modelData === "balance_power" ? qsTr("Prefer power saving, boost when needed") :
                                         modelData === "power" ? qsTr("Maximum power saving (may cause issues)") : ""
@@ -315,7 +317,10 @@ Item {
             id: optionLayout
 
             anchors.fill: parent
-            anchors.margins: Appearance.padding.normal
+            anchors.topMargin: Appearance.padding.normal
+            anchors.bottomMargin: Appearance.padding.normal
+            anchors.leftMargin: Appearance.padding.small
+            anchors.rightMargin: Appearance.padding.small
             spacing: Appearance.spacing.normal
 
             MaterialIcon {
