@@ -137,65 +137,6 @@ Item {
                 }
             }
 
-            // =====================================================
-            // Power Profile Section (powerprofilesctl)
-            // =====================================================
-            StyledText {
-                Layout.topMargin: Appearance.spacing.large
-                text: qsTr("Power Profile")
-                font.pointSize: Appearance.font.size.larger
-                font.weight: 500
-                visible: Hardware.hasPowerProfiles
-            }
-
-            StyledText {
-                text: qsTr("System-wide power and performance balance")
-                color: Colours.palette.m3outline
-                visible: Hardware.hasPowerProfiles
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                visible: Hardware.hasPowerProfiles
-                implicitHeight: powerProfileLayout.implicitHeight + Appearance.padding.large * 2
-
-                radius: Appearance.rounding.normal
-                color: Colours.tPalette.m3surfaceContainer
-
-                ColumnLayout {
-                    id: powerProfileLayout
-
-                    anchors.fill: parent
-                    anchors.margins: Appearance.padding.large
-                    spacing: Appearance.spacing.normal
-
-                    Repeater {
-                        model: Hardware.powerProfilesAvailable
-
-                        OptionRow {
-                            required property string modelData
-                            required property int index
-
-                            Layout.fillWidth: true
-
-                            icon: modelData === "performance" ? "bolt" :
-                                  modelData === "balanced" ? "balance" :
-                                  modelData === "power-saver" ? "eco" : "settings"
-                            label: modelData === "performance" ? qsTr("Performance") :
-                                   modelData === "balanced" ? qsTr("Balanced") :
-                                   modelData === "power-saver" ? qsTr("Power Saver") : modelData
-                            description: modelData === "performance" ? qsTr("Maximum performance, higher power consumption") :
-                                        modelData === "balanced" ? qsTr("Balance between performance and power") :
-                                        modelData === "power-saver" ? qsTr("Reduced performance, lower power consumption") : ""
-                            isSelected: Hardware.powerProfile === modelData
-
-                            onClicked: {
-                                Hardware.setPowerProfile(modelData);
-                            }
-                        }
-                    }
-                }
-            }
 
             // =====================================================
             // Platform Profile Section (ACPI)
@@ -289,12 +230,15 @@ Item {
                     id: boostLayout
 
                     anchors.fill: parent
-                    anchors.margins: Appearance.padding.large
+                    anchors.leftMargin: Appearance.padding.large
+                    anchors.topMargin: Appearance.padding.large
+                    anchors.bottomMargin: Appearance.padding.large
+                    anchors.rightMargin: Appearance.padding.small
                     spacing: Appearance.spacing.normal
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 2
+                        spacing: 0
 
                         StyledText {
                             text: qsTr("Turbo Boost")
@@ -377,6 +321,124 @@ Item {
                                 Hardware.setCpuGovernor(modelData);
                             }
                         }
+                    }
+                }
+            }
+            // =====================================================
+            // C-States (CPU Idle States) - Advanced
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("CPU Idle States (C-States)")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+            }
+
+            StyledText {
+                text: qsTr("Driver: %1").arg(Hardware.cpuIdleDriver || "N/A")
+                color: Colours.palette.m3outline
+            }
+
+            // Warning Box
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: warningLayout.implicitHeight + Appearance.padding.normal * 2
+                radius: Appearance.rounding.normal
+                color: Qt.alpha(Colours.palette.m3error, 0.1)
+                border.width: 1
+                border.color: Qt.alpha(Colours.palette.m3error, 0.3)
+
+                RowLayout {
+                    id: warningLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.normal
+                    spacing: Appearance.spacing.normal
+
+                    MaterialIcon {
+                        text: "warning"
+                        color: Colours.palette.m3error
+                    }
+
+                    StyledText {
+                        Layout.fillWidth: true
+                        text: qsTr("⚠️ Disabling C-States can help with latency issues and system freezes (like Lenovo Legion suspend bug), but significantly increases power consumption and heat. Use with caution on laptops.")
+                        font.pointSize: Appearance.font.size.small
+                        color: Colours.palette.m3error
+                        wrapMode: Text.WordWrap
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: cstatesLayout.implicitHeight + Appearance.padding.large * 2
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: cstatesLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.normal
+
+                    Repeater {
+                        model: Hardware.cpuCStates
+
+                        delegate: RowLayout {
+                            required property var modelData
+                            required property int index
+
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.normal
+
+                            StyledRect {
+                                Layout.preferredWidth: 50
+                                Layout.preferredHeight: 28
+                                radius: Appearance.rounding.small
+                                color: modelData.disabled ? 
+                                    Qt.alpha(Colours.palette.m3error, 0.2) : 
+                                    Qt.alpha(Colours.palette.m3primary, 0.2)
+
+                                StyledText {
+                                    anchors.centerIn: parent
+                                    text: modelData.name
+                                    font.pointSize: Appearance.font.size.small
+                                    font.weight: 600
+                                    color: modelData.disabled ? Colours.palette.m3error : Colours.palette.m3primary
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                StyledText {
+                                    text: modelData.desc
+                                    font.pointSize: Appearance.font.size.small
+                                    elide: Text.ElideRight
+                                    Layout.fillWidth: true
+                                }
+
+                                StyledText {
+                                    text: qsTr("Latency: %1µs").arg(modelData.latency)
+                                    font.pointSize: Appearance.font.size.smaller
+                                    color: Colours.palette.m3onSurfaceVariant
+                                }
+                            }
+
+                            StyledSwitch {
+                                checked: !modelData.disabled
+                                onToggled: {
+                                    Hardware.setCState(index, !checked);
+                                }
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        visible: Hardware.cpuCStates.length === 0
+                        text: qsTr("No C-State information available")
+                        color: Colours.palette.m3onSurfaceVariant
                     }
                 }
             }

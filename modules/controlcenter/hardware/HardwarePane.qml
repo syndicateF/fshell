@@ -20,7 +20,10 @@ RowLayout {
     spacing: 0
 
     // Enable hardware monitoring when this pane is visible
-    Component.onCompleted: Hardware.monitoringActive = true
+    Component.onCompleted: {
+        Hardware.monitoringActive = true;
+        Hardware.refreshExtendedInfo();  // Lazy load memory, thermal, fans, disk schedulers
+    }
     Component.onDestruction: Hardware.monitoringActive = false
 
     // Left panel - Overview/Quick Stats
@@ -58,23 +61,34 @@ RowLayout {
 
                     Item { Layout.fillWidth: true }
 
-                    // Power Profile Toggle - cycles through modes (icon only)
+                    // CPU Boost Toggle - quick action style
                     ToggleButton {
-                        visible: Hardware.hasPowerProfiles
-                        toggled: Hardware.powerProfile !== "balanced"
-                        icon: Hardware.powerProfile === "performance" ? "bolt" :
-                              Hardware.powerProfile === "power-saver" ? "eco" : "balance"
-                        accent: Hardware.powerProfile === "performance" ? "Error" :
-                                Hardware.powerProfile === "power-saver" ? "Tertiary" : "Primary"
+                        visible: Hardware.cpuBoostSupported
+                        toggled: Hardware.cpuBoostEnabled
+                        icon: "speed"
+                        accent: Hardware.cpuBoostEnabled ? "Secondary" : "Secondary"
+
+                        function onClicked(): void {
+                            Hardware.setCpuBoost(!Hardware.cpuBoostEnabled);
+                        }
+                    }
+
+                    // Power Mode Toggle - cycles through custom power modes (safe, no freeze)
+                    ToggleButton {
+                        toggled: Hardware.customPowerMode !== "balanced"
+                        icon: Hardware.customPowerMode === "performance" ? "bolt" :
+                              Hardware.customPowerMode === "power-saver" ? "eco" : "balance"
+                        accent: Hardware.customPowerMode === "performance" ? "Error" :
+                                Hardware.customPowerMode === "power-saver" ? "Tertiary" : "Primary"
 
                         function onClicked(): void {
                             // Cycle: balanced -> performance -> power-saver -> balanced
-                            if (Hardware.powerProfile === "balanced")
-                                Hardware.setPowerProfile("performance");
-                            else if (Hardware.powerProfile === "performance")
-                                Hardware.setPowerProfile("power-saver");
+                            if (Hardware.customPowerMode === "balanced")
+                                Hardware.setCustomPowerMode("performance");
+                            else if (Hardware.customPowerMode === "performance")
+                                Hardware.setCustomPowerMode("power-saver");
                             else
-                                Hardware.setPowerProfile("balanced");
+                                Hardware.setCustomPowerMode("balanced");
                         }
                     }
 
@@ -99,6 +113,76 @@ RowLayout {
 
                         function onClicked(): void {
                             root.session.hw.showSysInfo = !root.session.hw.showSysInfo;
+                        }
+                    }
+                }
+
+                // Power Control Card - NEW: Safe power management
+                HardwareCard {
+                    Layout.fillWidth: true
+                    icon: "flash_on"
+                    title: qsTr("Power Control")
+                    subtitle: Hardware.customPowerMode === "performance" ? qsTr("Performance") :
+                              Hardware.customPowerMode === "power-saver" ? qsTr("Power Saver") : qsTr("Balanced")
+                    isSelected: root.session.hw.view === "powercontrol" && !root.session.hw.showSysInfo
+                    onClicked: { root.session.hw.view = "powercontrol"; root.session.hw.showSysInfo = false; }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: Appearance.spacing.small
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.large
+
+                            StatItem {
+                                label: qsTr("Governor")
+                                value: Hardware.cpuGovernor
+                                icon: "tune"
+                                color: Colours.palette.m3primary
+                            }
+
+                            StatItem {
+                                label: qsTr("EPP")
+                                value: Hardware.cpuEpp || "N/A"
+                                icon: "eco"
+                                color: Colours.palette.m3tertiary
+                            }
+
+                            StatItem {
+                                label: qsTr("Boost")
+                                value: Hardware.cpuBoostEnabled ? qsTr("On") : qsTr("Off")
+                                icon: "bolt"
+                                color: Hardware.cpuBoostEnabled ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                            }
+                        }
+
+                        // Safe mode badge
+                        StyledRect {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Appearance.spacing.small
+                            visible: Hardware.cpuDriver === "amd-pstate-epp" || Hardware.cpuDriver === "amd-pstate"
+                            implicitHeight: safeBadge.implicitHeight + Appearance.padding.small * 2
+                            radius: Appearance.rounding.small
+                            color: Qt.alpha(Colours.palette.m3tertiary, 0.15)
+
+                            RowLayout {
+                                id: safeBadge
+                                anchors.centerIn: parent
+                                spacing: Appearance.spacing.small
+
+                                MaterialIcon {
+                                    text: "verified_user"
+                                    font.pointSize: Appearance.font.size.small
+                                    color: Colours.palette.m3tertiary
+                                }
+
+                                StyledText {
+                                    text: qsTr("AMD safe mode - no freeze risk")
+                                    font.pointSize: Appearance.font.size.small
+                                    color: Colours.palette.m3tertiary
+                                }
+                            }
                         }
                     }
                 }
@@ -489,11 +573,13 @@ RowLayout {
                             
                             property int activeView: {
                                 switch (root.session.hw.view) {
-                                    case "gpu": return 1;
-                                    case "battery": return 2;
-                                    case "gpumode": return 3;
-                                    case "profiles": return 4;
-                                    case "rgb": return 5;
+                                    case "powercontrol": return 0;
+                                    case "cpu": return 1;
+                                    case "gpu": return 2;
+                                    case "battery": return 3;
+                                    case "gpumode": return 4;
+                                    case "profiles": return 5;
+                                    case "rgb": return 6;
                                     default: return 0;
                                 }
                             }
@@ -512,31 +598,36 @@ RowLayout {
 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 0 && !root.session.hw.showSysInfo
-                                    sourceComponent: Component { CpuSettings { session: root.session } }
+                                    sourceComponent: Component { PowerControlSettings { session: root.session } }
                                 }
                                 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 1 && !root.session.hw.showSysInfo
-                                    sourceComponent: Component { GpuSettings { session: root.session } }
+                                    sourceComponent: Component { CpuSettings { session: root.session } }
                                 }
                                 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 2 && !root.session.hw.showSysInfo
-                                    sourceComponent: Component { BatterySettings { session: root.session } }
+                                    sourceComponent: Component { GpuSettings { session: root.session } }
                                 }
                                 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 3 && !root.session.hw.showSysInfo
-                                    sourceComponent: Component { GpuModeSettings { session: root.session } }
+                                    sourceComponent: Component { BatterySettings { session: root.session } }
                                 }
                                 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 4 && !root.session.hw.showSysInfo
-                                    sourceComponent: Component { ProfilesSettings { session: root.session } }
+                                    sourceComponent: Component { GpuModeSettings { session: root.session } }
                                 }
                                 
                                 SettingsPane {
                                     active: viewSwitcher.activeView === 5 && !root.session.hw.showSysInfo
+                                    sourceComponent: Component { ProfilesSettings { session: root.session } }
+                                }
+                                
+                                SettingsPane {
+                                    active: viewSwitcher.activeView === 6 && !root.session.hw.showSysInfo
                                     sourceComponent: Component { RgbSettings { session: root.session } }
                                 }
                             }
@@ -580,7 +671,10 @@ RowLayout {
         Loader {
             id: loader
             anchors.fill: parent
-            anchors.margins: Appearance.padding.large * 2
+            anchors.topMargin: Appearance.padding.large * 2
+            anchors.bottomMargin: Appearance.padding.large * 2
+            anchors.leftMargin: Appearance.padding.large * 2
+            anchors.rightMargin: Appearance.padding.large
         }
     }
 

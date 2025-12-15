@@ -1,37 +1,37 @@
 import qs.config
+import qs.services
 import Caelestia
 import Quickshell
 import Quickshell.Services.UPower
 import QtQuick
 
+// BatteryMonitor - low battery warnings and hibernate trigger
 Scope {
     id: root
 
     readonly property list<var> warnLevels: [...Config.general.battery.warnLevels].sort((a, b) => b.level - a.level)
 
     Connections {
-        target: UPower
+        target: UPower.displayDevice
 
-        function onOnBatteryChanged(): void {
-            if (UPower.onBattery) {
-                if (Config.utilities.toasts.chargingChanged)
-                    Toaster.toast(qsTr("Charger unplugged"), qsTr("Battery is discharging"), "power_off");
-            } else {
+        function onStateChanged(): void {
+            if (UPower.displayDevice.state === UPowerDeviceState.Charging) {
                 if (Config.utilities.toasts.chargingChanged)
                     Toaster.toast(qsTr("Charger plugged in"), qsTr("Battery is charging"), "power");
                 for (const level of root.warnLevels)
                     level.warned = false;
+            } else if (UPower.displayDevice.state === UPowerDeviceState.Discharging) {
+                if (Config.utilities.toasts.chargingChanged)
+                    Toaster.toast(qsTr("Charger unplugged"), qsTr("Battery is discharging"), "power_off");
             }
         }
-    }
-
-    Connections {
-        target: UPower.displayDevice
 
         function onPercentageChanged(): void {
-            if (!UPower.onBattery)
+            if (UPower.displayDevice.state === UPowerDeviceState.Charging || 
+                UPower.displayDevice.state === UPowerDeviceState.FullyCharged)
                 return;
 
+            // UPower.displayDevice.percentage is 0.0-1.0, convert to 0-100
             const p = UPower.displayDevice.percentage * 100;
             for (const level of root.warnLevels) {
                 if (p <= level.level && !level.warned) {

@@ -434,7 +434,10 @@ Item {
                         id: persistenceLayout
 
                         anchors.fill: parent
-                        anchors.margins: Appearance.padding.large
+                        anchors.leftMargin: Appearance.padding.large
+                        anchors.topMargin: Appearance.padding.large
+                        anchors.bottomMargin: Appearance.padding.large
+                        anchors.rightMargin: Appearance.padding.small
                         spacing: Appearance.spacing.normal
 
                         ColumnLayout {

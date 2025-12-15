@@ -120,10 +120,10 @@ Item {
                     StateItem {
                         Layout.fillWidth: true
                         icon: "bolt"
-                        label: qsTr("Power Profile")
-                        value: Hardware.powerProfile
-                        valueColor: Hardware.powerProfile === "performance" ? Colours.palette.m3error :
-                                   Hardware.powerProfile === "balanced" ? Colours.palette.m3tertiary : Colours.palette.m3primary
+                        label: qsTr("Power Mode")
+                        value: Hardware.customPowerMode
+                        valueColor: Hardware.customPowerMode === "performance" ? Colours.palette.m3error :
+                                   Hardware.customPowerMode === "balanced" ? Colours.palette.m3tertiary : Colours.palette.m3primary
                     }
 
                     StateItem {
@@ -168,30 +168,30 @@ Item {
                 QuickAction {
                     icon: "bolt"
                     label: qsTr("Performance")
-                    active: Hardware.powerProfile === "performance"
+                    active: Hardware.customPowerMode === "performance"
 
                     onClicked: {
-                        Hardware.setPowerProfile("performance");
+                        Hardware.setCustomPowerMode("performance");
                     }
                 }
 
                 QuickAction {
                     icon: "balance"
                     label: qsTr("Balanced")
-                    active: Hardware.powerProfile === "balanced"
+                    active: Hardware.customPowerMode === "balanced"
 
                     onClicked: {
-                        Hardware.setPowerProfile("balanced");
+                        Hardware.setCustomPowerMode("balanced");
                     }
                 }
 
                 QuickAction {
                     icon: "eco"
                     label: qsTr("Power Saver")
-                    active: Hardware.powerProfile === "power-saver"
+                    active: Hardware.customPowerMode === "power-saver"
 
                     onClicked: {
-                        Hardware.setPowerProfile("power-saver");
+                        Hardware.setCustomPowerMode("power-saver");
                     }
                 }
 
@@ -245,7 +245,10 @@ Item {
             id: profileLayout
 
             anchors.fill: parent
-            anchors.margins: Appearance.padding.large
+            anchors.leftMargin: Appearance.padding.large
+            anchors.topMargin: Appearance.padding.large
+            anchors.bottomMargin: Appearance.padding.large
+            anchors.rightMargin: Appearance.padding.small
             spacing: Appearance.spacing.normal
 
             // Header
@@ -254,15 +257,15 @@ Item {
                 spacing: Appearance.spacing.normal
 
                 StyledRect {
-                    implicitWidth: 56
-                    implicitHeight: 56
+                    implicitWidth: 48
+                    implicitHeight: 48
                     radius: Appearance.rounding.full
                     color: Colours.palette.m3primaryContainer
 
                     MaterialIcon {
                         anchors.centerIn: parent
                         text: profileCard.icon
-                        font.pointSize: Appearance.font.size.extraLarge * 1.2
+                        font.pointSize: Appearance.font.size.extraLarge
                         color: Colours.palette.m3onPrimaryContainer
                     }
                 }

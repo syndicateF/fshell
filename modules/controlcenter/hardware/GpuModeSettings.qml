@@ -504,7 +504,10 @@ Item {
             id: processLayout
 
             anchors.fill: parent
-            anchors.margins: Appearance.padding.small
+            anchors.leftMargin: Appearance.padding.small
+            anchors.topMargin: Appearance.padding.small
+            anchors.bottomMargin: Appearance.padding.small
+            anchors.rightMargin: Appearance.padding.smaller
             spacing: Appearance.spacing.normal
 
             MaterialIcon {

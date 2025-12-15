@@ -7,10 +7,11 @@ import Quickshell.Services.UPower
 import QtQuick
 
 // PowerMode - icon mode + title status (vertical style, dengan popout)
+// TANPA PowerProfiles daemon - menggunakan Hardware.customPowerMode
 StyledRect {
     id: root
 
-    // Warna dari color scheme
+    // Warna dari color scheme berdasarkan battery state
     readonly property color colour: {
         const charging = [
             UPowerDeviceState.Charging,
@@ -26,21 +27,21 @@ StyledRect {
         return Colours.palette.m3onSurface;  // Neutral (fallback)
     }
 
-    // Current mode info
+    // Current mode info - menggunakan Hardware.customPowerMode (NO PPD!)
     readonly property string currentIcon: {
-        const p = PowerProfiles.profile;
-        if (p === PowerProfile.PowerSaver)
+        const p = Hardware.customPowerMode;
+        if (p === "power-saver")
             return "energy_savings_leaf";
-        if (p === PowerProfile.Performance)
+        if (p === "performance")
             return "rocket_launch";
         return "balance";
     }
     
     readonly property string currentLabel: {
-        const p = PowerProfiles.profile;
-        if (p === PowerProfile.PowerSaver)
+        const p = Hardware.customPowerMode;
+        if (p === "power-saver")
             return "Powersave";
-        if (p === PowerProfile.Performance)
+        if (p === "performance")
             return "Performance";
         return "Balanced";
     }
@@ -97,6 +98,15 @@ StyledRect {
                     }
                 ]
             }
+        }
+    }
+
+    // Clickable untuk popout
+    MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: {
+            root.visibilities.powerModePopout = !root.visibilities.powerModePopout;
         }
     }
 }

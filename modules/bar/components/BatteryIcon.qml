@@ -5,9 +5,11 @@ import qs.config
 import Quickshell.Services.UPower
 import QtQuick
 
-// Battery icon - iOS 16 style with percentage inside
+// Battery icon - iOS 16 style with percentage inside (original style)
 Item {
     id: root
+
+    required property bool showPercent
 
     implicitWidth: Config.bar.sizes.innerWidth
     implicitHeight: batteryIOS.implicitHeight
@@ -109,6 +111,7 @@ Item {
                 font.pointSize: Config.bar.sizes.font.batteryPercentage
                 font.bold: true
                 color: Colours.palette.m3surface
+                visible: root.showPercent
             }
         }
 

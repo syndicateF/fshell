@@ -9,6 +9,7 @@ import Quickshell.Services.UPower
 import QtQuick
 import QtQuick.Layouts
 
+// Lock screen Fetch
 ColumnLayout {
     id: root
 
@@ -114,7 +115,7 @@ ColumnLayout {
                 active: UPower.displayDevice.isLaptopBattery
 
                 sourceComponent: FetchText {
-                    text: `BATT: ${[UPowerDeviceState.Charging, UPowerDeviceState.FullyCharged, UPowerDeviceState.PendingCharge].includes(UPower.displayDevice.state) ? "(+) " : ""}${Math.round(UPower.displayDevice.percentage * 100)}%`
+                    text: `BATT: ${UPower.displayDevice.state === DeviceState.Charging ? "(+) " : ""}${Math.round(UPower.displayDevice.percentage)}%`
                 }
             }
         }

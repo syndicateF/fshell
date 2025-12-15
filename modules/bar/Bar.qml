@@ -301,7 +301,9 @@ Item {
 
     Component {
         id: batteryIconComp
-        BatteryIcon {}
+        BatteryIcon {
+            showPercent: Config.bar.battery?.showPercent ?? true
+        }
     }
 
     Component {

@@ -18,6 +18,10 @@ RowLayout {
     anchors.fill: parent
     spacing: 0
 
+    // Enable lazy loading when this pane becomes visible
+    Component.onCompleted: Monitors.isActive = true
+    Component.onDestruction: Monitors.isActive = false
+
     // Left panel - Monitor List
     Item {
         Layout.preferredWidth: Math.floor(parent.width * 0.4)

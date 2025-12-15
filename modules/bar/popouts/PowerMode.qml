@@ -3,10 +3,9 @@ pragma ComponentBehavior: Bound
 import qs.components
 import qs.services
 import qs.config
-import Quickshell.Services.UPower
 import QtQuick
 
-// PowerMode popout - power profile switcher dengan info
+// PowerMode popout - power profile switcher
 Column {
     id: root
 
@@ -21,9 +20,9 @@ Column {
         MaterialIcon {
             anchors.verticalCenter: parent.verticalCenter
             text: {
-                const p = PowerProfiles.profile;
-                if (p === PowerProfile.PowerSaver) return "energy_savings_leaf";
-                if (p === PowerProfile.Performance) return "rocket_launch";
+                const p = Hardware.customPowerMode;
+                if (p === "power-saver") return "energy_savings_leaf";
+                if (p === "performance") return "rocket_launch";
                 return "balance";
             }
             color: Colours.palette.m3primary
@@ -34,9 +33,9 @@ Column {
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
             text: {
-                const p = PowerProfiles.profile;
-                if (p === PowerProfile.PowerSaver) return "Power Saver";
-                if (p === PowerProfile.Performance) return "Performance";
+                const p = Hardware.customPowerMode;
+                if (p === "power-saver") return "Power Saver";
+                if (p === "performance") return "Performance";
                 return "Balanced";
             }
             font.weight: Font.Medium
@@ -51,72 +50,46 @@ Column {
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         text: {
-            const p = PowerProfiles.profile;
-            if (p === PowerProfile.PowerSaver) 
-                return "Reduces performance to extend battery life";
-            if (p === PowerProfile.Performance) 
+            const p = Hardware.customPowerMode;
+            if (p === "power-saver") 
+                return "Power saving mode (safe - no freeze risk)";
+            if (p === "performance") 
                 return "Maximum performance, higher power consumption";
-            return "Optimal balance between performance and battery";
+            return "Balanced mode (safe - no freeze risk)";
         }
         font.pointSize: Appearance.font.size.smaller
         color: Colours.palette.m3onSurfaceVariant
     }
 
-    // Degradation warning
+    // Safe mode indicator for AMD systems
     Loader {
         anchors.horizontalCenter: parent.horizontalCenter
-
-        active: PowerProfiles.degradationReason !== PerformanceDegradationReason.None
+        active: Hardware.cpuDriver === "amd-pstate-epp" || Hardware.cpuDriver === "amd-pstate"
         asynchronous: true
-
         height: active ? (item?.implicitHeight ?? 0) : 0
 
         sourceComponent: StyledRect {
-            implicitWidth: child.implicitWidth + Appearance.padding.normal * 2
-            implicitHeight: child.implicitHeight + Appearance.padding.smaller * 2
-
-            color: Colours.palette.m3error
+            implicitWidth: safeRow.implicitWidth + Appearance.padding.normal * 2
+            implicitHeight: safeRow.implicitHeight + Appearance.padding.smaller * 2
+            color: Qt.alpha(Colours.palette.m3tertiary, 0.2)
             radius: Config.border.rounding
 
-            Column {
-                id: child
-
+            Row {
+                id: safeRow
                 anchors.centerIn: parent
+                spacing: Appearance.spacing.small
 
-                Row {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Appearance.spacing.small
-
-                    MaterialIcon {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: -font.pointSize / 10
-
-                        text: "warning"
-                        color: Colours.palette.m3onError
-                    }
-
-                    StyledText {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: qsTr("Performance Degraded")
-                        color: Colours.palette.m3onError
-                        font.family: Appearance.font.family.mono
-                        font.weight: 500
-                    }
-
-                    MaterialIcon {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.verticalCenterOffset: -font.pointSize / 10
-
-                        text: "warning"
-                        color: Colours.palette.m3onError
-                    }
+                MaterialIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "verified_user"
+                    color: Colours.palette.m3tertiary
+                    font.pointSize: Appearance.font.size.small
                 }
 
                 StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    text: PerformanceDegradationReason.toString(PowerProfiles.degradationReason)
-                    color: Colours.palette.m3onError
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("AMD Safe Mode")
+                    color: Colours.palette.m3tertiary
                     font.pointSize: Appearance.font.size.smaller
                 }
             }
@@ -128,10 +101,10 @@ Column {
         id: profiles
 
         property string current: {
-            const p = PowerProfiles.profile;
-            if (p === PowerProfile.PowerSaver)
+            const p = Hardware.customPowerMode;
+            if (p === "power-saver")
                 return saver.icon;
-            if (p === PowerProfile.Performance)
+            if (p === "performance")
                 return perf.icon;
             return balance.icon;
         }
@@ -191,7 +164,7 @@ Column {
             anchors.left: parent.left
             anchors.leftMargin: Appearance.padding.small
 
-            profile: PowerProfile.PowerSaver
+            mode: "power-saver"
             icon: "energy_savings_leaf"
         }
 
@@ -200,7 +173,7 @@ Column {
 
             anchors.centerIn: parent
 
-            profile: PowerProfile.Balanced
+            mode: "balanced"
             icon: "balance"
         }
 
@@ -211,7 +184,7 @@ Column {
             anchors.right: parent.right
             anchors.rightMargin: Appearance.padding.small
 
-            profile: PowerProfile.Performance
+            mode: "performance"
             icon: "rocket_launch"
         }
     }
@@ -228,7 +201,7 @@ Column {
 
     component Profile: Item {
         required property string icon
-        required property int profile
+        required property string mode
 
         implicitWidth: iconItem.implicitHeight + Appearance.padding.small * 2
         implicitHeight: iconItem.implicitHeight + Appearance.padding.small * 2
@@ -238,7 +211,7 @@ Column {
             color: profiles.current === parent.icon ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
 
             function onClicked(): void {
-                PowerProfiles.profile = parent.profile;
+                Hardware.setCustomPowerMode(parent.mode);
             }
         }
 

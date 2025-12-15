@@ -24,6 +24,20 @@ Singleton {
     property var selectedMonitor: null
     property string selectedMonitorName: selectedMonitor?.name ?? ""
 
+    // Lazy loading - only fetch data when MonitorPane is visible
+    property bool isActive: false
+    property bool hasInitialized: false
+    
+    // Trigger lazy initialization when isActive becomes true
+    onIsActiveChanged: {
+        if (isActive && !hasInitialized) {
+            hasInitialized = true;
+            refreshMonitorData();
+            refreshGlobalVrr();
+            refreshGlobalInfo();
+        }
+    }
+
     // Loading/applying state
     property bool applying: false
     property string applyError: ""
@@ -1018,10 +1032,7 @@ Singleton {
         }
     }
 
-    // Initial data fetch
-    Component.onCompleted: {
-        refreshMonitorData();
-        refreshGlobalVrr();
-        refreshGlobalInfo();
-    }
+    // NOTE: Monitor info is lazy-loaded. Initial fetch is triggered when
+    // isActive becomes true (MonitorPane opens). This prevents 3 hyprctl
+    // calls at shell startup, fixing stuttering on first Monitor pane open.
 }

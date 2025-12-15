@@ -85,11 +85,6 @@ polkit.addRule(function(action, subject) {
             cmdline.indexOf("/sys/bus/platform/drivers/ideapad_acpi") !== -1) {
             return polkit.Result.YES;
         }
-
-        // Allow powerprofilesctl (usually doesn't need pkexec but just in case)
-        if (cmdline.indexOf("powerprofilesctl") !== -1) {
-            return polkit.Result.YES;
-        }
     }
     
     return polkit.Result.NOT_HANDLED;
@@ -119,6 +114,9 @@ $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/nvidia-smi --persistence-mode=*
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpufreq/boost
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference
+
+# CPU Idle C-States Control
+$ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu*/cpuidle/state*/disable
 
 # Platform Profile (ACPI)
 $ACTUAL_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /sys/firmware/acpi/platform_profile

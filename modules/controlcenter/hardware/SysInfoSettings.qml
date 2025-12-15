@@ -338,14 +338,14 @@ Item {
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: qsTr("System Graphics Info")
+                text: qsTr("System Information")
                 font.pointSize: Appearance.font.size.large
                 font.bold: true
             }
 
             StyledText {
                 Layout.alignment: Qt.AlignHCenter
-                text: qsTr("Vulkan, VA-API & OpenGL Capabilities")
+                text: qsTr("Hardware, Memory, Drivers & Graphics")
                 color: Colours.palette.m3onSurfaceVariant
             }
             
@@ -353,9 +353,10 @@ Item {
             IconTextButton {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: Appearance.spacing.small
-                text: qsTr("Refresh")
+                text: qsTr("Refresh All")
                 icon: "refresh"
                 onClicked: {
+                    // Refresh graphics info
                     root.vulkanLoading = true;
                     root.vaapiLoading = true;
                     root.glLoading = true;
@@ -367,8 +368,230 @@ Item {
                     vulkanProcess.running = true;
                     vaapiProcess.running = true;
                     glProcess.running = true;
+                    // Refresh hardware info
+                    Hardware.refreshExtendedInfo();
                 }
             }
+
+            // =====================================================
+            // Memory Section
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("💾 Memory")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+            }
+
+            StyledText {
+                text: (Hardware.memTotal / 1024).toFixed(1) + " GB Total • " + Hardware.memUsagePercent.toFixed(0) + "% Used"
+                color: Colours.palette.m3outline
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: memoryLayout.implicitHeight + Appearance.padding.large * 2
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                GridLayout {
+                    id: memoryLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.large
+                    columns: 2
+                    rowSpacing: Appearance.spacing.normal
+                    columnSpacing: Appearance.spacing.large
+
+                    StatRow { icon: "storage"; label: qsTr("Total RAM"); value: (Hardware.memTotal / 1024).toFixed(2) + " GB" }
+                    StatRow { icon: "data_usage"; label: qsTr("Used"); value: (Hardware.memUsed / 1024).toFixed(2) + " GB"; valueColor: Hardware.memUsagePercent > 85 ? Colours.palette.m3error : Colours.palette.m3onSurface }
+                    StatRow { icon: "check_circle"; label: qsTr("Available"); value: (Hardware.memAvailable / 1024).toFixed(2) + " GB" }
+                    StatRow { icon: "cached"; label: qsTr("Cached"); value: (Hardware.memCached / 1024).toFixed(2) + " GB" }
+                    StatRow { icon: "inventory_2"; label: qsTr("Buffers"); value: (Hardware.memBuffers / 1024).toFixed(2) + " GB" }
+                    StatRow { icon: "memory"; label: qsTr("Free"); value: (Hardware.memFree / 1024).toFixed(2) + " GB" }
+                    StatRow { icon: "swap_horiz"; label: qsTr("Swap Used"); value: (Hardware.swapUsed / 1024).toFixed(2) + " / " + (Hardware.swapTotal / 1024).toFixed(2) + " GB"; visible: Hardware.swapTotal > 0 }
+                }
+            }
+
+            // =====================================================
+            // Thermal Sensors Section
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("🌡️ Thermal Sensors")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+                visible: Hardware.thermalZones.length > 0
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                visible: Hardware.thermalZones.length > 0
+                implicitHeight: thermalListLayout.implicitHeight + Appearance.padding.large * 2
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: thermalListLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.small
+
+                    Repeater {
+                        model: Hardware.thermalZones
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.normal
+
+                            required property var modelData
+
+                            MaterialIcon {
+                                text: "thermostat"
+                                font.pointSize: Appearance.font.size.small
+                                color: modelData.temp > 80 ? Colours.palette.m3error :
+                                       modelData.temp > 60 ? Colours.palette.m3tertiary : Colours.palette.m3secondary
+                            }
+
+                            StyledText {
+                                text: modelData.type
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                                Layout.fillWidth: true
+                            }
+
+                            StyledText {
+                                text: modelData.temp + "°C"
+                                font.pointSize: Appearance.font.size.normal
+                                font.weight: 500
+                                color: modelData.temp > 80 ? Colours.palette.m3error :
+                                       modelData.temp > 60 ? Colours.palette.m3tertiary : Colours.palette.m3onSurface
+                            }
+                        }
+                    }
+                }
+            }
+
+            // =====================================================
+            // Fan Speeds Section
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("🌀 Fan Speeds")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+                visible: Hardware.fanSpeeds.length > 0
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                visible: Hardware.fanSpeeds.length > 0
+                implicitHeight: fanListLayout.implicitHeight + Appearance.padding.large * 2
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: fanListLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.small
+
+                    Repeater {
+                        model: Hardware.fanSpeeds
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.normal
+
+                            required property var modelData
+
+                            MaterialIcon {
+                                text: "toys_fan"
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3secondary
+                            }
+
+                            StyledText {
+                                text: modelData.name
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3onSurfaceVariant
+                                Layout.fillWidth: true
+                            }
+
+                            StyledText {
+                                text: modelData.rpm + " RPM"
+                                font.pointSize: Appearance.font.size.normal
+                                font.weight: 500
+                            }
+                        }
+                    }
+                }
+            }
+
+            // =====================================================
+            // Disk I/O Schedulers Section
+            // =====================================================
+            StyledText {
+                Layout.topMargin: Appearance.spacing.large
+                text: qsTr("💽 Disk I/O Schedulers")
+                font.pointSize: Appearance.font.size.larger
+                font.weight: 500
+                visible: Object.keys(Hardware.diskSchedulers).length > 0
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                visible: Object.keys(Hardware.diskSchedulers).length > 0
+                implicitHeight: diskListLayout.implicitHeight + Appearance.padding.large * 2
+                radius: Appearance.rounding.normal
+                color: Colours.tPalette.m3surfaceContainer
+
+                ColumnLayout {
+                    id: diskListLayout
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.large
+                    spacing: Appearance.spacing.small
+
+                    Repeater {
+                        model: Object.keys(Hardware.diskSchedulers)
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Appearance.spacing.normal
+
+                            required property string modelData
+
+                            MaterialIcon {
+                                text: "storage"
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3primary
+                            }
+
+                            StyledText {
+                                text: modelData
+                                font.pointSize: Appearance.font.size.small
+                                font.weight: 500
+                                Layout.preferredWidth: 100
+                            }
+
+                            StyledText {
+                                text: Hardware.diskSchedulers[modelData]?.scheduler || "unknown"
+                                font.pointSize: Appearance.font.size.small
+                                color: Colours.palette.m3primary
+                                font.weight: 500
+                            }
+
+                            Item { Layout.fillWidth: true }
+
+                            StyledText {
+                                text: "(" + (Hardware.diskSchedulers[modelData]?.available?.join(", ") || "") + ")"
+                                font.pointSize: Appearance.font.size.smaller
+                                color: Colours.palette.m3onSurfaceVariant
+                            }
+                        }
+                    }
+                }
+            }
+
 
             // =====================================================
             // Vulkan Section

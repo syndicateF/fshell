@@ -56,25 +56,54 @@ Singleton {
     property string cpuEppInternal: ""
     property string cpuEppAvailableInternal: ""
     
+    // CPU C-States (idle states)
+    readonly property var cpuCStates: cpuCStatesInternal
+    property var cpuCStatesInternal: []
+    readonly property string cpuIdleDriver: cpuIdleDriverInternal.trim()
+    property string cpuIdleDriverInternal: ""
+    
     // CPU utilization (percentage)
     readonly property real cpuUsage: cpuUsageInternal
     property real cpuUsageInternal: 0
     property var prevCpuStats: null
     
     // =====================================================
-    // POWER PROFILE PROPERTIES
+    // PLATFORM PROFILE (ACPI)
     // =====================================================
     
-    // Power Profiles Daemon
-    readonly property string powerProfile: powerProfileInternal.trim()
-    readonly property var powerProfilesAvailable: ["performance", "balanced", "power-saver"]
-    property string powerProfileInternal: "balanced"
-    
-    // Platform profile (ACPI)
     readonly property string platformProfile: platformProfileInternal.trim()
     readonly property var platformProfilesAvailable: platformProfilesAvailableInternal.trim().split(" ").filter(p => p.length > 0)
     property string platformProfileInternal: ""
     property string platformProfilesAvailableInternal: ""
+    
+    // =====================================================
+    // CUSTOM POWER MODE
+    // =====================================================
+    
+    readonly property string customPowerMode: customPowerModeInternal
+    readonly property var customPowerModesAvailable: ["performance", "balanced", "power-saver"]
+    property string customPowerModeInternal: "performance"
+    
+    readonly property var customPowerModeConfigs: ({
+        "performance": {
+            governor: "performance",
+            epp: "performance",
+            boost: true,
+            description: qsTr("Maximum performance")
+        },
+        "balanced": {
+            governor: cpuGovernorsAvailable.includes("schedutil") ? "schedutil" : "powersave",
+            epp: "balance_performance",
+            boost: true,
+            description: qsTr("Balanced mode")
+        },
+        "power-saver": {
+            governor: "powersave",
+            epp: "balance_power",
+            boost: false,
+            description: qsTr("Power saving")
+        }
+    })
     
     // =====================================================
     // GPU PROPERTIES (NVIDIA)
@@ -142,7 +171,6 @@ Singleton {
     
     readonly property bool hasNvidiaGpu: gpuModel !== "Unknown GPU" && gpuModel !== ""
     readonly property bool hasAmdCpu: cpuDriver === "amd-pstate-epp" || cpuDriver === "amd-pstate" || cpuDriver === "acpi-cpufreq"
-    readonly property bool hasPowerProfiles: powerProfileInternal !== ""
     readonly property bool hasPlatformProfile: platformProfile !== ""
     
     // =====================================================
@@ -379,8 +407,58 @@ Singleton {
     readonly property var rgbRetryDelays: [2000, 4000, 8000, 16000, 32000]  // Exponential backoff
 
     // =====================================================
+    // MEMORY PROPERTIES (lazy loaded when control center opens)
+    // =====================================================
+    
+    // Memory info in MB
+    readonly property int memTotal: memTotalInternal
+    readonly property int memFree: memFreeInternal
+    readonly property int memAvailable: memAvailableInternal
+    readonly property int memBuffers: memBuffersInternal
+    readonly property int memCached: memCachedInternal
+    readonly property int memUsed: memTotal - memAvailable
+    readonly property real memUsagePercent: memTotal > 0 ? (memUsed / memTotal * 100) : 0
+    property int memTotalInternal: 0
+    property int memFreeInternal: 0
+    property int memAvailableInternal: 0
+    property int memBuffersInternal: 0
+    property int memCachedInternal: 0
+    
+    // Swap info in MB
+    readonly property int swapTotal: swapTotalInternal
+    readonly property int swapUsed: swapUsedInternal
+    readonly property real swapUsagePercent: swapTotal > 0 ? (swapUsed / swapTotal * 100) : 0
+    property int swapTotalInternal: 0
+    property int swapUsedInternal: 0
+    
+    // =====================================================
+    // THERMAL ZONES (lazy loaded when control center opens)
+    // =====================================================
+    
+    // Array of thermal zone objects: { type: string, temp: int, critical: int }
+    readonly property var thermalZones: thermalZonesInternal
+    property var thermalZonesInternal: []
+    
+    // =====================================================
+    // I/O SCHEDULER PROPERTIES (lazy loaded)
+    // =====================================================
+    
+    // Map of disk -> { scheduler: string, available: [string] }
+    readonly property var diskSchedulers: diskSchedulersInternal
+    property var diskSchedulersInternal: ({})
+    
+    // =====================================================
+    // FAN SPEED PROPERTIES (lazy loaded)
+    // =====================================================
+    
+    // Array of fan objects: { name: string, rpm: int }
+    readonly property var fanSpeeds: fanSpeedsInternal
+    property var fanSpeedsInternal: []
+
+    // =====================================================
     // DEFAULT VALUES (for reset functionality)
     // =====================================================
+
     
     readonly property var defaults: ({
         powerProfile: "balanced",
@@ -398,7 +476,7 @@ Singleton {
     // =====================================================
     
     function resetCpuToDefault(): void {
-        setPowerProfile(defaults.powerProfile);
+        setCustomPowerMode(defaults.powerProfile);
         setCpuBoost(defaults.cpuBoost);
         if (cpuGovernorsAvailable.includes(defaults.cpuGovernor)) {
             setCpuGovernor(defaults.cpuGovernor);
@@ -475,6 +553,38 @@ Singleton {
         cpuBoostProcess.running = true;
     }
     
+    function setCState(stateIndex: int, disabled: bool): void {
+        // Disabling C-States can increase power consumption but may improve latency
+        // stateIndex: 0=POLL, 1=C1, 2=C2, 3=C3
+        cstateProcess.stateIndex = stateIndex;
+        cstateProcess.newDisabled = disabled;
+        cstateProcess.command = ["sh", "-c", 
+            `for cpu in /sys/devices/system/cpu/cpu*/cpuidle/state${stateIndex}/; do echo "${disabled ? "1" : "0"}" | sudo tee "\${cpu}disable" > /dev/null; done`
+        ];
+        cstateProcess.running = true;
+    }
+    
+    Process {
+        id: cstateProcess
+        property int stateIndex: 0
+        property bool newDisabled: false
+        
+        onExited: (code, status) => {
+            // Update array in-place to avoid scroll jump
+            if (code === 0 && stateIndex < root.cpuCStatesInternal.length) {
+                const updated = root.cpuCStatesInternal.slice();
+                const old = updated[stateIndex];
+                updated[stateIndex] = {
+                    name: old.name,
+                    desc: old.desc,
+                    latency: old.latency,
+                    disabled: newDisabled
+                };
+                root.cpuCStatesInternal = updated;
+            }
+        }
+    }
+    
     function setCpuEpp(epp: string): void {
         if (!cpuEppAvailable.includes(epp)) return;
         cpuEppProcess.command = ["sh", "-c", 
@@ -484,14 +594,8 @@ Singleton {
     }
     
     // =====================================================
-    // FUNCTIONS - POWER PROFILES
+    // FUNCTIONS - PLATFORM PROFILE
     // =====================================================
-    
-    function setPowerProfile(profile: string): void {
-        if (!powerProfilesAvailable.includes(profile)) return;
-        powerProfileProcess.command = ["powerprofilesctl", "set", profile];
-        powerProfileProcess.running = true;
-    }
     
     function setPlatformProfile(profile: string): void {
         if (!platformProfilesAvailable.includes(profile)) return;
@@ -499,6 +603,55 @@ Singleton {
             `echo "${profile}" | sudo tee /sys/firmware/acpi/platform_profile > /dev/null`
         ];
         platformProfileProcess.running = true;
+    }
+    
+    // =====================================================
+    // FUNCTIONS - CUSTOM POWER MODE
+    // =====================================================
+    
+    function setCustomPowerMode(mode: string): void {
+        if (!customPowerModesAvailable.includes(mode)) return;
+        
+        const config = customPowerModeConfigs[mode];
+        if (!config) return;
+        
+        // Update internal state immediately for UI responsiveness
+        customPowerModeInternal = mode;
+        
+        // Set governor first
+        if (cpuGovernorsAvailable.includes(config.governor)) {
+            setCpuGovernor(config.governor);
+        }
+        
+        // Set EPP if available (amd_pstate-epp driver)
+        if (cpuEppAvailable.includes(config.epp)) {
+            setCpuEpp(config.epp);
+        }
+        
+        // Set boost
+        if (cpuBoostSupported) {
+            setCpuBoost(config.boost);
+        }
+    }
+    
+    function refreshCustomPowerMode(): void {
+        // Determine current mode based on current settings
+        const currentGovernor = cpuGovernor;
+        const currentEpp = cpuEpp;
+        const currentBoost = cpuBoostEnabled;
+        
+        // Match against known configurations
+        if (currentGovernor === "performance" && 
+            (currentEpp === "performance" || currentEpp === "") && 
+            currentBoost) {
+            customPowerModeInternal = "performance";
+        } else if (currentGovernor === "powersave" && 
+                   (currentEpp === "balance_power" || currentEpp === "power") && 
+                   !currentBoost) {
+            customPowerModeInternal = "power-saver";
+        } else {
+            customPowerModeInternal = "balanced";
+        }
     }
     
     // =====================================================
@@ -603,7 +756,7 @@ Singleton {
         for (const action of profile.actions) {
             switch (action.type) {
                 case "power_profile":
-                    setPowerProfile(action.value);
+                    setCustomPowerMode(action.value);
                     break;
                 case "cpu_boost":
                     setCpuBoost(action.value);
@@ -781,7 +934,7 @@ Singleton {
         refreshCpuBoost();
         refreshCpuEpp();
         refreshCpuUsage();
-        refreshPowerProfile();
+        refreshCustomPowerMode();
         refreshPlatformProfile();
         refreshGpuInfo();
         refreshBattery();
@@ -789,6 +942,16 @@ Singleton {
         refreshGpuPriority();
         refreshGpuProcesses();
         // Note: refreshRgb() is called from shell.qml on startup
+    }
+    
+    // Refresh essential data for bar display (battery + power mode)
+    // Called on shell startup - lightweight, doesn't need Control Center
+    function refreshEssentials(): void {
+        refreshBattery();
+        refreshCustomPowerMode();
+        refreshCpuGovernor();  // Needed for power mode detection
+        refreshCpuBoost();
+        refreshCpuEpp();
     }
     
     function refreshCpuInfo(): void {
@@ -817,10 +980,6 @@ Singleton {
     
     function refreshCpuUsage(): void {
         cpuUsageProcess.running = true;
-    }
-    
-    function refreshPowerProfile(): void {
-        powerProfileReadProcess.running = true;
     }
     
     function refreshPlatformProfile(): void {
@@ -854,9 +1013,39 @@ Singleton {
         }
     }
     
+    // Memory/swap refresh - only call when control center is visible
+    function refreshMemory(): void {
+        memoryProcess.running = true;
+    }
+    
+    // Thermal zones refresh
+    function refreshThermal(): void {
+        thermalProcess.running = true;
+    }
+    
+    // Disk scheduler refresh
+    function refreshDiskSchedulers(): void {
+        diskSchedulerProcess.running = true;
+    }
+    
+    // Fan speed refresh
+    function refreshFanSpeeds(): void {
+        fanSpeedProcess.running = true;
+    }
+    
+    // Refresh all extended hardware info (called when control center opens)
+    function refreshExtendedInfo(): void {
+        refreshMemory();
+        refreshThermal();
+        refreshDiskSchedulers();
+        refreshFanSpeeds();
+        refreshCStates();
+    }
+
     // =====================================================
     // PROCESSES - CPU INFO
     // =====================================================
+
     
     Process {
         id: cpuInfoProcess
@@ -1053,34 +1242,6 @@ Singleton {
                     root.prevCpuStats = { total, active };
                 }
             }
-        }
-    }
-    
-    // =====================================================
-    // PROCESSES - POWER PROFILE
-    // =====================================================
-    
-    Process {
-        id: powerProfileReadProcess
-        command: ["powerprofilesctl", "get"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.powerProfileInternal = data.trim();
-            }
-        }
-        onExited: (code, status) => {
-            if (code !== 0) {
-                root.powerProfileInternal = "";
-            }
-        }
-    }
-    
-    Process {
-        id: powerProfileProcess
-        onExited: (code, status) => {
-            Qt.callLater(root.refreshPowerProfile);
-            Qt.callLater(root.refreshCpuGovernor);
-            Qt.callLater(root.refreshCpuEpp);
         }
     }
     
@@ -1543,6 +1704,28 @@ Singleton {
     // Set to true when control center Hardware pane is visible
     property bool monitoringActive: false
     
+    // Track if initial refresh has been done (lazy loading)
+    property bool hasInitialized: false
+    
+    // Initialize power mode data on component load
+    Component.onCompleted: {
+        Qt.callLater(() => {
+            refreshCpuGovernor();
+            refreshCpuBoost();
+            refreshCpuEpp();
+            refreshCustomPowerMode();
+        });
+    }
+    
+    // Trigger lazy initialization when monitoringActive becomes true
+    onMonitoringActiveChanged: {
+        if (monitoringActive && !hasInitialized) {
+            hasInitialized = true;
+            refresh();
+        }
+    }
+    
+    // Detailed monitoring timer - only when Control Center is open
     Timer {
         id: refreshTimer
         interval: 2000
@@ -1553,11 +1736,55 @@ Singleton {
             root.refreshCpuFreq();
             root.refreshCpuTemp();
             root.refreshCpuUsage();
-            root.refreshBattery();
+            root.refreshBattery();  // Full battery info for Control Center
             if (root.hasNvidiaGpu) {
                 root.refreshGpuInfo();
                 root.refreshGpuProcesses();
             }
+        }
+    }
+    
+    // =====================================================
+    // CPU C-STATES (IDLE STATES)
+    // =====================================================
+    
+    function refreshCStates(): void {
+        cpuCStatesProcess.running = true;
+    }
+    
+    Process {
+        id: cpuCStatesProcess
+        command: ["sh", "-c", `
+            driver=$(cat /sys/devices/system/cpu/cpuidle/current_driver 2>/dev/null || echo "N/A")
+            echo "DRIVER:$driver"
+            for state in /sys/devices/system/cpu/cpu0/cpuidle/state*/; do
+                name=$(cat "\${state}name" 2>/dev/null)
+                desc=$(cat "\${state}desc" 2>/dev/null)
+                latency=$(cat "\${state}latency" 2>/dev/null)
+                disable=$(cat "\${state}disable" 2>/dev/null)
+                echo "STATE:$name|$desc|$latency|$disable"
+            done
+        `]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data.startsWith("DRIVER:")) {
+                    root.cpuIdleDriverInternal = data.substring(7);
+                } else if (data.startsWith("STATE:")) {
+                    const parts = data.substring(6).split("|");
+                    if (parts.length >= 4) {
+                        const newState = {
+                            name: parts[0],
+                            desc: parts[1],
+                            latency: parseInt(parts[2]) || 0,
+                            disabled: parts[3] === "1"
+                        };
+                        root.cpuCStatesInternal = [...root.cpuCStatesInternal, newState];
+                    }
+                }
+            }
+        }
+        onExited: (code, status) => {
+            // States collected, no further action needed
         }
     }
     
@@ -1648,17 +1875,167 @@ Singleton {
             root.refreshCpuGovernor();
             root.refreshCpuBoost();
             root.refreshCpuEpp();
-            root.refreshPowerProfile();
+            refreshCustomPowerMode();
             root.refreshPlatformProfile();
             root.refreshGpuMode();
         }
     }
     
     // =====================================================
-    // INITIALIZATION
+    // PROCESSES - MEMORY & SWAP
     // =====================================================
     
-    Component.onCompleted: {
-        refresh();
+    Process {
+        id: memoryProcess
+        command: ["sh", "-c", `
+            awk '
+                /^MemTotal:/ { total=$2 }
+                /^MemFree:/ { free=$2 }
+                /^MemAvailable:/ { available=$2 }
+                /^Buffers:/ { buffers=$2 }
+                /^Cached:/ { cached=$2 }
+                /^SwapTotal:/ { swaptotal=$2 }
+                /^SwapFree:/ { swapfree=$2 }
+                END { 
+                    printf "%d|%d|%d|%d|%d|%d|%d", 
+                        total/1024, free/1024, available/1024, 
+                        buffers/1024, cached/1024, 
+                        swaptotal/1024, (swaptotal-swapfree)/1024 
+                }
+            ' /proc/meminfo
+        `]
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split("|");
+                if (parts.length >= 7) {
+                    root.memTotalInternal = parseInt(parts[0]) || 0;
+                    root.memFreeInternal = parseInt(parts[1]) || 0;
+                    root.memAvailableInternal = parseInt(parts[2]) || 0;
+                    root.memBuffersInternal = parseInt(parts[3]) || 0;
+                    root.memCachedInternal = parseInt(parts[4]) || 0;
+                    root.swapTotalInternal = parseInt(parts[5]) || 0;
+                    root.swapUsedInternal = parseInt(parts[6]) || 0;
+                }
+            }
+        }
     }
+    
+    // =====================================================
+    // PROCESSES - THERMAL ZONES
+    // =====================================================
+    
+    Process {
+        id: thermalProcess
+        command: ["sh", "-c", `
+            for zone in /sys/class/thermal/thermal_zone*; do
+                if [ -d "$zone" ]; then
+                    type=$(cat "$zone/type" 2>/dev/null || echo "unknown")
+                    temp=$(cat "$zone/temp" 2>/dev/null || echo "0")
+                    echo "$type|$temp"
+                fi
+            done
+        `]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                const lines = data.trim().split("\n").filter(l => l.length > 0);
+                let zones = [];
+                for (const line of lines) {
+                    const parts = line.split("|");
+                    if (parts.length >= 2) {
+                        zones.push({
+                            type: parts[0],
+                            temp: Math.round(parseInt(parts[1]) / 1000)
+                        });
+                    }
+                }
+                root.thermalZonesInternal = zones;
+            }
+        }
+    }
+    
+    // =====================================================
+    // PROCESSES - DISK SCHEDULERS
+    // =====================================================
+    
+    Process {
+        id: diskSchedulerProcess
+        command: ["sh", "-c", `
+            for disk in /sys/block/nvme* /sys/block/sd*; do
+                if [ -f "$disk/queue/scheduler" ]; then
+                    name=$(basename "$disk")
+                    sched=$(cat "$disk/queue/scheduler" 2>/dev/null)
+                    echo "$name|$sched"
+                fi
+            done
+        `]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                const lines = data.trim().split("\n").filter(l => l.length > 0);
+                let schedulers = {};
+                for (const line of lines) {
+                    const parts = line.split("|");
+                    if (parts.length >= 2) {
+                        const disk = parts[0];
+                        const schedLine = parts[1];
+                        // Parse scheduler line like "[mq-deadline] kyber bfq"
+                        const available = schedLine.replace(/[\[\]]/g, "").split(" ").filter(s => s.length > 0);
+                        const currentMatch = schedLine.match(/\[(\w+)\]/);
+                        const current = currentMatch ? currentMatch[1] : available[0];
+                        schedulers[disk] = { scheduler: current, available: available };
+                    }
+                }
+                root.diskSchedulersInternal = schedulers;
+            }
+        }
+    }
+    
+    // =====================================================
+    // PROCESSES - FAN SPEEDS
+    // =====================================================
+    
+    Process {
+        id: fanSpeedProcess
+        command: ["sh", "-c", `
+            for hwmon in /sys/class/hwmon/hwmon*; do
+                for fan in "$hwmon"/fan*_input; do
+                    if [ -f "$fan" ]; then
+                        name=$(basename "$fan" | sed 's/_input//')
+                        rpm=$(cat "$fan" 2>/dev/null || echo "0")
+                        label=""
+                        labelFile=$(echo "$fan" | sed 's/_input/_label/')
+                        if [ -f "$labelFile" ]; then
+                            label=$(cat "$labelFile" 2>/dev/null)
+                        fi
+                        echo "$name|$rpm|$label"
+                    fi
+                done
+            done
+        `]
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                const lines = data.trim().split("\n").filter(l => l.length > 0);
+                let fans = [];
+                for (const line of lines) {
+                    const parts = line.split("|");
+                    if (parts.length >= 2) {
+                        fans.push({
+                            name: parts[2] || parts[0],
+                            rpm: parseInt(parts[1]) || 0
+                        });
+                    }
+                }
+                root.fanSpeedsInternal = fans;
+            }
+        }
+    }
+    
+    // =====================================================
+    // INITIALIZATION
+    // =====================================================
+    // NOTE: Hardware info is lazy-loaded. refresh() is called when
+    // monitoringActive becomes true (control center Hardware pane opens)
+    // This prevents 14+ process calls at shell startup.
 }
