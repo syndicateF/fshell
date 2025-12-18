@@ -13,8 +13,6 @@ JsonObject {
     property Clock clock: Clock {}
     property Sizes sizes: Sizes {}
 
-    // Bar layout dengan 3 section: top (anchored ke atas), center (anchored ke tengah), bottom (anchored ke bawah)
-    // NOTE: workspaces dipindahkan ke TopWorkspacesPanel (horizontal, top center screen)
     property list<var> topEntries: [
         { id: "networkIcon", enabled: true },
         { id: "networkTraffic", enabled: true },
@@ -35,7 +33,6 @@ JsonObject {
     ]
 
     component ScrollActions: JsonObject {
-        property bool workspaces: true
         property bool volume: true
         property bool brightness: true
     }
@@ -59,6 +56,7 @@ JsonObject {
         property bool showWindowsOnSpecialWorkspaces: showWindows
         property string windowIconStyle: "icon"  // "icon" = app icons, "category" = category symbols, "custom" = custom symbol
         property string windowIconCustomSymbol: "•"  //"⚫"  // custom symbol when windowIconStyle is "custom"
+        property real iconColorization: 0.0  // 0 = keep original icon colors, 1 = fully colorized to match indicator. Only applies when iconStyle is "icon"
         property bool activeTrail: true
         property bool perMonitorWorkspaces: true
         property string label: ""//"⚫"//"•"//"●" // if empty, will show workspace name's first letter

@@ -2,7 +2,6 @@ import Quickshell.Io
 
 JsonObject {
     property bool enabled: true
-    property int dragThreshold: 30
     property bool vimKeybinds: false
     property Commands commands: Commands {}
 
@@ -13,9 +12,11 @@ JsonObject {
         property list<string> shutdown: ["systemctl", "poweroff"]
         property list<string> hibernate: ["systemctl", "hibernate"]
         property list<string> reboot: ["systemctl", "reboot"]
+        property list<string> sleep: ["systemctl", "suspend"]
     }
 
     component Sizes: JsonObject {
-        property int button: 80
+        property int button: 100
+        property int countdownSecs: 10
     }
 }

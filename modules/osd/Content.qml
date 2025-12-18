@@ -53,7 +53,7 @@ Item {
 
         // Microphone volume
         WrappedLoader {
-            shouldBeActive: Config.osd.enableMicrophone && (!Config.osd.enableBrightness || !root.visibilities.session)
+            shouldBeActive: Config.osd.enableMicrophone && (!Config.osd.enableBrightness || !root.visibilities.fullscreenSession)
 
             sourceComponent: CustomMouseArea {
                 implicitWidth: Config.osd.sizes.sliderWidth

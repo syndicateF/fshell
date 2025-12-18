@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import "bluetooth"
 import "network"
 import "monitor"
-import "hardware"
 import qs.components
 import qs.services
 import qs.config
@@ -45,12 +44,6 @@ ClippingRectangle {
             }
         }
 
-        Pane {
-            index: 3
-            sourceComponent: HardwarePane {
-                session: root.session
-            }
-        }
 
         Behavior on y {
             NumberAnimation {

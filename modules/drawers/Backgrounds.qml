@@ -2,7 +2,6 @@ import qs.services
 import qs.config
 import qs.modules.osd as Osd
 import qs.modules.notifications as Notifications
-import qs.modules.session as Session
 import qs.modules.launcher as Launcher
 import qs.modules.overview as Overview
 import qs.modules.bar.popouts as BarPopouts
@@ -26,7 +25,7 @@ Shape {
     Osd.Background {
         wrapper: root.panels.osd
 
-        startX: root.width - root.panels.session.width - root.panels.sidebar.width + Config.border.thickness
+        startX: root.width - root.panels.sidebar.width + Config.border.thickness
         startY: (root.height - wrapper.height) / 2 - rounding
     }
 
@@ -38,12 +37,7 @@ Shape {
         startY: -Config.border.thickness
     }
 
-    Session.Background {
-        wrapper: root.panels.session
-
-        startX: root.width - root.panels.sidebar.width + Config.border.thickness
-        startY: (root.height - wrapper.height) / 2 - rounding
-    }
+    // Session is now fullscreen overlay - no background cutout needed
 
     Launcher.Background {
         wrapper: root.panels.launcher

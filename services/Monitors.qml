@@ -34,6 +34,7 @@ Singleton {
             hasInitialized = true;
             refreshMonitorData();
             refreshGlobalVrr();
+            refreshAllowTearing();
             refreshGlobalInfo();
         }
     }
@@ -54,6 +55,10 @@ Singleton {
     
     // Global VRR setting (misc:vrr in Hyprland)
     property int globalVrr: 0
+    
+    // Global allow_tearing setting (general:allow_tearing in Hyprland)
+    // VSYNC = !allowTearing (tearing disabled = vsync enabled)
+    property bool allowTearing: false
     
     // Global display info
     property var globalInfo: ({
@@ -788,6 +793,18 @@ Singleton {
         vrrGetProcess.running = true;
     }
 
+    // Set global allow_tearing (general:allow_tearing)
+    // VSYNC enabled = allow_tearing false, VSYNC disabled = allow_tearing true
+    function setAllowTearing(value: bool): void {
+        tearingProcess.command = ["hyprctl", "keyword", "general:allow_tearing", value ? "true" : "false"];
+        tearingProcess.running = true;
+    }
+
+    // Refresh global allow_tearing setting
+    function refreshAllowTearing(): void {
+        tearingGetProcess.running = true;
+    }
+
     // Refresh all global info
     function refreshGlobalInfo(): void {
         versionProcess.running = true;
@@ -990,6 +1007,35 @@ Singleton {
                     root.globalVrr = result.int ?? 0;
                 } catch (e) {
                     console.warn("[Monitors] Failed to parse VRR option:", e);
+                }
+            }
+        }
+    }
+
+    // Process to set allow_tearing
+    Process {
+        id: tearingProcess
+        onExited: (code, status) => {
+            if (code === 0) {
+                root.refreshAllowTearing();
+            }
+        }
+    }
+
+    // Process to get allow_tearing setting
+    Process {
+        id: tearingGetProcess
+        
+        command: ["hyprctl", "getoption", "general:allow_tearing", "-j"]
+        
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                try {
+                    const result = JSON.parse(data);
+                    root.allowTearing = result.int === 1;
+                } catch (e) {
+                    console.warn("[Monitors] Failed to parse allow_tearing option:", e);
                 }
             }
         }

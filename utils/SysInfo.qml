@@ -18,6 +18,17 @@ Singleton {
     readonly property string user: Quickshell.env("USER")
     readonly property string wm: Quickshell.env("XDG_CURRENT_DESKTOP") || Quickshell.env("XDG_SESSION_DESKTOP")
     readonly property string shell: Quickshell.env("SHELL").split("/").pop()
+    property string kernelVersion: ""
+
+    FileView {
+        id: kernelFile
+        path: "/proc/version"
+        onLoaded: {
+            // Extract kernel version from /proc/version (e.g., "Linux version 6.17.9-arch1-1 ...")
+            const match = text().match(/Linux version (\S+)/);
+            root.kernelVersion = match ? match[1] : "Unknown";
+        }
+    }
 
     FileView {
         id: osRelease

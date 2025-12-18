@@ -136,18 +136,9 @@ CustomMouseArea {
 
             const showSidebar = pressed && dragStart.x > bar.implicitWidth + panels.sidebar.x - Config.border.thickness;
 
-            // Show/hide session on drag
-            if (pressed && inRightPanel(panels.session, dragStart.x, dragStart.y) && withinPanelHeight(panels.session, x, y)) {
-                if (dragX < -Config.session.dragThreshold)
-                    visibilities.session = true;
-                else if (dragX > Config.session.dragThreshold)
-                    visibilities.session = false;
-
-                // Show sidebar on drag if in session area and session is nearly fully visible
-                if (showSidebar && panels.session.width >= panels.session.nonAnimWidth && dragX < -Config.sidebar.dragThreshold)
-                    visibilities.sidebar = true;
-            } else if (showSidebar && dragX < -Config.sidebar.dragThreshold) {
-                // Show sidebar on drag if not in session area
+            // Fullscreen session is keybind-only, no drag gesture
+            // Just handle sidebar drag
+            if (showSidebar && dragX < -Config.sidebar.dragThreshold) {
                 visibilities.sidebar = true;
             }
         } else {
@@ -165,13 +156,7 @@ CustomMouseArea {
                 root.panels.osd.hovered = true;
             }
 
-            // Show/hide session on drag
-            if (pressed && outOfSidebar && inRightPanel(panels.session, dragStart.x, dragStart.y) && withinPanelHeight(panels.session, x, y)) {
-                if (dragX < -Config.session.dragThreshold)
-                    visibilities.session = true;
-                else if (dragX > Config.session.dragThreshold)
-                    visibilities.session = false;
-            }
+            // Fullscreen session is keybind-only, no drag gesture
 
             // Hide sidebar on drag
             if (pressed && inRightPanel(panels.sidebar, dragStart.x, 0) && dragX > Config.sidebar.dragThreshold)

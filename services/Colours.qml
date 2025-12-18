@@ -162,6 +162,34 @@ Singleton {
         readonly property color m3tertiaryFixedDim: root.layer(root.palette.m3tertiaryFixedDim)
         readonly property color m3onTertiaryFixed: root.layer(root.palette.m3onTertiaryFixed)
         readonly property color m3onTertiaryFixedVariant: root.layer(root.palette.m3onTertiaryFixedVariant)
+        // Catppuccin-style accent colors (with transparency)
+        readonly property color m3rosewater: root.layer(root.palette.m3rosewater)
+        readonly property color m3flamingo: root.layer(root.palette.m3flamingo)
+        readonly property color m3pink: root.layer(root.palette.m3pink)
+        readonly property color m3mauve: root.layer(root.palette.m3mauve)
+        readonly property color m3red: root.layer(root.palette.m3red)
+        readonly property color m3maroon: root.layer(root.palette.m3maroon)
+        readonly property color m3peach: root.layer(root.palette.m3peach)
+        readonly property color m3yellow: root.layer(root.palette.m3yellow)
+        readonly property color m3green: root.layer(root.palette.m3green)
+        readonly property color m3teal: root.layer(root.palette.m3teal)
+        readonly property color m3sky: root.layer(root.palette.m3sky)
+        readonly property color m3sapphire: root.layer(root.palette.m3sapphire)
+        readonly property color m3blue: root.layer(root.palette.m3blue)
+        readonly property color m3lavender: root.layer(root.palette.m3lavender)
+        // Catppuccin base colors (with transparency)
+        readonly property color m3text: root.layer(root.palette.m3text)
+        readonly property color m3subtext1: root.layer(root.palette.m3subtext1)
+        readonly property color m3subtext0: root.layer(root.palette.m3subtext0)
+        readonly property color m3overlay2: root.layer(root.palette.m3overlay2)
+        readonly property color m3overlay1: root.layer(root.palette.m3overlay1)
+        readonly property color m3overlay0: root.layer(root.palette.m3overlay0)
+        readonly property color m3surface2: root.layer(root.palette.m3surface2)
+        readonly property color m3surface1: root.layer(root.palette.m3surface1)
+        readonly property color m3surface0: root.layer(root.palette.m3surface0)
+        readonly property color m3base: root.layer(root.palette.m3base)
+        readonly property color m3mantle: root.layer(root.palette.m3mantle)
+        readonly property color m3crust: root.layer(root.palette.m3crust)
     }
 
     component M3Palette: QtObject {
@@ -239,5 +267,33 @@ Singleton {
         property color term13: "#f9a8c2"
         property color term14: "#ffd1c0"
         property color term15: "#ffffff"
+        // Catppuccin-style accent colors
+        property color m3rosewater: "#f8f8f2"
+        property color m3flamingo: "#ff79c6"
+        property color m3pink: "#ff79c6"
+        property color m3mauve: "#bd93f9"
+        property color m3red: "#ff5555"
+        property color m3maroon: "#800000"
+        property color m3peach: "#FF966C"
+        property color m3yellow: "#f1fa8c"
+        property color m3green: "#50fa7b"
+        property color m3teal: "#4FD6BE"
+        property color m3sky: "#8be9fd"
+        property color m3sapphire: "#6272a4"
+        property color m3blue: "#89b4f2"
+        property color m3lavender: "#bd93f9"
+        // Catppuccin base colors
+        property color m3text: "#f8f8f2"
+        property color m3subtext1: "#c5c8e0"
+        property color m3subtext0: "#6272a4"
+        property color m3overlay2: "#5a5e7a"
+        property color m3overlay1: "#4a4d65"
+        property color m3overlay0: "#3a3d50"
+        property color m3surface2: "#44475a"
+        property color m3surface1: "#383a46"
+        property color m3surface0: "#2b2c37"
+        property color m3base: "#1a1b26"
+        property color m3mantle: "#151620"
+        property color m3crust: "#0f101a"
     }
 }

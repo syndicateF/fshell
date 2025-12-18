@@ -24,13 +24,4 @@ ShellRoot {
     IdleMonitors {
         lock: lock
     }
-    
-    // Initialize RGB keyboard on shell start
-    Timer {
-        id: rgbInitTimer
-        interval: 2000
-        running: true
-        repeat: false
-        onTriggered: Hardware.refreshRgb()
-    }
 }

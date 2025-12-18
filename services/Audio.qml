@@ -28,6 +28,19 @@ Singleton {
 
     readonly property list<PwNode> sinks: nodes.sinks
     readonly property list<PwNode> sources: nodes.sources
+    
+    // Per-app audio streams
+    readonly property var streams: Pipewire.nodes.values.filter(node => node.isStream && node.audio)
+    
+    // Find stream by app name (case-insensitive partial match)
+    function getStreamByName(appName: string): PwNode {
+        if (!appName) return null;
+        const lowerName = appName.toLowerCase();
+        return streams.find(s => {
+            const nodeName = (s.name || s.description || "").toLowerCase();
+            return nodeName.includes(lowerName) || lowerName.includes(nodeName);
+        }) ?? null;
+    }
 
     readonly property PwNode sink: Pipewire.defaultAudioSink
     readonly property PwNode source: Pipewire.defaultAudioSource
@@ -109,7 +122,7 @@ Singleton {
     }
 
     PwObjectTracker {
-        objects: [...root.sinks, ...root.sources]
+        objects: [...root.sinks, ...root.sources, ...root.streams]
     }
 
     CavaProvider {

@@ -31,7 +31,7 @@ StyledRect {
 
         anchors.fill: parent
         layer.enabled: true
-        visible: false
+        opacity: 0  // Use opacity instead of visible to prevent ShaderEffect 'source' warning
 
         Rectangle {
             id: maskInner

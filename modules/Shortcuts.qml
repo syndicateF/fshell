@@ -65,12 +65,12 @@ Scope {
 
     CustomShortcut {
         name: "session"
-        description: "Toggle session menu"
+        description: "Toggle fullscreen session menu (power menu)"
         onPressed: {
             if (root.hasFullscreen)
                 return;
             const visibilities = Visibilities.getForActive();
-            visibilities.session = !visibilities.session;
+            visibilities.fullscreenSession = !visibilities.fullscreenSession;
         }
     }
 

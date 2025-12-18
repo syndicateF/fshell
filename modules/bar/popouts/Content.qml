@@ -69,16 +69,6 @@ Item {
         }
 
         Popout {
-            name: "battery"
-            sourceComponent: Battery {}
-        }
-
-        Popout {
-            name: "powermode"
-            sourceComponent: PowerMode {}
-        }
-
-        Popout {
             name: "audio"
             sourceComponent: Audio {
                 wrapper: root.wrapper

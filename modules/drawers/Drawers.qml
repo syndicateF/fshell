@@ -6,6 +6,7 @@ import qs.services
 import qs.config
 import qs.modules.bar as Bar
 import qs.modules.overview as Overview
+import qs.modules.session as Session
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -47,19 +48,18 @@ Variants {
 
             onHasFullscreenChanged: {
                 visibilities.launcher = false;
-                visibilities.session = false;
                 visibilities.dashboard = false;
             }
 
             screen: scope.modelData
             name: "drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.session || visibilities.overview || visibilities.spiralOverview ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-            // Switch to Overlay layer when spiral is active (above all Hyprland windows)
-            WlrLayershell.layer: visibilities.spiralOverview ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            // Switch to Overlay layer when spiral or fullscreen session is active (above all Hyprland windows)
+            WlrLayershell.layer: (visibilities.spiralOverview || visibilities.fullscreenSession) ? WlrLayer.Overlay : WlrLayer.Top
 
-            // Disable mask when spiral is active (fullscreen overlay)
-            mask: visibilities.spiralOverview ? null : normalMask
+            // Disable mask when fullscreen overlay is active
+            mask: (visibilities.spiralOverview || visibilities.fullscreenSession) ? null : normalMask
 
             Region {
                 id: normalMask
@@ -96,16 +96,16 @@ Variants {
             HyprlandFocusGrab {
                 id: focusGrab
 
-                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.session && Config.session.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
+                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
                 windows: [win]
                 onCleared: {
                     visibilities.launcher = false;
                     visibilities.launcherShortcutActive = false;
-                    visibilities.session = false;
                     visibilities.sidebar = false;
                     visibilities.dashboard = false;
                     visibilities.overview = false;
                     visibilities.spiralOverview = false;
+                    visibilities.fullscreenSession = false;
                     panels.popouts.hasCurrent = false;
                     bar.closeTray();
                 }
@@ -128,15 +128,7 @@ Variants {
                 }
             }
 
-            StyledRect {
-                anchors.fill: parent
-                opacity: visibilities.session && Config.session.enabled ? 0.5 : 0
-                color: Colours.palette.m3scrim
-
-                Behavior on opacity {
-                    Anim {}
-                }
-            }
+            // Old session scrim removed - fullscreenSession has its own
 
             Item {
                 anchors.fill: parent
@@ -172,13 +164,13 @@ Variants {
 
                 property bool bar
                 property bool osd
-                property bool session
                 property bool launcher
                 property bool dashboard
                 property bool utilities
                 property bool sidebar
                 property bool overview
                 property bool spiralOverview
+                property bool fullscreenSession
                 property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
@@ -273,6 +265,50 @@ Variants {
                             spiralOverviewContainer.isLoaded = false
                             spiralOverviewContainer.isAnimatingOut = false
                             visibilities.spiralOverview = false
+                        }
+                    }
+                }
+            }
+
+            // Fullscreen Session (Power Menu) - TRUE fullscreen overlay like SpiralOverview
+            Item {
+                id: fullscreenSessionContainer
+                anchors.fill: parent
+                
+                property bool shouldShow: visibilities.fullscreenSession
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+                
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        if (!isLoaded) {
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        if (isLoaded && !isAnimatingOut && fullscreenSessionLoader.item) {
+                            isAnimatingOut = true
+                            fullscreenSessionLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+                
+                Loader {
+                    id: fullscreenSessionLoader
+                    anchors.fill: parent
+                    active: fullscreenSessionContainer.isLoaded
+                    visible: active
+                    
+                    sourceComponent: Session.FullscreenSession {
+                        screen: scope.modelData
+                        visibilities: visibilities
+                        
+                        onExitAnimationDone: {
+                            fullscreenSessionContainer.isLoaded = false
+                            fullscreenSessionContainer.isAnimatingOut = false
+                            visibilities.fullscreenSession = false
                         }
                     }
                 }

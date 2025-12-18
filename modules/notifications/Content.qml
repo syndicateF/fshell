@@ -34,11 +34,7 @@ Item {
                     height = h;
             }
 
-            if (visibilities.session) {
-                const h = panels.session.y - Config.border.rounding * 2 - padding * 2;
-                if (height > h)
-                    height = h;
-            }
+            // Fullscreen session doesn't affect notification height
         }
 
         return Math.min((QsWindow.window?.screen?.height ?? 0) - Config.border.thickness * 2, height + padding * 2);

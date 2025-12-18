@@ -172,8 +172,8 @@ Item {
                         search.forceActiveFocus();
                 }
 
-                function onSessionChanged(): void {
-                    if (!root.visibilities.session)
+                function onFullscreenSessionChanged(): void {
+                    if (!root.visibilities.fullscreenSession)
                         search.forceActiveFocus();
                 }
             }

@@ -413,6 +413,7 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
+                    passwordInput.focus = false;
                     root.session.nw.connectDialogOpen = false;
                     root.session.nw.forgetDialogOpen = false;
                     root.session.nw.pendingPassword = "";
@@ -630,6 +631,7 @@ Item {
 
                         StateLayer {
                             function onClicked(): void {
+                                passwordInput.focus = false;
                                 root.session.nw.connectDialogOpen = false;
                                 root.session.nw.pendingPassword = "";
                             }
@@ -733,6 +735,7 @@ Item {
                                     onAccepted: {
                                         if (text.length >= 8) {
                                             Network.connectToNewNetwork(root.session.nw.pendingNetwork.ssid, text);
+                                            passwordInput.focus = false;
                                             root.session.nw.connectDialogOpen = false;
                                             root.session.nw.pendingPassword = "";
                                         }
@@ -790,6 +793,7 @@ Item {
 
                         StateLayer {
                             function onClicked(): void {
+                                passwordInput.focus = false;
                                 root.session.nw.connectDialogOpen = false;
                                 root.session.nw.pendingPassword = "";
                             }
@@ -829,6 +833,7 @@ Item {
                             function onClicked(): void {
                                 if (passwordInput.text.length >= 8) {
                                     Network.connectToNewNetwork(root.session.nw.pendingNetwork.ssid, passwordInput.text);
+                                    passwordInput.focus = false;
                                     root.session.nw.connectDialogOpen = false;
                                     root.session.nw.pendingPassword = "";
                                 }
@@ -1065,6 +1070,8 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
+                hiddenSsid.focus = false
+                hiddenPassword.focus = false
                 root.session.nw.hiddenNetworkDialogOpen = false
             }
         }
@@ -1151,6 +1158,8 @@ Item {
                     TextButton {
                         text: qsTr("Cancel")
                         onClicked: {
+                            hiddenSsid.focus = false
+                            hiddenPassword.focus = false
                             root.session.nw.hiddenNetworkDialogOpen = false
                             hiddenSsid.text = ""
                             hiddenPassword.text = ""
@@ -1168,6 +1177,8 @@ Item {
                             } else {
                                 Network.connectToHiddenNetwork(hiddenSsid.text, hiddenPassword.text, "wpa")
                             }
+                            hiddenSsid.focus = false
+                            hiddenPassword.focus = false
                             root.session.nw.hiddenNetworkDialogOpen = false
                             hiddenSsid.text = ""
                             hiddenPassword.text = ""
@@ -1208,6 +1219,8 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
+                hotspotSsid.focus = false
+                hotspotPassword.focus = false
                 root.session.nw.hotspotDialogOpen = false
             }
         }
@@ -1291,6 +1304,8 @@ Item {
                     TextButton {
                         text: qsTr("Cancel")
                         onClicked: {
+                            hotspotSsid.focus = false
+                            hotspotPassword.focus = false
                             root.session.nw.hotspotDialogOpen = false
                             hotspotSsid.text = "My Hotspot"
                             hotspotPassword.text = ""
@@ -1303,6 +1318,8 @@ Item {
                         enabled: hotspotSsid.text.length > 0 && hotspotPassword.text.length >= 8
                         onClicked: {
                             Network.startHotspot(hotspotSsid.text, hotspotPassword.text)
+                            hotspotSsid.focus = false
+                            hotspotPassword.focus = false
                             root.session.nw.hotspotDialogOpen = false
                             hotspotSsid.text = "My Hotspot"
                             hotspotPassword.text = ""

@@ -61,6 +61,25 @@ Item {
                 ToolTip.delay: 500
             }
 
+            // VSYNC Toggle - inverted allow_tearing (VSYNC ON = tearing OFF)
+            ToggleButton {
+                toggled: !Monitors.allowTearing
+                icon: "sync"
+                label: root.smallVrr ? "" : "VSYNC"
+                accent: !Monitors.allowTearing ? "Secondary" : "Secondary"
+
+                function onClicked(): void {
+                    // Toggle: if VSYNC is on (tearing off), turn off VSYNC (tearing on), and vice versa
+                    Monitors.setAllowTearing(!Monitors.allowTearing);
+                }
+
+                ToolTip.visible: toggleStateLayer.containsMouse
+                ToolTip.text: !Monitors.allowTearing 
+                    ? qsTr("VSYNC enabled - no screen tearing") 
+                    : qsTr("VSYNC disabled - lower input latency")
+                ToolTip.delay: 500
+            }
+
             // Settings toggle - shows GlobalInfo when no monitor selected
             ToggleButton {
                 toggled: !Monitors.selectedMonitor

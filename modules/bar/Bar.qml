@@ -4,7 +4,6 @@ import qs.services
 import qs.config
 import "popouts" as BarPopouts
 import "components"
-import "components/workspaces"
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
@@ -126,23 +125,16 @@ Item {
             popouts.currentName = "network";
             popouts.currentCenter = (combinedTop + combinedBottom) / 2;
             popouts.hasCurrent = true;
-        } else if (id === "powerMode" && Config.bar.popouts.statusIcons) {
-            // PowerMode popout
-            popouts.currentName = "powermode";
-            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
-            popouts.hasCurrent = true;
         }
     }
 
     function handleWheel(y: real, angleDelta: point): void {
         const ch = findItemAtY(y);
-        if (ch?.entryId === "workspaces" && Config.bar.scrollActions.workspaces) {
-            const mon = (Config.bar.workspaces.perMonitorWorkspaces ? Hypr.monitorFor(screen) : Hypr.focusedMonitor);
-            const specialWs = mon?.lastIpcObject.specialWorkspace.name;
-            if (specialWs?.length > 0)
-                Hypr.dispatch(`togglespecialworkspace ${specialWs.slice(8)}`);
-            else if (angleDelta.y < 0 || (Config.bar.workspaces.perMonitorWorkspaces ? mon.activeWorkspace?.id : Hypr.activeWsId) > 1)
-                Hypr.dispatch(`workspace r${angleDelta.y > 0 ? "-" : "+"}1`);
+        if (ch?.entryId === "volume" && Config.bar.scrollActions.volume) {
+            if (angleDelta.y > 0)
+                Audio.incrementVolume();
+            else if (angleDelta.y < 0)
+                Audio.decrementVolume();
         } else if (y < screen.height / 2 && Config.bar.scrollActions.volume) {
             if (angleDelta.y > 0)
                 Audio.incrementVolume();
@@ -220,7 +212,6 @@ Item {
             sourceComponent: {
                 switch (entryId) {
                     case "logo": return logoComp
-                    case "workspaces": return workspacesComp
                     case "activeWindow": return activeWindowComp
                     case "dashboardIcons": return dashboardIconsComp
                     case "tray": return trayComp
@@ -230,7 +221,6 @@ Item {
                     case "networkIcon": return networkIconComp
                     case "networkTraffic": return networkTrafficComp
                     case "batteryIcon": return batteryIconComp
-                    case "powerMode": return powerModeComp
                     default: return null
                 }
             }
@@ -241,13 +231,6 @@ Item {
     Component {
         id: logoComp
         OsIcon {}
-    }
-
-    Component {
-        id: workspacesComp
-        Workspaces {
-            screen: root.screen
-        }
     }
 
     Component {
@@ -304,10 +287,5 @@ Item {
         BatteryIcon {
             showPercent: Config.bar.battery?.showPercent ?? true
         }
-    }
-
-    Component {
-        id: powerModeComp
-        PowerMode {}
     }
 }

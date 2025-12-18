@@ -5,8 +5,8 @@ import qs.services
 import qs.config
 import QtQuick
 
-// Network Traffic Indicator - displays upload/download speed in bar
-// Style: rotated 90° vertical text with unit indicator (PowerMode style)
+// Network Traffic Indicator - Minimalist vertical with smooth transitions
+// Shows pulsing dot when no network connected
 StyledRect {
     id: root
 
@@ -16,58 +16,87 @@ StyledRect {
     radius: Appearance.rounding.small
     color: Colours.palette.m3surfaceContainerHigh
 
-    // Format with unit
-    function formatSpeed(bytesPerSec: real): string {
+    // Check if network is connected
+    readonly property bool isConnected: Network.active !== null
+
+    // Original format with decimals
+    function formatSpeedShort(bytesPerSec: real): string {
         if (bytesPerSec >= 1024 * 1024) {
-            return (bytesPerSec / (1024 * 1024)).toFixed(1) + " MB/s"
+            return (bytesPerSec / (1024 * 1024)).toFixed(1) + "M"
         } else if (bytesPerSec >= 1024) {
-            return (bytesPerSec / 1024).toFixed(0) + " KB/s"
+            return (bytesPerSec / 1024).toFixed(0) + "K"
         } else {
-            return bytesPerSec.toFixed(0) + " B/s"
+            return bytesPerSec.toFixed(0) + "B"
         }
     }
 
+    // Pulsing dot when disconnected
+    Rectangle {
+        id: pulsingDot
+        anchors.centerIn: parent
+        width: 10
+        height: 10
+        radius: 5
+        color: Colours.palette.m3error
+        opacity: root.isConnected ? 0 : 1
+        scale: root.isConnected ? 0.5 : 1
+        visible: opacity > 0
+        
+        Behavior on opacity { 
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+        }
+        Behavior on scale { 
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+        }
+        
+        SequentialAnimation on opacity {
+            running: !root.isConnected && pulsingDot.opacity > 0.9
+            loops: Animation.Infinite
+            NumberAnimation { to: 0.3; duration: 1000; easing.type: Easing.InOutQuad }
+            NumberAnimation { to: 1.0; duration: 1000; easing.type: Easing.InOutQuad }
+        }
+    }
+
+    // Normal traffic display when connected
     Column {
         id: mainLayout
         anchors.centerIn: parent
-        spacing: Appearance.spacing.smaller
+        spacing: 3
+        opacity: root.isConnected ? 1 : 0
+        scale: root.isConnected ? 1 : 0.8
+        visible: opacity > 0
+        
+        Behavior on opacity { 
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+        }
+        Behavior on scale { 
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } 
+        }
 
-        // Upload section
+        // Upload section - vertical
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 0 // hapus aja 0 lebih baik
-
+            spacing: 1
+            
             MaterialIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "arrow_upward"
                 color: Colours.palette.m3primary
                 font.pointSize: Config.bar.sizes.font.materialIcon
             }
-
-            // Upload label - rotated 90° (PowerMode style)
-            Item {
+            
+            Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: uploadLabel.implicitHeight
-                height: Math.min(uploadLabel.implicitWidth, 60)
+                text: root.formatSpeedShort(Network.uploadSpeed)
+                font.pixelSize: 11
+                font.family: Appearance.font.family.sans
+                font.weight: Font.Medium
+                color: Colours.palette.m3primary
                 
-                Text {
-                    id: uploadLabel
-                    text: root.formatSpeed(Network.uploadSpeed)
-                    font.pointSize: Config.bar.sizes.font.networkTraffic
-                    font.family: Appearance.font.family.sans
-                    font.hintingPreference: Font.PreferDefaultHinting
-                    font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
-                    color: Colours.palette.m3primary
-                    renderType: Text.NativeRendering
-                    
-                    transform: [
-                        Rotation {
-                            angle: 90
-                            origin.x: uploadLabel.implicitHeight / 2
-                            origin.y: uploadLabel.implicitHeight / 2
-                        }
-                    ]
-                }
+                // Scale based on text length: 2 chars=1.0, 3 chars=0.8, 4+ chars=0.6
+                readonly property int textLen: text.length
+                scale: textLen <= 2 ? 1.0 : (textLen === 3 ? 0.9 : 0.7)
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
             }
         }
 
@@ -76,42 +105,29 @@ StyledRect {
             anchors.horizontalCenter: parent.horizontalCenter
             width: Config.bar.sizes.innerWidth - Appearance.padding.normal * 2
             height: 1
-            // color: Colours.palette.m3outlineVariant
             color: Colours.palette.m3primary
-            opacity: 0.5
+            opacity: 0.4
         }
 
-        // Download section
+        // Download section - vertical
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 0 // sama ini juga 0 lwbih mantep
-
-            // Download label - rotated 90° (PowerMode style)
-            Item {
+            spacing: 1
+            
+            Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: downloadLabel.implicitHeight
-                height: Math.min(downloadLabel.implicitWidth, 60)
+                text: root.formatSpeedShort(Network.downloadSpeed)
+                font.pixelSize: 11
+                font.family: Appearance.font.family.sans
+                font.weight: Font.Medium
+                color: Colours.palette.m3primary
                 
-                Text {
-                    id: downloadLabel
-                    text: root.formatSpeed(Network.downloadSpeed)
-                    font.pointSize: Config.bar.sizes.font.networkTraffic
-                    font.family: Appearance.font.family.sans
-                    font.hintingPreference: Font.PreferDefaultHinting
-                    font.variableAxes: ({ "wght": Config.bar.sizes.textWeight, "wdth": Config.bar.sizes.textWidth })
-                    color: Colours.palette.m3primary
-                    renderType: Text.NativeRendering
-                    
-                    transform: [
-                        Rotation {
-                            angle: 90
-                            origin.x: downloadLabel.implicitHeight / 2
-                            origin.y: downloadLabel.implicitHeight / 2
-                        }
-                    ]
-                }
+                // Scale based on text length: 2 chars=1.0, 3 chars=0.8, 4+ chars=0.6
+                readonly property int textLen: text.length
+                scale: textLen <= 2 ? 1.0 : (textLen === 3 ? 0.9 : 0.7)
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
             }
-
+            
             MaterialIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "arrow_downward"

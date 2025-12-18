@@ -2,7 +2,7 @@ import Quickshell.Bluetooth
 import QtQuick
 
 QtObject {
-    readonly property list<string> panes: ["network", "bluetooth", "monitor", "hardware"]
+    readonly property list<string> panes: ["network", "bluetooth", "monitor"]
 
     required property var root
     property bool floating: false
@@ -13,7 +13,6 @@ QtObject {
     readonly property Bt bt: Bt {}
     readonly property Nw nw: Nw {}
     readonly property Mon mon: Mon {}
-    readonly property Hw hw: Hw {}
 
     onActiveChanged: activeIndex = panes.indexOf(active)
     onActiveIndexChanged: active = panes[activeIndex]
@@ -41,11 +40,5 @@ QtObject {
 
     component Mon: QtObject {
         property bool fabMenuOpen: false
-    }
-
-    component Hw: QtObject {
-        property string view: "cpu"  // "cpu", "gpu", "battery", "gpumode", "profiles", "rgb", "sysinfo"
-        property bool fabMenuOpen: false
-        property bool showSysInfo: true  // Default to sysinfo view when Hardware opened
     }
 }

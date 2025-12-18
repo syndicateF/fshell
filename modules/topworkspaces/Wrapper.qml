@@ -151,6 +151,8 @@ Item {
                         activeWsId: root.activeWsId
                         occupied: root.occupied
                         groupOffset: root.groupOffset
+                        // Hide icons here - they're rendered separately above indicator
+                        showIcons: Config.bar.workspaces.windowIconStyle !== "icon"
                     }
                 }
             }
@@ -164,6 +166,28 @@ Item {
                     activeWsId: root.activeWsId
                     workspaces: workspaces
                     mask: layout
+                }
+            }
+
+            // Icons overlay - rendered AFTER indicator, so not affected by Colouriser
+            // Only active when using "icon" style (colored app icons)
+            RowLayout {
+                id: iconsOverlay
+                visible: Config.bar.workspaces.windowIconStyle === "icon"
+                anchors.centerIn: parent
+                spacing: Config.bar.workspaces.topWorkspacesSpacing
+
+                Repeater {
+                    model: Config.bar.workspaces.shown
+
+                    HorizontalWorkspace {
+                        activeWsId: root.activeWsId
+                        occupied: root.occupied
+                        groupOffset: root.groupOffset
+                        // Show only icons, hide text (handled by main layout)
+                        showIcons: true
+                        showText: false
+                    }
                 }
             }
 

@@ -145,6 +145,100 @@ Item {
         }
 
         // =====================================================
+        // VSYNC (Vertical Sync) Section
+        // =====================================================
+        StyledText {
+            Layout.topMargin: Appearance.spacing.large
+            text: qsTr("Vertical Sync")
+            font.pointSize: Appearance.font.size.larger
+            font.weight: 500
+        }
+
+        StyledText {
+            text: qsTr("Prevent screen tearing by syncing to refresh rate")
+            color: Colours.palette.m3outline
+        }
+
+        StyledRect {
+            Layout.fillWidth: true
+            implicitHeight: vsyncContent.implicitHeight + Appearance.padding.large * 2
+
+            radius: Appearance.rounding.normal
+            color: Colours.tPalette.m3surfaceContainer
+
+            ColumnLayout {
+                id: vsyncContent
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: Appearance.padding.large
+
+                spacing: Appearance.spacing.larger
+
+                // VSYNC Status Header
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Appearance.spacing.normal
+
+                    StyledRect {
+                        implicitWidth: implicitHeight
+                        implicitHeight: vsyncIcon.implicitHeight + Appearance.padding.normal * 2
+
+                        radius: Appearance.rounding.normal
+                        color: !Monitors.allowTearing ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainerHigh
+
+                        MaterialIcon {
+                            id: vsyncIcon
+
+                            anchors.centerIn: parent
+                            text: "sync"
+                            color: !Monitors.allowTearing ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
+                            font.pointSize: Appearance.font.size.large
+                            fill: !Monitors.allowTearing ? 1 : 0
+
+                            Behavior on fill { Anim {} }
+                        }
+
+                        Behavior on color { CAnim {} }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: !Monitors.allowTearing ? qsTr("Enabled") : qsTr("Disabled")
+                            font.weight: 500
+                            elide: Text.ElideRight
+                        }
+
+                        StyledText {
+                            Layout.fillWidth: true
+                            text: !Monitors.allowTearing 
+                                ? qsTr("Frames synced to display - no tearing") 
+                                : qsTr("Tearing allowed for lower input latency")
+                            color: Colours.palette.m3outline
+                            font.pointSize: Appearance.font.size.small
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+
+                // VSYNC Toggle
+                Toggle {
+                    label: qsTr("VSYNC Enabled")
+                    checked: !Monitors.allowTearing
+                    toggle.onToggled: {
+                        // VSYNC ON = tearing OFF, VSYNC OFF = tearing ON
+                        Monitors.setAllowTearing(!checked);
+                    }
+                }
+            }
+        }
+
+        // =====================================================
         // Display Summary Section
         // =====================================================
         StyledText {

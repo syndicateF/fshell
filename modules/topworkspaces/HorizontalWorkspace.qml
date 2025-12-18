@@ -5,6 +5,7 @@ import qs.config
 import Quickshell
 import Quickshell.Widgets
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 
 Item {
@@ -14,6 +15,10 @@ Item {
     required property int activeWsId
     required property var occupied
     required property int groupOffset
+    
+    // Control visibility of icons and text separately (for Colouriser mask separation)
+    property bool showIcons: true
+    property bool showText: true
 
     readonly property bool isWorkspace: true // Flag for finding workspace children
     readonly property int ws: groupOffset + index + 1
@@ -53,13 +58,14 @@ Item {
     implicitWidth: size
     implicitHeight: Config.bar.workspaces.topWorkspacesHeight
 
-    // Label - visible saat tidak shouldHideLabel
+    // Label - visible when showText=true (hidden in icons-only overlay)
     StyledText {
         id: indicator
 
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         
+        visible: root.showText
         width: root.shouldHideLabel ? 0 : root.labelWidth
         clip: true
         opacity: root.shouldHideLabel ? 0 : 1
@@ -120,7 +126,8 @@ Item {
             }
         }
 
-        visible: active
+        // Icons only visible when showIcons=true (hidden for Colouriser mask)
+        visible: active && root.showIcons
         active: root.hasWindows
         asynchronous: true
 
@@ -193,6 +200,12 @@ Item {
                         IconImage {
                             source: Icons.getAppIcon(windowIconLoader.appClass, "application-x-executable")
                             implicitSize: Config.bar.sizes.font.materialIcon
+                            // Colorization only when iconColorization > 0
+                            layer.enabled: Config.bar.workspaces.iconColorization > 0
+                            layer.effect: MultiEffect {
+                                colorization: Config.bar.workspaces.iconColorization
+                                colorizationColor: Colours.palette.m3onPrimary
+                            }
                         }
                     }
                 }

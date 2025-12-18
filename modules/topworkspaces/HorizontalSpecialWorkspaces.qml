@@ -9,6 +9,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Widgets
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 
 Item {
@@ -206,6 +207,9 @@ Item {
 
                 sourceComponent: Row {
                     spacing: 0
+                    
+                    // Isolate icons from Colouriser effect
+                    layer.enabled: Config.bar.workspaces.windowIconStyle === "icon"
 
                     add: Transition {
                         Anim {
@@ -273,6 +277,13 @@ Item {
                                 IconImage {
                                     source: Icons.getAppIcon(specialWindowIconLoader.appClass)
                                     implicitSize: Config.bar.sizes.font.materialIcon
+                                    
+                                    // Optional colorization - Row's layer.enabled isolates from Colouriser
+                                    layer.enabled: Config.bar.workspaces.iconColorization > 0
+                                    layer.effect: MultiEffect {
+                                        colorization: Config.bar.workspaces.iconColorization
+                                        colorizationColor: Colours.palette.m3onTertiary
+                                    }
                                 }
                             }
                         }
