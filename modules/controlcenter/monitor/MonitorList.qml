@@ -55,8 +55,7 @@ Item {
                     Monitors.setGlobalVrr(nextVrr);
                 }
 
-                // Tooltip for disabled state
-                ToolTip.visible: !enabled && toggleStateLayer.containsMouse
+                ToolTip.visible: !enabled && hovered
                 ToolTip.text: qsTr("No monitors with high refresh rate detected")
                 ToolTip.delay: 500
             }
@@ -72,12 +71,6 @@ Item {
                     // Toggle: if VSYNC is on (tearing off), turn off VSYNC (tearing on), and vice versa
                     Monitors.setAllowTearing(!Monitors.allowTearing);
                 }
-
-                ToolTip.visible: toggleStateLayer.containsMouse
-                ToolTip.text: !Monitors.allowTearing 
-                    ? qsTr("VSYNC enabled - no screen tearing") 
-                    : qsTr("VSYNC disabled - lower input latency")
-                ToolTip.delay: 500
             }
 
             // Settings toggle - shows GlobalInfo when no monitor selected
@@ -187,6 +180,9 @@ Item {
         property string icon
         property string label: ""
         property string accent: "Secondary"
+        
+        // Expose hovered state for tooltip
+        readonly property bool hovered: toggleStateLayer.containsMouse
 
         function onClicked(): void {}
 

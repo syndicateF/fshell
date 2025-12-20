@@ -20,6 +20,26 @@ Singleton {
         return alias?.to ?? player.identity;
     }
 
+    // ========== Progress & Time ==========
+    
+    // Progress as 0-1 ratio (computed, reactive)
+    readonly property real progress: {
+        const a = root.active;
+        return (a?.length > 0) ? a.position / a.length : 0;
+    }
+    
+    // Format seconds to MM:SS string
+    function formatTime(seconds: int): string {
+        if (seconds < 0) return "--:--";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+        return `${mins}:${secs}`;
+    }
+    
+    // Formatted time strings (reactive)
+    readonly property string positionStr: formatTime(active?.position ?? -1)
+    readonly property string lengthStr: formatTime(active?.length ?? -1)
+
     Connections {
         target: active
 

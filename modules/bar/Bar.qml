@@ -125,6 +125,10 @@ Item {
             popouts.currentName = "network";
             popouts.currentCenter = (combinedTop + combinedBottom) / 2;
             popouts.hasCurrent = true;
+        } else if (id === "powerProfile" && Power.available) {
+            popouts.currentName = "powerprofile";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
         }
     }
 
@@ -202,8 +206,14 @@ Item {
             required property var modelData
             required property int index
 
-            readonly property bool enabled: modelData.enabled
             readonly property string entryId: modelData.id
+            // Check both config enabled AND service availability for service-dependent items
+            readonly property bool enabled: {
+                if (!modelData.enabled) return false;
+                // PowerProfile requires Power service
+                if (entryId === "powerProfile") return Power.available;
+                return true;
+            }
 
             Layout.alignment: Qt.AlignHCenter
             visible: enabled
@@ -218,6 +228,7 @@ Item {
                     case "clock": return clockComp
                     case "statusIcons": return statusIconsComp
                     case "power": return powerComp
+                    case "powerProfile": return powerProfileComp
                     case "networkIcon": return networkIconComp
                     case "networkTraffic": return networkTrafficComp
                     case "batteryIcon": return batteryIconComp
@@ -269,6 +280,14 @@ Item {
         id: powerComp
         Power {
             visibilities: root.visibilities
+        }
+    }
+
+    Component {
+        id: powerProfileComp
+        PowerProfile {
+            bar: root
+            popouts: root.popouts
         }
     }
 

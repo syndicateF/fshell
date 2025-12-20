@@ -173,8 +173,8 @@ Item {
         }
 
         NavItem {
-            icon: "memory"
-            label: "hardware"
+            icon: "electric_bolt"
+            label: "power"
         }
     }
 

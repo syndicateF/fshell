@@ -35,14 +35,12 @@ Item {
             return Qt.darker(Colours.palette.m3primary, 2.5);  // Primary (normal discharge)
         }
         readonly property color fillColor: {
-            // Fill color dari color scheme
-            if (charging) return Colours.palette.m3secondary;  // Secondary (charging)
-            if (pct <= 20) return Colours.palette.m3error;  // Error (critical)
-            if (pct <= 100) return Colours.palette.m3primary;  // Primary (normal discharge)
-            return Colours.palette.m3onSurface;  // Neutral (fallback)
+            if (charging) return Colours.palette.m3secondary;
+            if (pct <= 20) return Colours.palette.m3error;
+            return Colours.palette.m3primary;
         }
 
-        // BODY tanpa outline (iOS Solid Capsule)
+        // BODY (iOS Solid Capsule)
         Rectangle {
             id: body
             anchors.verticalCenter: parent.verticalCenter
@@ -52,56 +50,21 @@ Item {
             color: batteryIOS.frameColor
             clip: true
             
-            // isi fill dengan radius per-corner
+            // Fill dengan radius per-corner
             Rectangle {
                 id: fill
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                // Width: maksimal sampai (body.width - margin) untuk avoid area rounded body di kanan
-                // Ketika 100%, boleh full width untuk merge dengan body rounding
-                readonly property real maxFillWidth: batteryIOS.pct >= 99 ? parent.width : parent.width - 6
-                width: Math.max(0, Math.min((maxFillWidth) * (batteryIOS.pct / 100), maxFillWidth))
+                
+                readonly property bool isFull: batteryIOS.pct >= 99
+                width: isFull ? parent.width : (parent.width - 6) * Math.min(batteryIOS.pct / 100, 1)
                 height: parent.height
                 color: batteryIOS.fillColor
                 
-                // Left side always rounded
                 topLeftRadius: 6
                 bottomLeftRadius: 6
-                // Right side: flat (fill never reaches the rounded corner area of body)
-                topRightRadius: 0
-                bottomRightRadius: 0
-
-                // Breathing animation when charging
-                SequentialAnimation on opacity {
-                    running: batteryIOS.charging
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1; to: 0.7; duration: 1500; easing.type: Easing.InOutQuad }
-                    NumberAnimation { from: 0.7; to: 1; duration: 1500; easing.type: Easing.InOutQuad }
-                }
-
-                // Pulse animation when low battery (not charging)
-                SequentialAnimation on scale {
-                    running: !batteryIOS.charging && batteryIOS.pct <= 20
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1; to: 1.08; duration: 800; easing.type: Easing.OutQuad }
-                    NumberAnimation { from: 1.08; to: 1; duration: 800; easing.type: Easing.InQuad }
-                    PauseAnimation { duration: 2000 }
-                }
-
-                Behavior on width {
-                    NumberAnimation {
-                        duration: 600
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.1
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 500
-                        easing.type: Easing.OutQuad
-                    }
-                }
+                topRightRadius: isFull ? 6 : 0
+                bottomRightRadius: isFull ? 6 : 0
             }
 
             // persentase di dalam
@@ -115,45 +78,19 @@ Item {
             }
         }
 
-        // Pentil (tip) iOS - rounded trapezoid
-        Canvas {
-            id: pentilCanvas
+        // Pentil
+        Rectangle {
             anchors.left: body.right
-            anchors.leftMargin: 0.5
+            anchors.leftMargin: 1
             anchors.verticalCenter: parent.verticalCenter
             width: 2
-            height: 7
+            height: 4.5
+            color: batteryIOS.frameColor
             
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                
-                ctx.fillStyle = batteryIOS.frameColor
-                ctx.beginPath()
-                
-                // Start from left side (wider)
-                ctx.moveTo(0, height * 0.2) // Top left (20% from top)
-                
-                // Top line going right and inward
-                ctx.lineTo(width, height * 0.35) // Top right (35% from top, narrower)
-                
-                // Right side (rounded tip)
-                ctx.arcTo(width + 1, height * 0.5, width, height * 0.65, 1.5) // Rounded corner
-                
-                // Bottom line going left
-                ctx.lineTo(0, height * 0.8) // Bottom left (80% from top)
-                
-                // Left side (connect back with slight curve)
-                ctx.arcTo(-0.5, height * 0.5, 0, height * 0.2, 1) // Rounded corner
-                
-                ctx.closePath()
-                ctx.fill()
-            }
-            
-            Connections {
-                target: batteryIOS
-                function onFrameColorChanged() { pentilCanvas.requestPaint() }
-            }
+            topLeftRadius: 0
+            bottomLeftRadius: 0
+            topRightRadius: 6
+            bottomRightRadius: 6
         }
     }
 }

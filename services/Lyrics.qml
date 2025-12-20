@@ -1,5 +1,6 @@
 pragma Singleton
 
+import qs.services
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -7,24 +8,40 @@ import QtQuick
 /**
  * LyricsService - Fetch synced lyrics from LRCLIB API
  * 
- * Usage:
- *   Lyrics.fetch(artist, title)
- *   Lyrics.currentLine  // Current lyric line based on position
- *   Lyrics.lines        // All parsed lyric lines [{time, text}]
+ * Auto-syncs with Players.active - no manual binding needed.
+ * Includes auto-retry, cancel, and proper status management.
  */
 Singleton {
     id: root
 
-    // Current track info (set by Media.qml when track changes)
-    property string currentArtist: ""
-    property string currentTitle: ""
-    property real currentPosition: 0  // in seconds
+    // ========== Status Enum ==========
+    enum Status {
+        Idle,       // No fetch in progress, no data
+        Loading,    // Fetch in progress
+        Success,    // Lyrics available
+        Error,      // Network or parse error
+        NoLyrics    // API returned no synced lyrics
+    }
     
-    // Lyrics data
+    // ========== Auto-sync with Players.active ==========
+    readonly property string currentArtist: Players.active?.trackArtist ?? ""
+    readonly property string currentTitle: Players.active?.trackTitle ?? ""
+    readonly property real currentPosition: Players.active?.position ?? 0
+    
+    // ========== State ==========
+    property int status: Lyrics.Status.Idle
     property var lines: []  // [{time: seconds, text: "lyric line"}]
-    property bool loading: false
-    property bool available: lines.length > 0
-    property string error: ""
+    property string errorMessage: ""
+    
+    // Computed helpers for UI
+    readonly property bool loading: status === Lyrics.Status.Loading
+    readonly property bool available: status === Lyrics.Status.Success && lines.length > 0
+    readonly property string error: status === Lyrics.Status.Error ? errorMessage : ""
+    
+    // Retry state
+    property int retryCount: 0
+    readonly property int maxRetries: 3
+    readonly property int retryDelay: 2000  // 2 seconds
     
     // Current line based on position
     readonly property int currentLineIndex: {
@@ -43,41 +60,85 @@ Singleton {
     
     readonly property string currentLine: currentLineIndex >= 0 ? lines[currentLineIndex]?.text ?? "" : ""
     
-    // Fetch lyrics when artist/title changes
-    onCurrentArtistChanged: fetchLyrics()
-    onCurrentTitleChanged: fetchLyrics()
+    // ========== Auto-fetch on track change ==========
+    Connections {
+        target: Players.active
+        
+        function onTrackTitleChanged() {
+            root.fetchLyrics();
+        }
+        
+        function onTrackArtistChanged() {
+            root.fetchLyrics();
+        }
+    }
     
+    Connections {
+        target: Players
+        
+        function onActiveChanged() {
+            root.fetchLyrics();
+        }
+    }
+    
+    // ========== Public API ==========
     function fetchLyrics(): void {
         if (!currentArtist || !currentTitle) {
             clear();
             return;
         }
         
-        // Debounce
+        retryCount = 0;
         fetchTimer.restart();
     }
     
     function retry(): void {
-        // Force re-fetch without debounce
         if (!currentArtist || !currentTitle) return;
         
-        loading = true;
-        error = "";
+        retryCount = 0;
+        doFetch();
+    }
+    
+    function cancel(): void {
+        fetchTimer.stop();
+        retryTimer.stop();
+        lyricsRequest.running = false;
+        
+        if (status === Lyrics.Status.Loading) {
+            status = Lyrics.Status.Idle;
+        }
+    }
+    
+    function clear(): void {
+        cancel();
+        lines = [];
+        errorMessage = "";
+        status = Lyrics.Status.Idle;
+        retryCount = 0;
+    }
+    
+    // ========== Internal ==========
+    function doFetch(): void {
+        status = Lyrics.Status.Loading;
+        errorMessage = "";
         
         const artist = encodeURIComponent(currentArtist);
         const title = encodeURIComponent(currentTitle);
         const url = `https://lrclib.net/api/get?artist_name=${artist}&track_name=${title}`;
-        lyricsRequest.lyricsCommand = ["curl", "-s", "-H", "User-Agent: X-Shell/1.0", url];
+        lyricsRequest.lyricsCommand = ["curl", "-s", "-m", "10", "-H", "User-Agent: X-Shell/1.0", url];
         lyricsRequest.running = true;
     }
     
-    function clear(): void {
-        lines = [];
-        error = "";
-        loading = false;
+    function handleError(message: string): void {
+        if (retryCount < maxRetries) {
+            retryCount++;
+            retryTimer.start();
+        } else {
+            status = Lyrics.Status.Error;
+            errorMessage = message;
+        }
     }
     
-    // Parse LRC format: [mm:ss.xx] text
     function parseLrc(lrcText: string): var {
         const result = [];
         const lineRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]\s*(.*)/;
@@ -92,7 +153,7 @@ Singleton {
                 const time = minutes * 60 + seconds + millis / 1000;
                 const text = match[4].trim();
                 
-                if (text) {  // Skip empty lines
+                if (text) {
                     result.push({ time: time, text: text });
                 }
             }
@@ -101,65 +162,50 @@ Singleton {
         return result;
     }
     
+    // ========== Timers ==========
     Timer {
         id: fetchTimer
-        interval: 100  // Debounce 100ms
-        onTriggered: {
-            if (!root.currentArtist || !root.currentTitle) return;
-            
-            root.loading = true;
-            root.error = "";
-            
-            // Build URL and set command
-            const artist = encodeURIComponent(root.currentArtist);
-            const title = encodeURIComponent(root.currentTitle);
-            const url = `https://lrclib.net/api/get?artist_name=${artist}&track_name=${title}`;
-            lyricsRequest.lyricsCommand = ["curl", "-s", "-H", "User-Agent: X-Shell/1.0", url];
-            lyricsRequest.running = true;
-        }
+        interval: 100  // Debounce
+        onTriggered: root.doFetch()
     }
     
+    Timer {
+        id: retryTimer
+        interval: root.retryDelay
+        onTriggered: root.doFetch()
+    }
+    
+    // ========== Process ==========
     Process {
         id: lyricsRequest
         
         property var lyricsCommand: []
-        
         command: lyricsCommand
-        
-        onRunningChanged: {
-            console.log("[Lyrics] Process running:", running, "command:", lyricsCommand.join(" "));
-        }
         
         stdout: StdioCollector {
             onStreamFinished: {
-                console.log("[Lyrics] Stream finished, text length:", text.length);
-                root.loading = false;
-                
                 try {
                     const response = JSON.parse(text);
-                    console.log("[Lyrics] Parsed response, has syncedLyrics:", !!response.syncedLyrics);
                     
                     if (response.syncedLyrics) {
                         root.lines = root.parseLrc(response.syncedLyrics);
-                        root.error = "";
-                        console.log("[Lyrics] Loaded", root.lines.length, "lines");
+                        root.status = Lyrics.Status.Success;
+                        root.errorMessage = "";
+                        root.retryCount = 0;
                     } else {
-                        root.clear();
-                        root.error = "No synced lyrics found";
+                        root.lines = [];
+                        root.status = Lyrics.Status.NoLyrics;
+                        root.errorMessage = "";
                     }
                 } catch (e) {
-                    console.log("[Lyrics] Parse error:", e);
-                    root.clear();
-                    root.error = "Failed to parse lyrics";
+                    root.handleError("Failed to parse lyrics");
                 }
             }
         }
         
         onExited: (code, status) => {
-            console.log("[Lyrics] Process exited, code:", code);
-            if (code !== 0) {
-                root.loading = false;
-                root.error = "Network error";
+            if (code !== 0 && root.status === Lyrics.Status.Loading) {
+                root.handleError("Network error");
             }
         }
     }

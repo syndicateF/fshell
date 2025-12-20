@@ -28,6 +28,7 @@ JsonObject {
     property list<var> bottomEntries: [
         { id: "statusIcons", enabled: true },
         { id: "powerMode", enabled: true },
+        { id: "powerProfile", enabled: true },
         { id: "batteryIcon", enabled: true },
         { id: "power", enabled: false }
     ]

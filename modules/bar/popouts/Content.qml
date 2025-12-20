@@ -44,7 +44,7 @@ Item {
 
         Popout {
             name: "media"
-            sourceComponent: Overview.Media {
+            sourceComponent: Media {
                 visibilities: null
             }
         }
@@ -83,6 +83,13 @@ Item {
         Popout {
             name: "lockstatus"
             sourceComponent: LockStatus {}
+        }
+
+        Popout {
+            name: "powerprofile"
+            sourceComponent: PowerProfile {
+                wrapper: root.wrapper
+            }
         }
 
         // Loading popout - untuk animasi yang sama dengan WindowInfo

@@ -160,7 +160,7 @@ Item {
 
     Comp {
         shouldBeActive: root.detachedMode === "any"
-        asynchronous: true
+        asynchronous: false  // Sync load to prevent first-open shrink
         anchors.centerIn: parent
 
         sourceComponent: ControlCenter {
