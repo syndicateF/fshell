@@ -10,16 +10,18 @@ ShapePath {
     required property Wrapper wrapper
     required property var panels
 
-    readonly property real rounding: Config.border.rounding
+    // Only use rounding when sidebar is visible
+    readonly property real rounding: wrapper.width > 0 ? Config.border.rounding : 0
 
     readonly property real notifsWidthDiff: panels.notifications.width - wrapper.width
-    readonly property real notifsRoundingX: panels.notifications.height > 0 && notifsWidthDiff < rounding * 2 ? notifsWidthDiff / 2 : rounding
+    readonly property real notifsRoundingX: wrapper.width > 0 && panels.notifications.height > 0 && notifsWidthDiff < rounding * 2 ? notifsWidthDiff / 2 : rounding
 
     readonly property real utilsWidthDiff: panels.utilities.width - wrapper.width
-    readonly property real utilsRoundingX: utilsWidthDiff < rounding * 2 ? utilsWidthDiff / 2 : rounding
+    readonly property real utilsRoundingX: wrapper.width > 0 && utilsWidthDiff < rounding * 2 ? utilsWidthDiff / 2 : rounding
 
     strokeWidth: -1
-    fillColor: Colours.palette.m3surface
+    // Transparent when sidebar is closed
+    fillColor: wrapper.width > 0 ? Colours.palette.m3surface : "transparent"
 
     PathLine {
         relativeX: -root.wrapper.width - root.notifsRoundingX

@@ -9,9 +9,11 @@ ShapePath {
 
     required property Wrapper wrapper
     required property var sidebar
-    readonly property real rounding: Config.border.rounding
+    readonly property real rounding: 0
     readonly property bool flatten: wrapper.height < rounding * 2
     readonly property real roundingY: flatten ? wrapper.height / 2 : rounding
+    // Use rounding when sidebar is closed, otherwise use sidebar's calculated value
+    readonly property real topLeftRounding: sidebar.wrapper.width > 0 ? sidebar.utilsRoundingX : rounding
 
     strokeWidth: -1
     fillColor: Colours.palette.m3surface
@@ -32,13 +34,14 @@ ShapePath {
         relativeY: -(root.wrapper.height - root.roundingY * 2)
     }
     PathArc {
-        relativeX: root.sidebar.utilsRoundingX
+        // Use topLeftRounding which falls back to rounding when sidebar is closed
+        relativeX: root.topLeftRounding
         relativeY: -root.roundingY
-        radiusX: root.sidebar.utilsRoundingX
+        radiusX: root.topLeftRounding
         radiusY: Math.min(root.rounding, root.wrapper.height)
     }
     PathLine {
-        relativeX: root.wrapper.height > 0 ? root.wrapper.width - root.rounding - root.sidebar.utilsRoundingX : root.wrapper.width
+        relativeX: root.wrapper.height > 0 ? root.wrapper.width - root.rounding - root.topLeftRounding : root.wrapper.width
         relativeY: 0
     }
     PathArc {

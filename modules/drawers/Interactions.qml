@@ -134,7 +134,8 @@ CustomMouseArea {
                 root.panels.osd.hovered = true;
             }
 
-            const showSidebar = pressed && dragStart.x > bar.implicitWidth + panels.sidebar.x - Config.border.thickness;
+            // Check if drag started near right edge (within dragThreshold of screen edge)
+            const showSidebar = pressed && dragStart.x > root.width - Config.sidebar.dragThreshold;
 
             // Fullscreen session is keybind-only, no drag gesture
             // Just handle sidebar drag

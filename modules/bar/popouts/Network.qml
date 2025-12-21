@@ -9,219 +9,619 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 
-// Network popout - Bluetooth style (minimalist)
+// Network popout - iOS Sheet style (Feature Rich)
 ColumnLayout {
     id: root
 
     required property Item wrapper
 
+    // Computed properties
+    readonly property bool isEnabled: Network.wifiEnabled && !Network.airplaneMode
+    readonly property bool isScanning: Network.scanning
+    readonly property var activeNetwork: Network.active
+    readonly property var savedNetworks: Network.networks.filter(n => n.isSaved && !n.active)
+    readonly property var availableNetworks: Network.networks.filter(n => !n.isSaved && !n.active)
+
+    // Error handling
+    property string errorMessage: ""
+    property bool hasError: errorMessage !== ""
+
+    function showError(msg: string): void {
+        errorMessage = msg;
+        errorTimer.restart();
+    }
+
+    Timer {
+        id: errorTimer
+        interval: 5000
+        onTriggered: root.errorMessage = ""
+    }
+
     spacing: Appearance.spacing.small
 
-    // Title with connection state
-    StyledText {
-        Layout.topMargin: Appearance.padding.normal
-        Layout.rightMargin: Appearance.padding.small
-        text: {
-            if (Network.airplaneMode) return qsTr("Wi-Fi (airplane mode)");
-            if (!Network.wifiEnabled) return qsTr("Wi-Fi (disabled)");
-            if (Network.active) return qsTr("Wi-Fi (%1)").arg(Network.active.ssid);
-            return qsTr("Wi-Fi");
-        }
-        font.weight: 500
-    }
+    // ═══════════════════════════════════════════════════
+    // Error Toast - animated show/hide
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        visible: opacity > 0
+        Layout.fillWidth: true
+        implicitHeight: errorContent.implicitHeight + Appearance.padding.small * 2
+        radius: Appearance.rounding.small
+        color: Colours.palette.m3errorContainer
 
-    // WiFi toggle
-    Toggle {
-        label: qsTr("Enabled")
-        checked: Network.wifiEnabled
-        disabled: Network.airplaneMode
-        toggle.onToggled: {
-            Network.toggleWifi();
-        }
-    }
+        opacity: root.hasError ? 1 : 0
+        scale: root.hasError ? 1 : 0.9
 
-    // Airplane mode toggle
-    Toggle {
-        label: qsTr("Airplane mode")
-        checked: Network.airplaneMode
-        toggle.onToggled: {
-            Network.toggleAirplaneMode();
-        }
-    }
-
-    // Network count + captive portal indicator
-    StyledText {
-        Layout.topMargin: Appearance.spacing.small
-        Layout.rightMargin: Appearance.padding.small
-        text: {
-            let msg = qsTr("%1 network%2 available").arg(Network.networks.length).arg(Network.networks.length === 1 ? "" : "s");
-            if (Network.captivePortalDetected) msg += qsTr(" (sign-in required)");
-            return msg;
-        }
-        color: Network.captivePortalDetected ? Colours.palette.m3tertiary : Colours.palette.m3onSurfaceVariant
-        font.pointSize: Appearance.font.size.small
-        
-        MouseArea {
-            anchors.fill: parent
-            visible: Network.captivePortalDetected
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Network.openCaptivePortal()
-        }
-    }
-
-    // Network list
-    Repeater {
-        model: ScriptModel {
-            values: [...Network.networks].sort((a, b) => {
-                if (a.active !== b.active) return b.active - a.active;
-                if (a.isSaved !== b.isSaved) return b.isSaved - a.isSaved;
-                return b.strength - a.strength;
-            }).slice(0, 5)
-        }
+        Behavior on opacity { Anim {} }
+        Behavior on scale { Anim {} }
 
         RowLayout {
-            id: networkItem
-
-            required property var modelData
-            readonly property bool isConnecting: Network.connecting && Network.lastConnectedSSID === modelData.ssid
-
-            Layout.fillWidth: true
-            Layout.rightMargin: Appearance.padding.small
+            id: errorContent
+            anchors.centerIn: parent
             spacing: Appearance.spacing.small
 
-            opacity: 0
-            scale: 0.7
-
-            Component.onCompleted: {
-                opacity = 1;
-                scale = 1;
-            }
-
-            Behavior on opacity { Anim {} }
-            Behavior on scale { Anim {} }
-
-            // Network icon
             MaterialIcon {
-                text: Icons.getNetworkIcon(networkItem.modelData.strength)
-                color: networkItem.modelData.active ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                text: "error"
+                color: Colours.palette.m3onErrorContainer
+                font.pointSize: Appearance.font.size.normal
             }
 
-            // SSID
             StyledText {
-                Layout.leftMargin: Appearance.spacing.small / 2
-                Layout.rightMargin: Appearance.spacing.small / 2
-                Layout.fillWidth: true
-                text: networkItem.modelData.ssid
-                elide: Text.ElideRight
-                font.weight: networkItem.modelData.active ? 500 : 400
+                text: root.errorMessage
+                color: Colours.palette.m3onErrorContainer
+                font.pointSize: Appearance.font.size.small
+                wrapMode: Text.WordWrap
+                Layout.maximumWidth: 200
             }
 
-            // Connect button
-            StyledRect {
-                id: connectBtn
-
-                implicitWidth: implicitHeight
-                implicitHeight: connectIcon.implicitHeight + Appearance.padding.small
-
-                radius: Appearance.rounding.full
-                color: Qt.alpha(Colours.palette.m3primary, networkItem.modelData.active ? 1 : 0)
-
-                CircularIndicator {
-                    anchors.fill: parent
-                    running: networkItem.isConnecting
-                }
+            Item {
+                implicitWidth: 20
+                implicitHeight: 20
 
                 StateLayer {
-                    color: networkItem.modelData.active ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
-                    disabled: networkItem.isConnecting || !Network.wifiEnabled || Network.airplaneMode
+                    radius: Appearance.rounding.full
+                    color: Colours.palette.m3onErrorContainer
 
                     function onClicked(): void {
-                        if (networkItem.modelData.active) {
-                            Network.disconnectFromNetwork();
-                        } else if (networkItem.modelData.isSaved) {
-                            Network.connectToNetwork(networkItem.modelData.ssid, "", true);
-                        } else if (networkItem.modelData.isSecure) {
-                            Network.pendingNetworkFromBar = networkItem.modelData;
-                            Network.openPasswordDialogOnPanelOpen = true;
-                            root.wrapper.detach("network");
-                        } else {
-                            Network.connectToNetwork(networkItem.modelData.ssid, "", false);
-                        }
+                        root.errorMessage = "";
                     }
                 }
 
                 MaterialIcon {
-                    id: connectIcon
-
                     anchors.centerIn: parent
-                    animate: true
-                    text: networkItem.modelData.active ? "link_off" : networkItem.modelData.isSecure && !networkItem.modelData.isSaved ? "key" : "link"
-                    color: networkItem.modelData.active ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
-
-                    opacity: networkItem.isConnecting ? 0 : 1
-                    Behavior on opacity { Anim {} }
+                    text: "close"
+                    font.pointSize: Appearance.font.size.small
+                    color: Colours.palette.m3onErrorContainer
                 }
             }
         }
     }
 
-    // Open panel button (sama dengan Bluetooth)
+    // ═══════════════════════════════════════════════════
+    // iOS Drag Handle (clickable to open panel)
+    // ═══════════════════════════════════════════════════
     StyledRect {
-        Layout.topMargin: Appearance.spacing.small
-        implicitWidth: expandBtn.implicitWidth + Appearance.padding.normal * 2
-        implicitHeight: expandBtn.implicitHeight + Appearance.padding.small
-
-        radius: Appearance.rounding.normal
-        color: Colours.palette.m3primaryContainer
+        Layout.alignment: Qt.AlignHCenter
+        Layout.topMargin: Appearance.padding.small
+        implicitWidth: 32
+        implicitHeight: 4
+        radius: 2
+        color: Colours.palette.m3outlineVariant
 
         StateLayer {
-            color: Colours.palette.m3onPrimaryContainer
+            radius: Appearance.rounding.small
 
             function onClicked(): void {
                 root.wrapper.detach("network");
             }
         }
+    }
 
-        RowLayout {
-            id: expandBtn
+    // ═══════════════════════════════════════════════════
+    // Status Card
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        Layout.fillWidth: true
+        implicitWidth: 280
+        implicitHeight: statusContent.height + Appearance.padding.normal * 2
+        radius: Appearance.rounding.small
+        color: Colours.palette.m3surfaceContainerHigh
 
-            anchors.centerIn: parent
+        ColumnLayout {
+            id: statusContent
+            width: parent.width - Appearance.padding.normal * 2
+            x: Appearance.padding.normal
+            y: Appearance.padding.normal
             spacing: Appearance.spacing.small
 
-            StyledText {
-                Layout.leftMargin: Appearance.padding.smaller
-                text: qsTr("Open panel")
-                color: Colours.palette.m3onPrimaryContainer
+            // Header row
+            RowLayout {
+                width: parent.width
+                spacing: Appearance.spacing.normal
+
+                MaterialIcon {
+                    text: Network.airplaneMode ? "airplanemode_active" : "wifi"
+                    color: root.isEnabled ? Colours.palette.m3primary : Colours.palette.m3outline
+                }
+
+                ColumnLayout {
+                    spacing: 0
+
+                    StyledText {
+                        text: Network.airplaneMode ? qsTr("Airplane Mode") : qsTr("Wi-Fi")
+                        font.weight: 600
+                    }
+
+                    StyledText {
+                        visible: root.isEnabled
+                        text: {
+                            if (root.activeNetwork)
+                                return qsTr("Connected to %1").arg(root.activeNetwork.ssid);
+                            return qsTr("Not connected");
+                        }
+                        font.pointSize: Appearance.font.size.smaller
+                        color: Colours.palette.m3outline
+                    }
+                }
+
+                // Spacer
+                Item { Layout.fillWidth: true }
+
+                StyledSwitch {
+                    checked: Network.wifiEnabled
+                    enabled: !Network.airplaneMode
+                    onClicked: Network.toggleWifi()
+                }
             }
 
-            MaterialIcon {
-                text: "chevron_right"
-                color: Colours.palette.m3onPrimaryContainer
-                font.pointSize: Appearance.font.size.large
+            // Status badges row - animated height
+            Item {
+                readonly property bool hasBadges: root.isScanning || Network.airplaneMode || Network.captivePortalDetected
+
+                Layout.fillWidth: true
+                implicitHeight: (root.isEnabled && hasBadges) ? badgesContent.implicitHeight : 0
+                clip: true
+
+                Behavior on implicitHeight { Anim {} }
+
+                RowLayout {
+                    id: badgesContent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    spacing: Appearance.spacing.small
+
+                    opacity: parent.hasBadges ? 1 : 0
+                    scale: parent.hasBadges ? 1 : 0.8
+
+                    Behavior on opacity { Anim {} }
+                    Behavior on scale { Anim {} }
+
+                    // Scanning badge
+                    Item {
+                        implicitWidth: root.isScanning ? scanBadge.implicitWidth : 0
+                        implicitHeight: scanBadge.implicitHeight
+                        clip: true
+
+                        Behavior on implicitWidth { Anim {} }
+
+                        StyledRect {
+                            id: scanBadge
+                            implicitWidth: scanLabel.implicitWidth + Appearance.padding.normal * 2
+                            implicitHeight: scanLabel.implicitHeight + Appearance.padding.small
+                            radius: Appearance.rounding.full
+                            color: Colours.palette.m3tertiaryContainer
+
+                            opacity: root.isScanning ? 1 : 0
+                            scale: root.isScanning ? 1 : 0.8
+
+                            Behavior on opacity { Anim {} }
+                            Behavior on scale { Anim {} }
+
+                            RowLayout {
+                                id: scanLabel
+                                anchors.centerIn: parent
+                                spacing: Appearance.spacing.smaller
+
+                                MaterialIcon {
+                                    text: "radar"
+                                    font.pointSize: Appearance.font.size.smaller
+                                    color: Colours.palette.m3onTertiaryContainer
+                                }
+
+                                StyledText {
+                                    text: qsTr("Scanning")
+                                    font.pointSize: Appearance.font.size.smaller
+                                    color: Colours.palette.m3onTertiaryContainer
+                                }
+                            }
+                        }
+                    }
+
+                    // Captive Portal badge
+                    Item {
+                        implicitWidth: Network.captivePortalDetected ? portalBadge.implicitWidth : 0
+                        implicitHeight: portalBadge.implicitHeight
+                        clip: true
+
+                        Behavior on implicitWidth { Anim {} }
+
+                        StyledRect {
+                            id: portalBadge
+                            implicitWidth: portalLabel.implicitWidth + Appearance.padding.normal * 2
+                            implicitHeight: portalLabel.implicitHeight + Appearance.padding.small
+                            radius: Appearance.rounding.full
+                            color: Colours.palette.m3secondaryContainer
+
+                            opacity: Network.captivePortalDetected ? 1 : 0
+                            scale: Network.captivePortalDetected ? 1 : 0.8
+
+                            Behavior on opacity { Anim {} }
+                            Behavior on scale { Anim {} }
+
+                            StateLayer {
+                                radius: Appearance.rounding.full
+                                color: Colours.palette.m3onSecondaryContainer
+                                function onClicked(): void {
+                                    Network.openCaptivePortal();
+                                }
+                            }
+
+                            RowLayout {
+                                id: portalLabel
+                                anchors.centerIn: parent
+                                spacing: Appearance.spacing.smaller
+
+                                MaterialIcon {
+                                    text: "login"
+                                    font.pointSize: Appearance.font.size.smaller
+                                    color: Colours.palette.m3onSecondaryContainer
+                                }
+
+                                StyledText {
+                                    text: qsTr("Sign in")
+                                    font.pointSize: Appearance.font.size.smaller
+                                    color: Colours.palette.m3onSecondaryContainer
+                                }
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
             }
         }
     }
 
-    // Toggle component (sama dengan Bluetooth)
-    component Toggle: RowLayout {
-        required property string label
-        property alias checked: toggle.checked
-        property alias toggle: toggle
-        property bool disabled: false
-
+    // ═══════════════════════════════════════════════════
+    // Quick Actions - always visible so airplane mode can be toggled
+    // ═══════════════════════════════════════════════════
+    RowLayout {
         Layout.fillWidth: true
-        Layout.rightMargin: Appearance.padding.small
-        spacing: Appearance.spacing.normal
+        spacing: Appearance.spacing.small
 
-        StyledText {
+        // Scan button
+        StyledRect {
             Layout.fillWidth: true
-            text: parent.label
-            opacity: parent.disabled ? 0.5 : 1
+            implicitHeight: 36
+            radius: Appearance.rounding.small
+            color: root.isScanning ? Colours.palette.m3tertiaryContainer : Colours.palette.m3surfaceContainerHigh
+
+            StateLayer {
+                color: root.isScanning ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                disabled: root.isScanning || !root.isEnabled  // Disabled when scanning or airplane/wifi off
+
+                function onClicked(): void {
+                    if (!root.isScanning && root.isEnabled) {
+                        Network.rescanWifi();
+                    }
+                }
+            }
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: Appearance.spacing.smaller
+
+                MaterialIcon {
+                    text: root.isScanning ? "wifi_find" : "search"
+                    font.pointSize: Appearance.font.size.normal
+                    color: root.isScanning ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    text: root.isScanning ? qsTr("Stop") : qsTr("Scan")
+                    font.pointSize: Appearance.font.size.small
+                    color: root.isScanning ? Colours.palette.m3onTertiaryContainer : Colours.palette.m3onSurface
+                }
+            }
         }
 
-        StyledSwitch {
-            id: toggle
-            enabled: !parent.disabled
+        // Airplane mode toggle
+        StyledRect {
+            Layout.fillWidth: true
+            implicitHeight: 36
+            radius: Appearance.rounding.small
+            color: Network.airplaneMode ? Colours.palette.m3primaryContainer : Colours.palette.m3surfaceContainerHigh
+
+            StateLayer {
+                color: Network.airplaneMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+
+                function onClicked(): void {
+                    Network.toggleAirplaneMode();
+                }
+            }
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: Appearance.spacing.smaller
+
+                MaterialIcon {
+                    text: "airplanemode_active"
+                    font.pointSize: Appearance.font.size.normal
+                    color: Network.airplaneMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    text: qsTr("Airplane")
+                    font.pointSize: Appearance.font.size.small
+                    color: Network.airplaneMode ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3onSurface
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Connected Section
+    // ═══════════════════════════════════════════════════
+    RowLayout {
+        visible: root.isEnabled && root.activeNetwork
+        spacing: Appearance.spacing.small
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Colours.palette.m3outlineVariant
+        }
+
+        StyledText {
+            text: qsTr("Connected")
+            font.pointSize: Appearance.font.size.small
+            color: Colours.palette.m3primary
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 1
+            color: Colours.palette.m3outlineVariant
+        }
+    }
+
+    // Connected network card
+    StyledRect {
+        visible: root.isEnabled && root.activeNetwork
+        Layout.fillWidth: true
+        implicitWidth: 280
+        implicitHeight: connectedRow.implicitHeight + Appearance.padding.small * 2
+        radius: Appearance.rounding.small
+        color: Colours.palette.m3surfaceContainerHigh
+
+        RowLayout {
+            id: connectedRow
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.small
+            spacing: Appearance.spacing.normal
+
+            MaterialIcon {
+                text: Icons.getNetworkIcon(root.activeNetwork?.strength ?? 0)
+                color: Colours.palette.m3primary
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    text: root.activeNetwork?.ssid ?? ""
+                    font.weight: 600
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+
+                StyledText {
+                    text: qsTr("Signal: %1%").arg(root.activeNetwork?.strength ?? 0)
+                    font.pointSize: Appearance.font.size.smaller
+                    color: Colours.palette.m3outline
+                }
+            }
+
+            // Disconnect button
+            StyledRect {
+                implicitWidth: 28
+                implicitHeight: 28
+                radius: Appearance.rounding.full
+                color: Colours.palette.m3primary
+
+                StateLayer {
+                    radius: Appearance.rounding.full
+                    color: Colours.palette.m3onPrimary
+
+                    function onClicked(): void {
+                        Network.disconnectFromNetwork();
+                    }
+                }
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "link_off"
+                    font.pointSize: Appearance.font.size.smaller
+                    color: Colours.palette.m3onPrimary
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Available Section - animated height
+    // ═══════════════════════════════════════════════════
+    Item {
+        readonly property bool shouldShow: root.isEnabled && root.availableNetworks.length > 0
+
+        Layout.fillWidth: true
+        implicitHeight: shouldShow ? availableContent.implicitHeight : 0
+        clip: true
+
+        Behavior on implicitHeight { Anim {} }
+
+        ColumnLayout {
+            id: availableContent
+            width: parent.width
+            spacing: Appearance.spacing.small
+
+            opacity: parent.shouldShow ? 1 : 0
+            scale: parent.shouldShow ? 1 : 0.95
+
+            Behavior on opacity { Anim {} }
+            Behavior on scale { Anim {} }
+
+            // Section header
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Appearance.spacing.small
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Colours.palette.m3outlineVariant
+                }
+
+                StyledText {
+                    text: qsTr("Available")
+                    font.pointSize: Appearance.font.size.small
+                    color: Colours.palette.m3tertiary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: Colours.palette.m3outlineVariant
+                }
+            }
+
+            // Available networks card
+            StyledRect {
+                Layout.fillWidth: true
+                implicitWidth: 280
+                implicitHeight: availableList.height + Appearance.padding.small * 2
+                radius: Appearance.rounding.small
+                color: Colours.palette.m3surfaceContainerHigh
+
+                Column {
+                    id: availableList
+                    width: parent.width - Appearance.padding.smaller * 2
+                    x: Appearance.padding.smaller
+                    y: Appearance.padding.small
+                    spacing: 2
+
+                    Repeater {
+                        model: ScriptModel {
+                            values: root.availableNetworks.slice(0, 4)
+                        }
+
+                        NetworkRow {
+                            required property var modelData
+                            width: parent.width
+                            network: modelData
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // INLINE COMPONENTS
+    // ═══════════════════════════════════════════════════
+
+    component NetworkRow: Item {
+        id: row
+
+        required property var network
+        readonly property bool loading: Network.connecting && Network.lastConnectedSSID === network.ssid
+
+        implicitHeight: 40
+
+        // Entry animation
+        opacity: 0
+        scale: 0.9
+        Component.onCompleted: { opacity = 1; scale = 1; }
+        Behavior on opacity { Anim {} }
+        Behavior on scale { Anim {} }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.small
+            spacing: Appearance.spacing.small
+
+            MaterialIcon {
+                text: Icons.getNetworkIcon(row.network.strength)
+                color: Colours.palette.m3onSurfaceVariant
+            }
+
+            StyledText {
+                Layout.fillWidth: true
+                text: row.network.ssid
+                color: Colours.palette.m3onSurface
+                elide: Text.ElideRight
+            }
+
+            // Lock icon if secured
+            MaterialIcon {
+                visible: row.network.isSecure && !row.network.isSaved
+                text: "lock"
+                font.pointSize: Appearance.font.size.smaller
+                color: Colours.palette.m3outline
+            }
+
+            // Connect button
+            StyledRect {
+                implicitWidth: 24
+                implicitHeight: 24
+                radius: Appearance.rounding.full
+                color: "transparent"
+                border.width: 1
+                border.color: Colours.palette.m3outline
+
+                CircularIndicator {
+                    anchors.fill: parent
+                    running: row.loading
+                }
+
+                StateLayer {
+                    radius: Appearance.rounding.full
+                    color: Colours.palette.m3onSurface
+                    disabled: row.loading
+
+                    function onClicked(): void {
+                        if (row.network.isSaved) {
+                            Network.connectToNetwork(row.network.ssid, "", true);
+                        } else if (row.network.isSecure) {
+                            Network.pendingNetworkFromBar = row.network;
+                            Network.openPasswordDialogOnPanelOpen = true;
+                            root.wrapper.detach("network");
+                        } else {
+                            Network.connectToNetwork(row.network.ssid, "", false);
+                        }
+                    }
+                }
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: row.network.isSecure && !row.network.isSaved ? "key" : "link"
+                    font.pointSize: Appearance.font.size.smaller
+                    color: Colours.palette.m3outline
+                    opacity: row.loading ? 0 : 1
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+            }
         }
     }
 

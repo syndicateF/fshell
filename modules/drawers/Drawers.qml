@@ -130,6 +130,7 @@ Variants {
 
             // Old session scrim removed - fullscreenSession has its own
 
+
             Item {
                 anchors.fill: parent
                 opacity: Colours.transparency.enabled ? Colours.transparency.base : 1
