@@ -17,6 +17,9 @@ Item {
 
     required property Session session
 
+    // Refresh power data when pane is created (Clean Architecture)
+    Component.onCompleted: Power.refresh()
+
     StyledFlickable {
         anchors.fill: parent
         anchors.margins: Appearance.padding.large * 2

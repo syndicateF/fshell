@@ -156,7 +156,7 @@ ColumnLayout {
                         visible: root.isEnabled
                         text: {
                             if (root.activeNetwork)
-                                return qsTr("Connected to %1").arg(root.activeNetwork.ssid);
+                                return root.activeNetwork.ssid;
                             return qsTr("Not connected");
                         }
                         font.pointSize: Appearance.font.size.smaller
@@ -385,7 +385,7 @@ ColumnLayout {
         StyledText {
             text: qsTr("Connected")
             font.pointSize: Appearance.font.size.small
-            color: Colours.palette.m3primary
+            // color: Colours.palette.m3primary
         }
 
         Rectangle {
@@ -404,11 +404,21 @@ ColumnLayout {
         radius: Appearance.rounding.small
         color: Colours.palette.m3surfaceContainerHigh
 
+
+
+
+
         RowLayout {
             id: connectedRow
-            anchors.fill: parent
-            anchors.margins: Appearance.padding.small
-            spacing: Appearance.spacing.normal
+
+            width: parent.width - Appearance.padding.normal * 2
+            x: Appearance.padding.normal
+            y: Appearance.padding.small
+            spacing: Appearance.spacing.small
+
+            // anchors.fill: parent
+            // anchors.margins: Appearance.padding.small
+            // spacing: Appearance.spacing.normal
 
             MaterialIcon {
                 text: Icons.getNetworkIcon(root.activeNetwork?.strength ?? 0)
@@ -496,7 +506,7 @@ ColumnLayout {
                 StyledText {
                     text: qsTr("Available")
                     font.pointSize: Appearance.font.size.small
-                    color: Colours.palette.m3tertiary
+                    // color: Colours.palette.m3tertiary
                 }
 
                 Rectangle {

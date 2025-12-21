@@ -3,46 +3,47 @@ import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
 
-// PowerProfile Design Preview V5
-// Improved Style C: Minimal Cards variations
+// PowerProfile iOS Sheet Preview - Exactly like Bluetooth/Network
 // Run: quickshell -c prototypes/powerprofile-v2
 
 Scope {
     id: root
 
-    // Material You Dark Theme
-    property color clSurface: "#1C1B1F"
-    property color clSurfaceContainer: "#2B2930"
-    property color clSurfaceContainerHigh: "#36343B"
-    property color clSurfaceContainerHighest: "#48464C"
-    property color clPrimary: "#D0BCFF"
-    property color clOnPrimary: "#381E72"
-    property color clPrimaryContainer: "#4F378B"
-    property color clOnPrimaryContainer: "#EADDFF"
-    property color clSecondary: "#CCC2DC"
-    property color clSecondaryContainer: "#4A4458"
-    property color clOnSecondaryContainer: "#E8DEF8"
-    property color clTertiary: "#7DD3C0"
-    property color clTertiaryContainer: "#1F4D44"
-    property color clOnTertiaryContainer: "#A4F4DC"
-    property color clError: "#F2B8B5"
-    property color clOnSurface: "#E6E1E5"
-    property color clOnSurfaceVariant: "#CAC4D0"
-    property color clOutline: "#938F99"
-    property color clOutlineVariant: "#49454F"
+    // Material You Dark Theme (from x-shell)
+    property color m3surface: "#1C1B1F"
+    property color m3surfaceContainer: "#2B2930"
+    property color m3surfaceContainerHigh: "#36343B"
+    property color m3surfaceContainerHighest: "#48464C"
+    property color m3primary: "#D0BCFF"
+    property color m3onPrimary: "#381E72"
+    property color m3primaryContainer: "#4F378B"
+    property color m3onPrimaryContainer: "#EADDFF"
+    property color m3secondary: "#CCC2DC"
+    property color m3secondaryContainer: "#4A4458"
+    property color m3onSecondaryContainer: "#E8DEF8"
+    property color m3tertiary: "#7DD3C0"
+    property color m3tertiaryContainer: "#1F4D44"
+    property color m3onTertiaryContainer: "#A4F4DC"
+    property color m3error: "#F2B8B5"
+    property color m3errorContainer: "#8C1D18"
+    property color m3onErrorContainer: "#F9DEDC"
+    property color m3onSurface: "#E6E1E5"
+    property color m3onSurfaceVariant: "#CAC4D0"
+    property color m3outline: "#938F99"
+    property color m3outlineVariant: "#49454F"
 
-    property var profileColors: ["#4CAF50", "#2196F3", "#FF9800"]
-    property var profileIcons: ["🌿", "⚖️", "⚡"]
-    property var profileNames: ["Power Saver", "Balanced", "Performance"]
-
-    // State
-    property int selectedProfile: 1
-    property int selectedEpp: 2
+    // Simulated Power state
+    property string platformProfile: "balanced"
+    property string epp: "balance_performance"
     property bool longLifeEnabled: false
+    property bool isBusy: false
+    property bool safeModeActive: false
     property int batteryPercent: 87
     property int healthPercent: 95
-    property int cycleCount: 127
     property bool isCharging: true
+    
+    property var availableProfiles: ["low-power", "balanced", "performance"]
+    property var availableEpp: ["default", "performance", "balance_performance", "balance_power", "power"]
 
     Variants {
         model: Quickshell.screens
@@ -52,652 +53,450 @@ Scope {
             screen: modelData
             
             anchors { top: true; left: true; right: true; bottom: true }
-            margins { top: 40; bottom: 40; left: 50; right: 50 }
+            margins { top: 100; bottom: 100; left: 200; right: 200 }
             visible: true
             
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.namespace: "power-prototype-v5"
+            WlrLayershell.namespace: "power-ios-preview"
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
             color: "transparent"
 
             Rectangle {
                 anchors.fill: parent
-                color: Qt.alpha(root.clSurface, 0.98)
+                color: Qt.alpha(root.m3surface, 0.98)
                 radius: 24
                 border.width: 1
-                border.color: root.clOutlineVariant
+                border.color: root.m3outlineVariant
 
                 Column {
                     anchors.top: parent.top
                     anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.topMargin: 16
+                    anchors.topMargin: 20
                     spacing: 4
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Minimal Cards - Improved Variations"; font.pixelSize: 20; font.bold: true; color: root.clOnSurface }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Based on Style C • Click to interact • ESC to close"; font.pixelSize: 12; color: root.clOutline }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "PowerProfile - iOS Sheet Style"; font.pixelSize: 22; font.bold: true; color: root.m3onSurface }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Matching Bluetooth/Network Popout Style"; font.pixelSize: 12; color: root.m3outline }
                 }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 30
-                    anchors.topMargin: 70
-                    anchors.bottomMargin: 30
-                    spacing: 24
+                Text {
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottomMargin: 16
+                    text: "Click to interact • ESC to close"
+                    font.pixelSize: 12
+                    color: root.m3outline
+                }
 
-                    // ════════════════════════════════════════════════════════════
-                    // C1: Glass Cards
-                    // ════════════════════════════════════════════════════════════
-                    DesignCard {
-                        label: "C1: Glass Cards"
-                        recommended: true
+                // Main preview - recreating exactly the popout style
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 300
+                    height: contentCol.height + 24
+                    radius: 16
+                    color: root.m3surfaceContainer
+                    border.width: 1
+                    border.color: root.m3outlineVariant
 
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 10
+                    ColumnLayout {
+                        id: contentCol
+                        width: parent.width - 24
+                        x: 12; y: 12
+                        spacing: 8
 
-                            DragHandle {}
+                        // ═══════════════════════════════════════════════════
+                        // iOS Drag Handle
+                        // ═══════════════════════════════════════════════════
+                        Item {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 48
+                            implicitHeight: 16
 
-                            // Battery Glass Card
                             Rectangle {
-                                Layout.fillWidth: true
-                                height: 72
-                                radius: 16
-                                color: Qt.alpha(root.clSurfaceContainerHigh, 0.8)
-                                border.width: 1
-                                border.color: Qt.alpha(root.clOutlineVariant, 0.5)
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 14
-                                    spacing: 14
-
-                                    // Battery circle
-                                    Rectangle {
-                                        width: 44; height: 44
-                                        radius: 22
-                                        color: root.isCharging 
-                                            ? Qt.alpha(root.clPrimary, 0.15) 
-                                            : Qt.alpha(root.clTertiary, 0.15)
-                                        border.width: 3
-                                        border.color: root.isCharging ? root.clPrimary : root.clTertiary
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: root.batteryPercent
-                                            font.pixelSize: 14
-                                            font.bold: true
-                                            color: root.clOnSurface
-                                        }
-                                    }
-
-                                    Column {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-                                        Row {
-                                            spacing: 6
-                                            Text { text: root.isCharging ? "Charging" : "On Battery"; font.pixelSize: 13; font.bold: true; color: root.clOnSurface }
-                                            Text { visible: root.isCharging; text: "⚡"; font.pixelSize: 12; color: root.clPrimary }
-                                        }
-                                        Text { text: root.healthPercent + "% health • " + root.cycleCount + " cycles"; font.pixelSize: 10; color: root.clOutline }
-                                    }
-
-                                    ToggleSwitch {
-                                        isOn: root.longLifeEnabled
-                                        onToggled: root.longLifeEnabled = !root.longLifeEnabled
-                                    }
-                                }
+                                anchors.centerIn: parent
+                                width: 36; height: 4; radius: 2
+                                color: root.m3outlineVariant
                             }
+                        }
 
-                            // Profile Header
-                            SectionHeader { text: root.profileNames[root.selectedProfile] }
+                        // ═══════════════════════════════════════════════════
+                        // Status Card (like Bluetooth/Network)
+                        // ═══════════════════════════════════════════════════
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: statusContent.height + 20
+                            radius: 12
+                            color: root.m3surfaceContainerHigh
 
-                            // Profile Glass Cards
-                            RowLayout {
-                                Layout.fillWidth: true
+                            ColumnLayout {
+                                id: statusContent
+                                width: parent.width - 20
+                                x: 10; y: 10
                                 spacing: 8
 
-                                Repeater {
-                                    model: 3
-                                    Rectangle {
-                                        required property int index
-                                        Layout.fillWidth: true
-                                        height: 72
-                                        radius: 14
-                                        color: root.selectedProfile === index 
-                                            ? Qt.alpha(root.profileColors[index], 0.15)
-                                            : Qt.alpha(root.clSurfaceContainerHigh, 0.8)
-                                        border.width: root.selectedProfile === index ? 2 : 1
-                                        border.color: root.selectedProfile === index 
-                                            ? root.profileColors[index]
-                                            : Qt.alpha(root.clOutlineVariant, 0.5)
-
-                                        Column {
-                                            anchors.centerIn: parent
-                                            spacing: 6
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: root.profileIcons[index]
-                                                font.pixelSize: 22
-                                            }
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: ["Eco", "Bal", "Perf"][index]
-                                                font.pixelSize: 11
-                                                font.bold: root.selectedProfile === index
-                                                color: root.selectedProfile === index 
-                                                    ? root.profileColors[index] 
-                                                    : root.clOnSurfaceVariant
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedProfile = index
-                                        }
-                                    }
-                                }
-                            }
-
-                            SectionHeader { text: "Energy Preference" }
-
-                            // EPP Glass Pills
-                            Flow {
-                                Layout.fillWidth: true
-                                spacing: 6
-
-                                Repeater {
-                                    model: ["Default", "Perf", "Balance", "Saver"]
-                                    Rectangle {
-                                        required property string modelData
-                                        required property int index
-                                        width: eppText1.width + 24
-                                        height: 34
-                                        radius: 17
-                                        color: root.selectedEpp === index 
-                                            ? root.clSecondaryContainer 
-                                            : Qt.alpha(root.clSurfaceContainerHigh, 0.8)
-                                        border.width: root.selectedEpp === index ? 0 : 1
-                                        border.color: Qt.alpha(root.clOutlineVariant, 0.5)
-
-                                        Text {
-                                            id: eppText1
-                                            anchors.centerIn: parent
-                                            text: modelData
-                                            font.pixelSize: 11
-                                            color: root.selectedEpp === index 
-                                                ? root.clOnSecondaryContainer 
-                                                : root.clOnSurfaceVariant
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedEpp = index
-                                        }
-                                    }
-                                }
-                            }
-
-                            Item { Layout.fillHeight: true }
-                        }
-                    }
-
-                    // ════════════════════════════════════════════════════════════
-                    // C2: Elevated Cards
-                    // ════════════════════════════════════════════════════════════
-                    DesignCard {
-                        label: "C2: Elevated Cards"
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 10
-
-                            DragHandle {}
-
-                            // Battery Elevated Card
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 64
-                                radius: 14
-                                color: root.clSurfaceContainerHigh
-
-                                // Subtle shadow effect
-                                Rectangle {
-                                    anchors.fill: parent
-                                    anchors.topMargin: 2
-                                    radius: 14
-                                    color: Qt.alpha("#000000", 0.15)
-                                    z: -1
-                                }
-
+                                // Header row
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 12
+                                    width: parent.width
+                                    spacing: 10
 
+                                    // Icon circle
                                     Rectangle {
-                                        width: 40; height: 40
-                                        radius: 10
-                                        color: root.isCharging ? root.clPrimaryContainer : root.clTertiaryContainer
+                                        width: 32; height: 32
+                                        radius: 8
+                                        color: root.isCharging 
+                                            ? Qt.alpha(root.m3primary, 0.2) 
+                                            : Qt.alpha(root.m3tertiary, 0.2)
 
                                         Text {
                                             anchors.centerIn: parent
                                             text: root.isCharging ? "⚡" : "🔋"
-                                            font.pixelSize: 16
+                                            font.pixelSize: 14
                                         }
                                     }
 
                                     Column {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-                                        Text { text: root.batteryPercent + "% " + (root.isCharging ? "Charging" : ""); font.pixelSize: 14; font.bold: true; color: root.clOnSurface }
-                                        Text { text: root.healthPercent + "% • Long Life " + (root.longLifeEnabled ? "On" : "Off"); font.pixelSize: 10; color: root.clOutline }
-                                    }
-
-                                    ToggleSwitch { isOn: root.longLifeEnabled; onToggled: root.longLifeEnabled = !root.longLifeEnabled }
-                                }
-                            }
-
-                            SectionHeader { text: root.profileNames[root.selectedProfile] }
-
-                            // Profile Elevated Cards
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 6
-
-                                Repeater {
-                                    model: 3
-                                    Rectangle {
-                                        required property int index
-                                        Layout.fillWidth: true
-                                        height: 68
-                                        radius: 12
-                                        color: root.selectedProfile === index 
-                                            ? Qt.alpha(root.profileColors[index], 0.2)
-                                            : root.clSurfaceContainerHigh
-
-                                        Rectangle {
-                                            visible: root.selectedProfile !== index
-                                            anchors.fill: parent
-                                            anchors.topMargin: 2
-                                            radius: 12
-                                            color: Qt.alpha("#000000", 0.1)
-                                            z: -1
+                                        spacing: 0
+                                        Text {
+                                            text: "Power"
+                                            font.pixelSize: 14
+                                            font.bold: true
+                                            color: root.m3onSurface
                                         }
-
-                                        Column {
-                                            anchors.centerIn: parent
-                                            spacing: 4
-
-                                            Rectangle {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                width: 36; height: 36
-                                                radius: 10
-                                                color: root.selectedProfile === index
-                                                    ? Qt.alpha(root.profileColors[index], 0.3)
-                                                    : root.clSurfaceContainerHighest
-
-                                                Text {
-                                                    anchors.centerIn: parent
-                                                    text: root.profileIcons[index]
-                                                    font.pixelSize: 16
-                                                }
-                                            }
-
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: ["Eco", "Bal", "Perf"][index]
-                                                font.pixelSize: 10
-                                                font.bold: root.selectedProfile === index
-                                                color: root.selectedProfile === index 
-                                                    ? root.profileColors[index] 
-                                                    : root.clOnSurfaceVariant
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedProfile = index
+                                        Text {
+                                            text: root.batteryPercent + "% • " + (root.isCharging ? "Charging" : "On battery")
+                                            font.pixelSize: 10
+                                            color: root.m3outline
                                         }
                                     }
-                                }
-                            }
 
-                            SectionHeader { text: "Energy Preference" }
+                                    Item { Layout.fillWidth: true }
 
-                            GridLayout {
-                                Layout.fillWidth: true
-                                columns: 2
-                                rowSpacing: 6
-                                columnSpacing: 6
-
-                                Repeater {
-                                    model: ["Default", "Perf", "Balance", "Saver"]
+                                    // Health badge
                                     Rectangle {
-                                        required property string modelData
-                                        required property int index
-                                        Layout.fillWidth: true
-                                        height: 36
-                                        radius: 10
-                                        color: root.selectedEpp === index 
-                                            ? root.clSecondaryContainer 
-                                            : root.clSurfaceContainerHigh
+                                        width: healthText.width + 12
+                                        height: 22
+                                        radius: 11
+                                        color: root.healthPercent >= 80 
+                                            ? Qt.alpha(root.m3primary, 0.2)
+                                            : Qt.alpha(root.m3tertiary, 0.2)
 
                                         Text {
+                                            id: healthText
                                             anchors.centerIn: parent
-                                            text: modelData
-                                            font.pixelSize: 11
-                                            color: root.selectedEpp === index 
-                                                ? root.clOnSecondaryContainer 
-                                                : root.clOnSurfaceVariant
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedEpp = index
+                                            text: root.healthPercent + "%"
+                                            font.pixelSize: 10
+                                            color: root.healthPercent >= 80 ? root.m3primary : root.m3tertiary
                                         }
                                     }
                                 }
+
+                                // Battery progress bar
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    height: 6
+                                    radius: 3
+                                    color: root.m3surfaceContainerHighest
+
+                                    Rectangle {
+                                        width: parent.width * (root.batteryPercent / 100)
+                                        height: parent.height
+                                        radius: 3
+                                        color: root.isCharging ? root.m3primary : root.m3tertiary
+                                        Behavior on width { NumberAnimation { duration: 300 } }
+                                    }
+                                }
                             }
-
-                            Item { Layout.fillHeight: true }
                         }
-                    }
 
-                    // ════════════════════════════════════════════════════════════
-                    // C3: Compact Stacked
-                    // ════════════════════════════════════════════════════════════
-                    DesignCard {
-                        label: "C3: Compact Stacked"
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
+                        // ═══════════════════════════════════════════════════
+                        // Profile Section Header (like Bluetooth device sections)
+                        // ═══════════════════════════════════════════════════
+                        RowLayout {
+                            Layout.fillWidth: true
                             spacing: 8
 
-                            DragHandle {}
-
-                            // Battery Row (super compact)
-                            RowLayout {
-                                spacing: 10
-
-                                Text { text: "🔋"; font.pixelSize: 20 }
-                                
-                                Column {
-                                    Layout.fillWidth: true
-                                    spacing: 0
-                                    Text { 
-                                        text: root.batteryPercent + "%" + (root.isCharging ? " ⚡" : "")
-                                        font.pixelSize: 16
-                                        font.bold: true
-                                        color: root.clOnSurface
-                                    }
-                                    Text { 
-                                        text: root.healthPercent + "% health"
-                                        font.pixelSize: 10
-                                        color: root.clOutline
+                            Rectangle { Layout.fillWidth: true; height: 1; color: root.m3outlineVariant }
+                            Text { 
+                                text: {
+                                    switch (root.platformProfile) {
+                                        case "low-power": return "Power Saver"
+                                        case "balanced": return "Balanced"
+                                        case "performance": return "Performance"
+                                        default: return root.platformProfile
                                     }
                                 }
-
-                                Column {
-                                    spacing: 0
-                                    Text { text: "Long Life"; font.pixelSize: 9; color: root.clOutline; anchors.right: parent.right }
-                                    ToggleSwitch { isOn: root.longLifeEnabled; onToggled: root.longLifeEnabled = !root.longLifeEnabled }
-                                }
+                                font.pixelSize: 10
+                                font.bold: true
+                                color: root.m3outline
                             }
+                            Rectangle { Layout.fillWidth: true; height: 1; color: root.m3outlineVariant }
+                        }
 
-                            // Progress bar
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 4
-                                radius: 2
-                                color: root.clSurfaceContainerHighest
+                        // ═══════════════════════════════════════════════════
+                        // Profile Cards (like Bluetooth device list)
+                        // ═══════════════════════════════════════════════════
+                        Rectangle {
+                            Layout.fillWidth: true
+                            implicitHeight: profileCol.height + 12
+                            radius: 12
+                            color: root.m3surfaceContainerHigh
 
-                                Rectangle {
-                                    width: parent.width * (root.batteryPercent / 100)
-                                    height: parent.height
-                                    radius: 2
-                                    color: root.isCharging ? root.clPrimary : root.clTertiary
-                                }
-                            }
-
-                            SectionHeader { text: root.profileNames[root.selectedProfile] }
-
-                            // Stacked Profile Cards
                             Column {
-                                Layout.fillWidth: true
-                                spacing: 4
+                                id: profileCol
+                                width: parent.width - 12
+                                x: 6; y: 6
+                                spacing: 2
 
                                 Repeater {
-                                    model: 3
+                                    model: [
+                                        { id: "low-power", name: "Power Saver", icon: "eco", desc: "Extend battery life" },
+                                        { id: "balanced", name: "Balanced", icon: "balance", desc: "Optimal performance" },
+                                        { id: "performance", name: "Performance", icon: "bolt", desc: "Maximum power" }
+                                    ]
+
                                     Rectangle {
+                                        required property var modelData
                                         required property int index
+
                                         width: parent.width
-                                        height: 44
-                                        radius: 10
-                                        color: root.selectedProfile === index 
-                                            ? Qt.alpha(root.profileColors[index], 0.15)
-                                            : root.clSurfaceContainerHigh
+                                        height: 48
+                                        radius: 8
+                                        color: root.platformProfile === modelData.id
+                                            ? Qt.alpha(root.m3primary, 0.15)
+                                            : "transparent"
 
                                         RowLayout {
                                             anchors.fill: parent
                                             anchors.margins: 10
                                             spacing: 10
 
-                                            Text { text: root.profileIcons[index]; font.pixelSize: 16 }
-                                            
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: root.profileNames[index]
-                                                font.pixelSize: 12
-                                                font.bold: root.selectedProfile === index
-                                                color: root.selectedProfile === index 
-                                                    ? root.profileColors[index] 
-                                                    : root.clOnSurface
+                                            // Icon with background
+                                            Rectangle {
+                                                width: 28; height: 28
+                                                radius: 8
+                                                color: root.platformProfile === modelData.id
+                                                    ? root.m3primaryContainer
+                                                    : root.m3surfaceContainerHighest
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: modelData.icon === "eco" ? "🌿" 
+                                                        : modelData.icon === "balance" ? "⚖️" : "⚡"
+                                                    font.pixelSize: 12
+                                                }
                                             }
 
+                                            Column {
+                                                Layout.fillWidth: true
+                                                spacing: 0
+                                                Text {
+                                                    text: modelData.name
+                                                    font.pixelSize: 12
+                                                    font.bold: root.platformProfile === modelData.id
+                                                    color: root.platformProfile === modelData.id 
+                                                        ? root.m3primary 
+                                                        : root.m3onSurface
+                                                }
+                                                Text {
+                                                    text: modelData.desc
+                                                    font.pixelSize: 9
+                                                    color: root.m3outline
+                                                }
+                                            }
+
+                                            // Checkmark for active
                                             Rectangle {
-                                                visible: root.selectedProfile === index
+                                                visible: root.platformProfile === modelData.id
                                                 width: 20; height: 20
                                                 radius: 10
-                                                color: root.profileColors[index]
-                                                Text { anchors.centerIn: parent; text: "✓"; font.pixelSize: 10; color: "#fff" }
+                                                color: root.m3primary
+
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "✓"
+                                                    font.pixelSize: 10
+                                                    color: root.m3onPrimary
+                                                }
                                             }
                                         }
 
                                         MouseArea {
                                             anchors.fill: parent
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedProfile = index
+                                            onClicked: root.platformProfile = modelData.id
                                         }
                                     }
                                 }
                             }
-
-                            SectionHeader { text: "Energy Pref" }
-
-                            // EPP Row
-                            Row {
-                                Layout.alignment: Qt.AlignHCenter
-                                spacing: 4
-
-                                Repeater {
-                                    model: ["D", "P", "B", "S"]
-                                    Rectangle {
-                                        required property string modelData
-                                        required property int index
-                                        width: 40; height: 32
-                                        radius: 8
-                                        color: root.selectedEpp === index 
-                                            ? root.clSecondaryContainer 
-                                            : root.clSurfaceContainerHigh
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: modelData
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                            color: root.selectedEpp === index 
-                                                ? root.clOnSecondaryContainer 
-                                                : root.clOnSurfaceVariant
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedEpp = index
-                                        }
-                                    }
-                                }
-                            }
-
-                            Item { Layout.fillHeight: true }
                         }
-                    }
 
-                    // ════════════════════════════════════════════════════════════
-                    // C4: Floating Cards
-                    // ════════════════════════════════════════════════════════════
-                    DesignCard {
-                        label: "C4: Floating Cards"
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
+                        // ═══════════════════════════════════════════════════
+                        // EPP Section Header
+                        // ═══════════════════════════════════════════════════
+                        RowLayout {
+                            Layout.fillWidth: true
                             spacing: 8
 
-                            DragHandle {}
+                            Rectangle { Layout.fillWidth: true; height: 1; color: root.m3outlineVariant }
+                            Text { text: "Energy Preference"; font.pixelSize: 10; font.bold: true; color: root.m3outline }
+                            Rectangle { Layout.fillWidth: true; height: 1; color: root.m3outlineVariant }
+                        }
 
-                            // Floating Battery Card
-                            Rectangle {
-                                Layout.fillWidth: true
-                                height: 56
-                                radius: 28
-                                color: root.clSurfaceContainerHigh
+                        // ═══════════════════════════════════════════════════
+                        // EPP Grid (2 columns)
+                        // ═══════════════════════════════════════════════════
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 2
+                            rowSpacing: 4
+                            columnSpacing: 4
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 6
-                                    anchors.rightMargin: 14
-                                    spacing: 10
+                            Repeater {
+                                model: [
+                                    { id: "default", name: "Default", icon: "settings_suggest" },
+                                    { id: "performance", name: "Performance", icon: "bolt" },
+                                    { id: "balance_performance", name: "Bal. Perf", icon: "speed" },
+                                    { id: "balance_power", name: "Bal. Power", icon: "eco" },
+                                    { id: "power", name: "Power Saver", icon: "battery_saver" }
+                                ]
 
-                                    Rectangle {
-                                        width: 44; height: 44
-                                        radius: 22
-                                        color: root.isCharging ? root.clPrimaryContainer : root.clTertiaryContainer
+                                Rectangle {
+                                    required property var modelData
+                                    required property int index
 
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: root.batteryPercent + ""
-                                            font.pixelSize: 14
-                                            font.bold: true
-                                            color: root.isCharging ? root.clOnPrimaryContainer : root.clOnTertiaryContainer
-                                        }
-                                    }
+                                    Layout.fillWidth: true
+                                    height: 36
+                                    radius: 8
+                                    color: root.epp === modelData.id
+                                        ? root.m3secondaryContainer
+                                        : root.m3surfaceContainerHigh
 
-                                    Column {
-                                        Layout.fillWidth: true
-                                        spacing: 0
-                                        Text { text: root.isCharging ? "Charging ⚡" : "On Battery"; font.pixelSize: 12; font.bold: true; color: root.clOnSurface }
-                                        Text { text: root.healthPercent + "% health"; font.pixelSize: 10; color: root.clOutline }
-                                    }
-
-                                    ToggleSwitch { isOn: root.longLifeEnabled; onToggled: root.longLifeEnabled = !root.longLifeEnabled }
-                                }
-                            }
-
-                            SectionHeader { text: root.profileNames[root.selectedProfile] }
-
-                            // Floating Profile Pills
-                            Row {
-                                Layout.alignment: Qt.AlignHCenter
-                                spacing: 8
-
-                                Repeater {
-                                    model: 3
-                                    Rectangle {
-                                        required property int index
-                                        width: 72
-                                        height: 72
-                                        radius: 36
-                                        color: root.selectedProfile === index 
-                                            ? Qt.alpha(root.profileColors[index], 0.2)
-                                            : root.clSurfaceContainerHigh
-                                        border.width: root.selectedProfile === index ? 3 : 0
-                                        border.color: root.profileColors[index]
-
-                                        Column {
-                                            anchors.centerIn: parent
-                                            spacing: 4
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: root.profileIcons[index]
-                                                font.pixelSize: 22
-                                            }
-                                            Text {
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: ["Eco", "Bal", "Perf"][index]
-                                                font.pixelSize: 9
-                                                font.bold: root.selectedProfile === index
-                                                color: root.selectedProfile === index 
-                                                    ? root.profileColors[index] 
-                                                    : root.clOnSurfaceVariant
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedProfile = index
-                                        }
-                                    }
-                                }
-                            }
-
-                            SectionHeader { text: "Energy Pref" }
-
-                            // Floating EPP Pills
-                            Row {
-                                Layout.alignment: Qt.AlignHCenter
-                                spacing: 6
-
-                                Repeater {
-                                    model: ["Default", "Perf", "Bal", "Save"]
-                                    Rectangle {
-                                        required property string modelData
-                                        required property int index
-                                        width: eppText4.width + 20
-                                        height: 30
-                                        radius: 15
-                                        color: root.selectedEpp === index 
-                                            ? root.clSecondaryContainer 
-                                            : root.clSurfaceContainerHigh
+                                    RowLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 6
 
                                         Text {
-                                            id: eppText4
-                                            anchors.centerIn: parent
-                                            text: modelData
+                                            text: modelData.icon === "settings_suggest" ? "⚙️"
+                                                : modelData.icon === "bolt" ? "⚡"
+                                                : modelData.icon === "speed" ? "🚀"
+                                                : modelData.icon === "eco" ? "🌿"
+                                                : "🔋"
                                             font.pixelSize: 10
-                                            color: root.selectedEpp === index 
-                                                ? root.clOnSecondaryContainer 
-                                                : root.clOnSurfaceVariant
                                         }
 
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.selectedEpp = index
+                                        Text {
+                                            text: modelData.name
+                                            font.pixelSize: 10
+                                            color: root.epp === modelData.id
+                                                ? root.m3onSecondaryContainer
+                                                : root.m3onSurfaceVariant
                                         }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.epp = modelData.id
+                                    }
+                                }
+                            }
+                        }
+
+                        // ═══════════════════════════════════════════════════
+                        // Long Life Toggle Card (like Bluetooth quick actions)
+                        // ═══════════════════════════════════════════════════
+                        Rectangle {
+                            Layout.fillWidth: true
+                            height: 48
+                            radius: 12
+                            color: root.longLifeEnabled 
+                                ? Qt.alpha(root.m3primary, 0.1)
+                                : root.m3surfaceContainerHigh
+                            border.width: root.longLifeEnabled ? 1 : 0
+                            border.color: Qt.alpha(root.m3primary, 0.3)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 10
+
+                                Rectangle {
+                                    width: 28; height: 28
+                                    radius: 8
+                                    color: root.longLifeEnabled 
+                                        ? root.m3tertiaryContainer 
+                                        : root.m3surfaceContainerHighest
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "🔋"
+                                        font.pixelSize: 12
+                                    }
+                                }
+
+                                Column {
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    Text { text: "Long Life Mode"; font.pixelSize: 11; color: root.m3onSurface }
+                                    Text { text: "Limit charge to 80%"; font.pixelSize: 9; color: root.m3outline }
+                                }
+
+                                // Toggle switch
+                                Rectangle {
+                                    width: 44; height: 24; radius: 12
+                                    color: root.longLifeEnabled ? root.m3primary : root.m3surfaceContainer
+                                    border.width: root.longLifeEnabled ? 0 : 1
+                                    border.color: root.m3outlineVariant
+
+                                    Rectangle {
+                                        x: root.longLifeEnabled ? 22 : 2
+                                        y: 2; width: 20; height: 20; radius: 10
+                                        color: root.longLifeEnabled ? root.m3onPrimary : root.m3outline
+                                        Behavior on x { NumberAnimation { duration: 150 } }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.longLifeEnabled = !root.longLifeEnabled
                                     }
                                 }
                             }
 
-                            Item { Layout.fillHeight: true }
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                        }
+
+                        // ═══════════════════════════════════════════════════
+                        // Open Panel Button (like Bluetooth/Network)
+                        // ═══════════════════════════════════════════════════
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            width: openLabel.width + 32
+                            height: 32
+                            radius: 16
+                            color: root.m3primaryContainer
+
+                            RowLayout {
+                                id: openLabel
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Text {
+                                    text: "Open panel"
+                                    font.pixelSize: 11
+                                    color: root.m3onPrimaryContainer
+                                }
+
+                                Text {
+                                    text: "›"
+                                    font.pixelSize: 14
+                                    color: root.m3onPrimaryContainer
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                            }
                         }
                     }
                 }
@@ -708,89 +507,5 @@ Scope {
                 onActivated: Qt.quit()
             }
         }
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // COMPONENTS
-    // ════════════════════════════════════════════════════════════
-
-    component DesignCard: Rectangle {
-        property string label: ""
-        property bool recommended: false
-
-        Layout.fillHeight: true
-        Layout.fillWidth: true
-        radius: 16
-        color: root.clSurfaceContainer
-        border.width: recommended ? 2 : 1
-        border.color: recommended ? root.clPrimary : root.clOutlineVariant
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: -12
-            width: labelText.width + 20
-            height: 24
-            radius: 12
-            color: recommended ? root.clPrimaryContainer : root.clSurfaceContainerHigh
-
-            Text {
-                id: labelText
-                anchors.centerIn: parent
-                text: label + (recommended ? " ⭐" : "")
-                font.pixelSize: 11
-                font.bold: true
-                color: recommended ? root.clOnPrimaryContainer : root.clOnSurfaceVariant
-            }
-        }
-    }
-
-    component DragHandle: Item {
-        Layout.alignment: Qt.AlignHCenter
-        implicitWidth: 48
-        implicitHeight: 14
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 32
-            height: 4
-            radius: 2
-            color: root.clOutlineVariant
-        }
-    }
-
-    component SectionHeader: RowLayout {
-        property string text: ""
-        Layout.fillWidth: true
-        spacing: 6
-
-        Rectangle { Layout.fillWidth: true; height: 1; color: root.clOutlineVariant }
-        Text { text: parent.text; font.pixelSize: 10; font.bold: true; color: root.clOutline }
-        Rectangle { Layout.fillWidth: true; height: 1; color: root.clOutlineVariant }
-    }
-
-    component ToggleSwitch: Rectangle {
-        property bool isOn: false
-        signal toggled()
-
-        width: 44; height: 24; radius: 12
-        color: isOn ? root.clPrimary : root.clSurfaceContainer
-        border.width: isOn ? 0 : 1
-        border.color: root.clOutlineVariant
-
-        Rectangle {
-            x: parent.isOn ? 22 : 2
-            y: 2; width: 20; height: 20; radius: 10
-            color: parent.isOn ? root.clOnPrimary : root.clOutline
-            Behavior on x { NumberAnimation { duration: 150 } }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: parent.toggled()
-        }
-
-        Behavior on color { ColorAnimation { duration: 150 } }
     }
 }

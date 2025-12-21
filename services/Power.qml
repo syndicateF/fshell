@@ -168,13 +168,13 @@ Singleton {
         }
     }
     
-    // Periodic refresh (every 5 seconds)
-    Timer {
-        interval: 5000
-        running: root.available
-        repeat: true
-        onTriggered: root.refresh()
-    }
+    // =====================================================
+    // EVENT-DRIVEN REFRESH (Clean Architecture)
+    // =====================================================
+    // NO periodic polling! Refresh happens:
+    // 1. On startup (checkProc → refresh)
+    // 2. After each successful action (write procs → refresh)
+    // 3. Panes call Power.refresh() in their Component.onCompleted
 
     // =====================================================
     // D-BUS WRITE PROCESSES

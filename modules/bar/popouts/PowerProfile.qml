@@ -4,341 +4,436 @@ import qs.components
 import qs.components.controls
 import qs.services
 import qs.config
+import Quickshell.Services.UPower
 import QtQuick
 import QtQuick.Layouts
 
-// Power Profile popout for bar - redesigned with segmented buttons and grid pills
-Item {
+ColumnLayout {
     id: root
 
-    required property var wrapper
+    required property Item wrapper
 
-    implicitWidth: layout.implicitWidth + Appearance.padding.normal - Config.border.thickness
-    implicitHeight: layout.implicitHeight + Appearance.padding.normal
+    // Refresh power data when popout is created (Clean Architecture)
+    Component.onCompleted: Power.refresh()
 
-    // Busy state shimmer overlay
-    opacity: Power._busy ? 0.7 : 1.0
+    // Computed properties for UPower
+    readonly property bool isCharging: [
+        UPowerDeviceState.Charging,
+        UPowerDeviceState.FullyCharged,
+        UPowerDeviceState.PendingCharge
+    ].includes(UPower.displayDevice.state)
+    readonly property int batteryPercent: Math.round(UPower.displayDevice.percentage * 100)
+
+    spacing: Appearance.spacing.small
+
+    // Busy state shimmer effect - on separate property to not affect text
+    property real shimmerOpacity: 1.0
     
-    SequentialAnimation on opacity {
+    SequentialAnimation on shimmerOpacity {
         running: Power._busy
         loops: Animation.Infinite
-        alwaysRunToEnd: true
-        NumberAnimation { from: 0.7; to: 0.5; duration: 400; easing.type: Easing.InOutQuad }
-        NumberAnimation { from: 0.5; to: 0.7; duration: 400; easing.type: Easing.InOutQuad }
+        alwaysRunToEnd: false
+        NumberAnimation { from: 1.0; to: 0.5; duration: 400; easing.type: Easing.InOutQuad }
+        NumberAnimation { from: 0.5; to: 1.0; duration: 400; easing.type: Easing.InOutQuad }
+    }
+    
+    // Reset opacity when not busy
+    Behavior on shimmerOpacity {
+        enabled: !Power._busy
+        NumberAnimation { to: 1.0; duration: 150 }
     }
 
-    ColumnLayout {
-        id: layout
+    // ═══════════════════════════════════════════════════
+    // iOS Drag Handle (clickable to open panel)
+    // ═══════════════════════════════════════════════════
+    Item {
+        Layout.alignment: Qt.AlignHCenter
+        implicitWidth: 48
+        implicitHeight: 16
 
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: Appearance.spacing.normal
+        Rectangle {
+            anchors.centerIn: parent
+            width: 36
+            height: 4
+            radius: 2
+            color: Colours.palette.m3outlineVariant
+        }
 
-        // Battery Section - compact row with health and Long Life toggle
+        StateLayer {
+            radius: Appearance.rounding.small
+
+            function onClicked(): void {
+                root.wrapper.detach("power");
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Status Card (Battery info)
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        Layout.fillWidth: true
+        visible: Power.batteryAvailable
+        implicitWidth: 280
+        implicitHeight: statusContent.height + Appearance.padding.normal * 2
+        radius: Appearance.rounding.small
+        color: Colours.palette.m3surfaceContainerHigh
+
+        ColumnLayout {
+            id: statusContent
+            width: parent.width - Appearance.padding.normal * 2
+            x: Appearance.padding.normal
+            y: Appearance.padding.normal
+            spacing: Appearance.spacing.small
+
+            // Header row
+            RowLayout {
+                width: parent.width
+                spacing: Appearance.spacing.normal
+
+                // Battery icon with background
+                StyledRect {
+                    implicitWidth: 32
+                    implicitHeight: 32
+                    radius: Appearance.rounding.small
+                    color: root.isCharging 
+                        ? Qt.alpha(Colours.palette.m3primary, 0.2)
+                        : Qt.alpha(Colours.palette.m3tertiary, 0.2)
+
+                    Behavior on color { ColorAnimation { duration: 200 } }
+
+                    // MaterialIcon {
+                    //     anchors.centerIn: parent
+                    //     text: root.isCharging ? "bolt" : "battery_full"
+                    //     font.pointSize: Appearance.font.size.normal
+                    //     color: root.isCharging ? Colours.palette.m3primary : Colours.palette.m3tertiary
+                    // }
+
+                    MaterialIcon {
+                        anchors.centerIn: parent
+                        text: "favorite"
+                        font.pointSize: Appearance.font.size.small
+                        // color: Colours.palette.m3primary
+                        color: root.isCharging ? Colours.palette.m3primary : Colours.palette.m3tertiary
+                        fill: 1
+                    }
+
+                }
+
+                ColumnLayout {
+                    spacing: 0
+
+                    // StyledText {
+                    //     text: qsTr("Power")
+                    //     font.weight: 600
+                    // }
+                    StyledText {
+                        text: "Health " + Math.round(Power.batteryInfo.healthPercent) + "%"
+                        // font.pointSize: 8
+                        font.weight: 600
+                        // color: Colours.palette.m3primary
+                    }
+                    StyledText {
+                        readonly property int timeRemaining: root.isCharging 
+                            ? UPower.displayDevice.timeToFull 
+                            : UPower.displayDevice.timeToEmpty
+
+                        text: {
+                            if (timeRemaining <= 0) {
+                                return root.isCharging ? qsTr("Calculating...") : qsTr("Unknown");
+                            }
+                            const hours = Math.floor(timeRemaining / 3600);
+                            const minutes = Math.floor((timeRemaining % 3600) / 60);
+                            if (hours > 0) {
+                                return qsTr("%1h %2m %3").arg(hours).arg(minutes).arg(root.isCharging ? qsTr("to full") : qsTr("remaining"));
+                            }
+                            return qsTr("%1m %2").arg(minutes).arg(root.isCharging ? qsTr("to full") : qsTr("remaining"));
+                        }
+                        font.pointSize: Appearance.font.size.smaller
+                        color: Colours.palette.m3outline
+                    }
+                }
+
+                // Item { Layout.fillWidth: true }
+            }
+
+            // Battery progress bar
+            Rectangle {
+                Layout.fillWidth: true
+                height: 6
+                radius: 3
+                color: Colours.palette.m3surfaceContainerHighest
+
+                Rectangle {
+                    width: parent.width * (root.batteryPercent / 100)
+                    height: parent.height
+                    radius: 3
+                    color: root.isCharging ? Colours.palette.m3primary : Colours.palette.m3tertiary
+
+                    Behavior on width { NumberAnimation { duration: 300 } }
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Safe Mode Warning
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        visible: opacity > 0
+        Layout.fillWidth: true
+        implicitHeight: safeRow.implicitHeight + Appearance.padding.small * 2
+        radius: Appearance.rounding.small
+        color: Colours.palette.m3errorContainer
+
+        opacity: Power.safeModeActive ? 1 : 0
+        scale: Power.safeModeActive ? 1 : 0.9
+
+        Behavior on opacity { Anim {} }
+        Behavior on scale { Anim {} }
+
         RowLayout {
-            Layout.fillWidth: true
-            visible: Power.batteryAvailable
-            spacing: Appearance.spacing.normal
+            id: safeRow
+            anchors.centerIn: parent
+            spacing: Appearance.spacing.small
 
             MaterialIcon {
-                text: "battery_full"
-                color: Power.batteryInfo.healthPercent > 50 ? Colours.palette.m3primary : Colours.palette.m3error
-            }
-
-            StyledText {
-                text: qsTr("Battery")
-                font.weight: 500
-            }
-
-            StyledText {
-                text: Power.batteryInfo.healthPercent >= 0 
-                    ? Math.round(Power.batteryInfo.healthPercent) + "%" 
-                    : "--"
-                color: Colours.palette.m3outline
+                text: "warning"
+                color: Colours.palette.m3onErrorContainer
                 font.pointSize: Appearance.font.size.small
             }
 
-            Item { Layout.fillWidth: true }
-
-            // Long Life toggle (only if writable)
-            RowLayout {
-                visible: Power.chargeTypeWritable
-                spacing: Appearance.spacing.small
-
-                StyledText {
-                    text: qsTr("Long Life")
-                    font.pointSize: Appearance.font.size.small
-                    color: Colours.palette.m3outline
-                }
-
-                StyledSwitch {
-                    checked: Power.chargeType === "Long_Life"
-                    onClicked: Power.setChargeType(checked ? "Long_Life" : "Standard")
-                    enabled: !Power._busy && !Power.safeModeActive
-                }
-            }
-        }
-
-        // Divider between battery and power controls
-        Rectangle {
-            Layout.fillWidth: true
-            visible: Power.batteryAvailable
-            height: 1
-            color: Colours.palette.m3outlineVariant
-            opacity: 0.3
-        }
-
-        // Platform Profile section header
-        StyledText {
-            text: qsTr("Platform Profile")
-            font.weight: 500
-        }
-
-        // Custom indicator (read-only, when firmware/tools modified profile)
-        StyledRect {
-            Layout.fillWidth: true
-            visible: Power.platformProfile === "custom"
-            implicitHeight: customRow.implicitHeight + Appearance.padding.small * 2
-            radius: Appearance.rounding.small
-            color: Colours.palette.m3tertiaryContainer
-
-            RowLayout {
-                id: customRow
-                anchors.centerIn: parent
-                spacing: Appearance.spacing.small
-
-                MaterialIcon {
-                    text: "tune"
-                    color: Colours.palette.m3onTertiaryContainer
-                    font.pointSize: Appearance.font.size.small
-                }
-
-                StyledText {
-                    text: qsTr("Custom (firmware/tools)")
-                    color: Colours.palette.m3onTertiaryContainer
-                    font.pointSize: Appearance.font.size.small
-                }
-            }
-        }
-
-        // Platform Profile - Icon-only pills with sliding background
-        Item {
-            id: profileContainer
-            
-            readonly property var profiles: Power.availableProfiles.filter(p => p !== "custom")
-            readonly property int activeIndex: profiles.indexOf(Power.platformProfile)
-            readonly property int profileCount: profiles.length
-            
-            // Uniform segment size (square for icon-only)
-            readonly property real segmentSize: Appearance.font.size.larger + Appearance.padding.normal * 2
-            // Horizontal spacing between segments
-            readonly property real segmentSpacing: Appearance.spacing.large * 2
-            
-            implicitWidth: (segmentSize * profileCount) + (segmentSpacing * (profileCount - 1))
-            implicitHeight: segmentSize
-
-            // Background track
-            StyledRect {
-                anchors.fill: parent
-                radius: Appearance.rounding.full
-                color: Colours.palette.m3surfaceContainerHigh
-            }
-
-            // Sliding active background
-            StyledRect {
-                id: activeIndicator
-                
-                visible: profileContainer.activeIndex >= 0
-                
-                // Position calculation: (size + spacing) * index
-                x: profileContainer.activeIndex >= 0 
-                    ? profileContainer.activeIndex * (profileContainer.segmentSize + profileContainer.segmentSpacing)
-                    : 0
-                
-                implicitWidth: profileContainer.segmentSize
-                implicitHeight: profileContainer.segmentSize
-                
-                radius: Appearance.rounding.full
-                color: Colours.palette.m3primary
-                
-                Behavior on x {
-                    NumberAnimation {
-                        duration: Appearance.anim.durations.normal
-                        easing.bezierCurve: Appearance.anim.curves.emphasized
-                    }
-                }
-            }
-
-            Row {
-                id: profileRow
-                anchors.fill: parent
-                spacing: profileContainer.segmentSpacing
-
-                Repeater {
-                    id: profileRepeater
-                    model: profileContainer.profiles
-
-                    ProfileSegment {
-                        required property string modelData
-                        required property int index
-
-                        profile: modelData
-                        isActive: Power.platformProfile === modelData
-                        segmentSize: profileContainer.segmentSize
-                        enabled: !Power._busy && !Power.safeModeActive
-                        onClicked: Power.setPlatformProfile(modelData)
-                    }
-                }
-            }
-        }
-
-        // EPP section header (hidden when not controllable)
-        StyledText {
-            Layout.topMargin: Appearance.spacing.normal
-            visible: Power.eppControllable
-            text: qsTr("Energy Preference")
-            font.weight: 500
-        }
-
-        // EPP - 2-column Grid Pills with icons (vertical center aligned)
-        GridLayout {
-            visible: Power.eppControllable
-            columns: 2
-            rowSpacing: Appearance.spacing.small
-            columnSpacing: Appearance.spacing.small
-            
-            Repeater {
-                model: Power.availableEpp
-
-                EppChip {
-                    required property string modelData
-
-                    value: modelData
-                    isActive: Power.epp === modelData
-                    enabled: !Power._busy && !Power.safeModeActive
-                    onClicked: Power.setEpp(modelData)
-                }
-            }
-        }
-
-        // Safe mode warning
-        StyledRect {
-            Layout.topMargin: Appearance.spacing.normal
-            Layout.fillWidth: true
-            visible: Power.safeModeActive
-            implicitHeight: safeRow.implicitHeight + Appearance.padding.small * 2
-            radius: Appearance.rounding.small
-            color: Colours.palette.m3errorContainer
-
-            RowLayout {
-                id: safeRow
-                anchors.centerIn: parent
-                spacing: Appearance.spacing.small
-
-                MaterialIcon {
-                    text: "warning"
-                    color: Colours.palette.m3onErrorContainer
-                    font.pointSize: Appearance.font.size.small
-                }
-
-                StyledText {
-                    text: qsTr("Safe mode active")
-                    color: Colours.palette.m3onErrorContainer
-                    font.pointSize: Appearance.font.size.small
-                }
-            }
-        }
-
-        // Open panel button
-        StyledRect {
-            Layout.topMargin: Appearance.spacing.small
-            implicitWidth: expandBtn.implicitWidth + Appearance.padding.normal * 2
-            implicitHeight: expandBtn.implicitHeight + Appearance.padding.small
-
-            radius: Appearance.rounding.normal
-            color: Colours.palette.m3primaryContainer
-
-            StateLayer {
-                color: Colours.palette.m3onPrimaryContainer
-
-                function onClicked(): void {
-                    root.wrapper.detach("power");
-                }
-            }
-
-            RowLayout {
-                id: expandBtn
-
-                anchors.centerIn: parent
-                spacing: Appearance.spacing.small
-
-                StyledText {
-                    Layout.leftMargin: Appearance.padding.smaller
-                    text: qsTr("Open panel")
-                    color: Colours.palette.m3onPrimaryContainer
-                }
-
-                MaterialIcon {
-                    text: "chevron_right"
-                    color: Colours.palette.m3onPrimaryContainer
-                    font.pointSize: Appearance.font.size.large
-                }
+            StyledText {
+                text: qsTr("Safe mode active")
+                color: Colours.palette.m3onErrorContainer
+                font.pointSize: Appearance.font.size.small
             }
         }
     }
 
-    // =====================================================
-    // INLINE COMPONENTS
-    // =====================================================
+    // ═══════════════════════════════════════════════════
+    // Profile Section Header
+    // ═══════════════════════════════════════════════════
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.small
 
-    // Platform Profile segment - icon only, transparent bg (active indicator is separate)
-    component ProfileSegment: Item {
-        id: segment
+        Rectangle { Layout.fillWidth: true; height: 0.5; color: Colours.palette.m3outlineVariant }
+        
+        StyledText {
+            text: {
+                switch (Power.platformProfile) {
+                    case "low-power": return qsTr("Power Saver")
+                    case "balanced": return qsTr("Balanced")
+                    case "performance": return qsTr("Performance")
+                    case "custom": return qsTr("Custom")
+                    default: return Power.platformProfile
+                }
+            }
+            font.pointSize: Appearance.font.size.small
+            // color: Colours.palette.m3tertiary
+        }
+        
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Profile Icons Row (horizontal, icon-only)
+    // ═══════════════════════════════════════════════════
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.normal
+        opacity: root.shimmerOpacity
+
+        Repeater {
+            model: Power.availableProfiles.filter(p => p !== "custom")
+
+            ProfileIcon {
+                required property string modelData
+                required property int index
+
+                Layout.fillWidth: true
+                profile: modelData
+                isActive: Power.platformProfile === modelData
+                enabled: !Power._busy && !Power.safeModeActive
+
+                onClicked: Power.setPlatformProfile(modelData)
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // EPP Section Header (only when controllable)
+    // ═══════════════════════════════════════════════════
+    RowLayout {
+        visible: Power.eppControllable
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.small
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+        StyledText {
+            text: qsTr("Energy Preference")
+            font.pointSize: Appearance.font.size.small
+            // color: Colours.palette.m3tertiary
+        }
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // EPP Grid (2 columns)
+    // ═══════════════════════════════════════════════════
+    GridLayout {
+        visible: Power.eppControllable
+        Layout.fillWidth: true
+        columns: 2
+        rowSpacing: Appearance.spacing.smaller
+        columnSpacing: Appearance.spacing.smaller
+        opacity: root.shimmerOpacity
+
+        Repeater {
+            model: Power.availableEpp
+
+            EppChip {
+                required property string modelData
+                required property int index
+
+                value: modelData
+                isActive: Power.epp === modelData
+                enabled: !Power._busy && !Power.safeModeActive
+
+                onClicked: Power.setEpp(modelData)
+            }
+        }
+    }
+    RowLayout {
+        spacing: Appearance.spacing.small
+
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+        StyledText {
+            text: qsTr("CCharge type")
+            font.pointSize: Appearance.font.size.small
+            // color: Colours.palette.m3tertiary
+        }
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+    }
+    // ═══════════════════════════════════════════════════
+    // Long Life Mode Card
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        visible: Power.chargeTypeWritable
+        Layout.fillWidth: true
+        implicitHeight: longLifeRow.implicitHeight + Appearance.padding.normal * 2
+        radius: Appearance.rounding.small
+        color: Power.chargeType === "Long_Life"
+            ? Qt.alpha(Colours.palette.m3primary, 0.1)
+            : Colours.palette.m3surfaceContainerHigh
+        border.width: Power.chargeType === "Long_Life" ? 1 : 0
+        border.color: Qt.alpha(Colours.palette.m3primary, 0.3)
+
+        Behavior on color { ColorAnimation { duration: 200 } }
+
+        RowLayout {
+            id: longLifeRow
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.margins: Appearance.padding.normal
+            spacing: Appearance.spacing.normal
+
+            StyledRect {
+                implicitWidth: 28
+                implicitHeight: 28
+                radius: Appearance.rounding.small
+                color: Power.chargeType === "Long_Life"
+                    ? Colours.palette.m3tertiaryContainer
+                    : Colours.palette.m3surfaceContainerHighest
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "battery_saver"
+                    font.pointSize: Appearance.font.size.small
+                    color: Power.chargeType === "Long_Life"
+                        ? Colours.palette.m3onTertiaryContainer
+                        : Colours.palette.m3onSurfaceVariant
+                }
+            }
+
+            StyledText {
+                text: qsTr("Long Life Mode")
+                font.pointSize: Appearance.font.size.small
+            }
+
+            StyledSwitch {
+                checked: Power.chargeType === "Long_Life"
+                onClicked: Power.setChargeType(checked ? "Long_Life" : "Standard")
+                enabled: !Power._busy && !Power.safeModeActive
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // INLINE COMPONENTS
+    // ═══════════════════════════════════════════════════
+
+    // Profile icon button (horizontal row, icon-only)
+    component ProfileIcon: StyledRect {
+        id: profileIcon
 
         required property string profile
         property bool isActive: false
-        property real segmentSize: 40
 
         signal clicked()
 
         readonly property string icon: {
             switch (profile) {
-                case "performance": return "bolt";
-                case "low-power": return "eco";
-                case "balanced": return "balance";
-                default: return "settings";
+                case "low-power": return "eco"
+                case "balanced": return "balance"
+                case "performance": return "bolt"
+                default: return "settings"
             }
         }
 
-        implicitWidth: segmentSize
-        implicitHeight: segmentSize
+        implicitWidth: 44
+        implicitHeight: 44
+        radius: Appearance.rounding.small
+        
+        // Solid primary bg when active, surface when inactive
+        color: isActive 
+            ? Colours.palette.m3primary
+            : Colours.palette.m3surfaceContainerHigh
+
+        Behavior on color { ColorAnimation { duration: 150 } }
 
         StateLayer {
-            radius: Appearance.rounding.full
-            color: segment.isActive ? Colours.palette.m3onPrimary : Colours.palette.m3onSurface
-            disabled: !segment.enabled
+            color: profileIcon.isActive 
+                ? Colours.palette.m3onPrimary 
+                : Colours.palette.m3onSurface
+            disabled: !profileIcon.enabled
 
             function onClicked(): void {
-                segment.clicked();
+                profileIcon.clicked();
             }
         }
 
         MaterialIcon {
-            id: iconItem
             anchors.centerIn: parent
-            text: segment.icon
-            color: segment.isActive ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
+            text: profileIcon.icon
             font.pointSize: Appearance.font.size.larger
-            fill: segment.isActive ? 1 : 0
+            // Bright icon color when active
+            color: profileIcon.isActive 
+                ? Colours.palette.m3onPrimary
+                : Colours.palette.m3onSurfaceVariant
+            fill: profileIcon.isActive ? 1 : 0
 
             Behavior on color { ColorAnimation { duration: 150 } }
             Behavior on fill { NumberAnimation { duration: 150 } }
         }
     }
 
-    // EPP Chip (pill button with icon + label, vertical center aligned)
+    // EPP Chip
     component EppChip: StyledRect {
-        id: chip
+        id: eppChip
 
         required property string value
         property bool isActive: false
@@ -347,68 +442,68 @@ Item {
 
         readonly property string displayText: {
             switch (value) {
-                case "default": return qsTr("Default");
-                case "performance": return qsTr("Performance");
-                case "balance_performance": return qsTr("Bal. Perf");
-                case "balance_power": return qsTr("Bal. Power");
-                case "power": return qsTr("Power Saver");
-                default: return value;
+                case "default": return qsTr("Default")
+                case "performance": return qsTr("Performance")
+                case "balance_performance": return qsTr("Bal. Perf")
+                case "balance_power": return qsTr("Bal. Power")
+                case "power": return qsTr("Power Saver")
+                default: return value
             }
         }
 
         readonly property string icon: {
             switch (value) {
-                case "default": return "settings_suggest";
-                case "performance": return "bolt";
-                case "balance_performance": return "speed";
-                case "balance_power": return "eco";
-                case "power": return "battery_saver";
-                default: return "tune";
+                case "default": return "settings_suggest"
+                case "performance": return "bolt"
+                case "balance_performance": return "speed"
+                case "balance_power": return "eco"
+                case "power": return "battery_saver"
+                default: return "tune"
             }
         }
 
-        implicitWidth: 130 + Appearance.padding.normal * 2
-        implicitHeight: chipContent.implicitHeight + Appearance.padding.small * 2
+        Layout.fillWidth: true
+        implicitHeight: 36
+        radius: Appearance.rounding.small
+        color: isActive 
+            ? Colours.palette.m3secondaryContainer 
+            : Colours.palette.m3surfaceContainerHigh
 
-        // Active = smaller radius (rounded rect), inactive = full radius (pill)
-        radius: isActive ? Appearance.rounding.full : 8
-        color: isActive ? Colours.palette.m3secondaryContainer : Colours.palette.m3surfaceContainerHigh
+        Behavior on color { ColorAnimation { duration: 150 } }
 
         StateLayer {
-            color: chip.isActive ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
-            disabled: !chip.enabled
+            color: eppChip.isActive 
+                ? Colours.palette.m3onSecondaryContainer 
+                : Colours.palette.m3onSurface
+            disabled: !eppChip.enabled
 
             function onClicked(): void {
-                chip.clicked();
+                eppChip.clicked();
             }
         }
 
-        // Content aligned to left (vertical center, not horizontal center)
         RowLayout {
-            id: chipContent
-            anchors.left: parent.left
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.centerIn: parent
             spacing: Appearance.spacing.smaller
 
             MaterialIcon {
-                text: chip.icon
-                color: chip.isActive ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurfaceVariant
-                font.pointSize: Appearance.font.size.small
-                fill: chip.isActive ? 1 : 0
+                text: eppChip.icon
+                font.pointSize: Appearance.font.size.smaller
+                color: eppChip.isActive 
+                    ? Colours.palette.m3onSecondaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
+                fill: eppChip.isActive ? 1 : 0
 
                 Behavior on fill { NumberAnimation { duration: 150 } }
             }
 
             StyledText {
-                text: chip.displayText
-                color: chip.isActive ? Colours.palette.m3onSecondaryContainer : Colours.palette.m3onSurface
-                font.pointSize: Appearance.font.size.small
-                font.weight: chip.isActive ? 500 : 400
+                text: eppChip.displayText
+                font.pointSize: Appearance.font.size.smaller
+                color: eppChip.isActive 
+                    ? Colours.palette.m3onSecondaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
             }
         }
-
-        Behavior on color { ColorAnimation { duration: 150 } }
-        Behavior on radius { NumberAnimation { duration: 150 } }
     }
 }
