@@ -1,0 +1,9 @@
+[Unit]
+Description=x-ai AI Chatbot Socket
+
+[Socket]
+ListenStream=/tmp/x-ai.sock
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target

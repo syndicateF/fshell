@@ -95,12 +95,14 @@ Item {
                 spacing: Appearance.spacing.large
 
                 Image {
+                    id: dinoImg
                     asynchronous: true
                     source: Qt.resolvedUrl(`${Quickshell.shellDir}/assets/dino.png`)
                     fillMode: Image.PreserveAspectFit
                     sourceSize.width: clipRect.width * 0.8
 
-                    layer.enabled: true
+                    // Only enable layer when image is ready - prevents ShaderEffect warning
+                    layer.enabled: dinoImg.status === Image.Ready
                     layer.effect: Colouriser {
                         colorizationColor: Colours.palette.m3outlineVariant
                         brightness: 1

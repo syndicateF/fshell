@@ -19,6 +19,10 @@ StyledRect {
     // Check if network is connected
     readonly property bool isConnected: Network.active !== null
 
+    // Subscribe to traffic monitoring when this component is active
+    Component.onCompleted: Network.trafficRefCount++
+    Component.onDestruction: Network.trafficRefCount--
+
     // Original format with decimals
     function formatSpeedShort(bytesPerSec: real): string {
         if (bytesPerSec >= 1024 * 1024) {

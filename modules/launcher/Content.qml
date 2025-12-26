@@ -26,6 +26,16 @@ Item {
     implicitWidth: gridContent.implicitWidth + padding * 2
     implicitHeight: searchWrapper.implicitHeight + gridContent.implicitHeight + tabBar.implicitHeight + padding * 2 + Appearance.spacing.large * 2
 
+    // Smooth animation for height changes
+    Behavior on implicitHeight {
+        enabled: root.visibilities.launcher
+        Anim {
+            duration: Appearance.anim.durations.large
+            easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+        }
+    }
+
+
     // Reset tab and cleanup when launcher closes
     Connections {
         target: root.visibilities
@@ -226,7 +236,28 @@ Item {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    // GRID CONTENT (MIDDLE)
+    // TAB BAR (BOTTOM)
+    // ═══════════════════════════════════════════════════════════════
+    TabBar {
+        id: tabBar
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: root.padding
+        anchors.rightMargin: root.padding
+        anchors.bottomMargin: root.padding
+
+        currentTab: root.currentTab
+
+        onTabChanged: index => {
+            root.currentTab = index;
+            search.forceActiveFocus();
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // GRID CONTENT (MIDDLE - BETWEEN SEARCH AND TAB BAR)
     // ═══════════════════════════════════════════════════════════════
     Item {
         id: gridWrapper
@@ -234,15 +265,16 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: searchWrapper.bottom
+        anchors.bottom: tabBar.top
         anchors.leftMargin: root.padding
         anchors.rightMargin: root.padding
         anchors.topMargin: Appearance.spacing.large
+        anchors.bottomMargin: Appearance.spacing.large
 
-        // Use gridContent's actual size
+        // Use gridContent's actual dimensions
         implicitWidth: gridContent.implicitWidth
         implicitHeight: gridContent.implicitHeight
-        width: gridContent.implicitWidth
-        height: gridContent.implicitHeight
+        height: implicitHeight
 
         clip: true
 
@@ -297,28 +329,6 @@ Item {
             Behavior on scale {
                 Anim {}
             }
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TAB BAR (BOTTOM)
-    // ═══════════════════════════════════════════════════════════════
-    TabBar {
-        id: tabBar
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: gridWrapper.bottom
-        anchors.leftMargin: root.padding
-        anchors.rightMargin: root.padding
-        anchors.topMargin: Appearance.spacing.large
-        anchors.bottomMargin: root.padding
-
-        currentTab: root.currentTab
-
-        onTabChanged: index => {
-            root.currentTab = index;
-            search.forceActiveFocus();
         }
     }
 }

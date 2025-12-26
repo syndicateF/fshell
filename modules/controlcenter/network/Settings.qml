@@ -206,6 +206,10 @@ Item {
                 sourceComponent: RowLayout {
                     spacing: Appearance.spacing.large
 
+                    // Subscribe to traffic monitoring when this component is loaded
+                    Component.onCompleted: Network.trafficRefCount++
+                    Component.onDestruction: Network.trafficRefCount--
+
                     RowLayout {
                         spacing: Appearance.spacing.small
 

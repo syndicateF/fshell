@@ -28,7 +28,8 @@ Singleton {
     property string warningMessage: ""
     property string warningType: "info" // info, warning, error, success
 
-    // Network traffic monitoring
+    // Network traffic monitoring (on-demand via refCount)
+    property int trafficRefCount: 0  // Components increment this when they need traffic data
     property real downloadSpeed: 0  // bytes per second
     property real uploadSpeed: 0    // bytes per second
     property real lastRxBytes: 0
@@ -269,15 +270,20 @@ Singleton {
         onTriggered: root.warningMessage = ""
     }
 
-    // Network traffic monitoring timer
     Timer {
         id: trafficTimer
-        interval: 1000
+        interval: 2000  // 2 seconds - still realtime for human perception
         repeat: true
-        running: true
+        running: root.trafficRefCount > 0  // Only run when components need traffic data
         triggeredOnStart: true
         onTriggered: {
-            getInterfaceProc.running = true
+            // Only spawn interface detection if we don't have one yet
+            if (!root.networkInterface) {
+                getInterfaceProc.running = true
+            } else {
+                // Direct FileView reload - much lighter than Process spawn
+                trafficStats.reload()
+            }
         }
     }
     
@@ -294,17 +300,8 @@ Singleton {
         }
     }
     
-    // Periodic connection details update
-    Timer {
-        id: connectionDetailsTimer
-        interval: 10000 // Every 10 seconds
-        repeat: true
-        running: root.active !== null
-        triggeredOnStart: true
-        onTriggered: {
-            root.getConnectionDetails();
-        }
-    }
+    // CONNECTION DETAILS: Event-driven via nmcli monitor (no polling)
+    // getConnectionDetails() is called when network state changes
     
     // Get active network interface
     Process {
@@ -500,18 +497,26 @@ Singleton {
         }
     }
 
+    // NetworkManager event stream (event-driven, NOT polling)
+    // This only triggers when network state changes
     Process {
         running: true
         command: ["nmcli", "m"]
         stdout: SplitParser {
-            onRead: getNetworks.running = true
+            onRead: {
+                // Reset interface cache on network change
+                root.networkInterface = ""
+                getNetworks.running = true
+                // Also refresh connection details on network change (event-driven)
+                root.getConnectionDetails()
+            }
         }
     }
 
     Process {
         id: wifiStatusProc
 
-        running: true
+        // NOT running at startup - only on demand
         command: ["nmcli", "radio", "wifi"]
         environment: ({
                 LANG: "C.UTF-8",
@@ -622,7 +627,7 @@ Singleton {
     Process {
         id: getNetworks
 
-        running: true
+        // NOT running at startup - triggered by nmcli monitor
         command: ["nmcli", "-g", "ACTIVE,SIGNAL,FREQ,SSID,BSSID,SECURITY", "d", "w"]
         environment: ({
                 LANG: "C.UTF-8",
@@ -721,11 +726,10 @@ Singleton {
         SavedConnection {}
     }
 
-    // Get saved WiFi connections
     Process {
         id: getSavedConnections
 
-        running: true
+        // NOT running at startup - triggered on demand
         command: ["nmcli", "-g", "NAME,UUID,TYPE,DEVICE", "connection", "show"]
         environment: ({
                 LANG: "C.UTF-8",
@@ -765,5 +769,12 @@ Singleton {
                 }
             }
         }
+    }
+    
+    // Initialize on startup (one-time load)
+    Component.onCompleted: {
+        wifiStatusProc.running = true
+        getNetworks.running = true
+        getSavedConnections.running = true
     }
 }

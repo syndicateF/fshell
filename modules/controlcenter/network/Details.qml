@@ -457,6 +457,10 @@ Item {
 
                     spacing: Appearance.spacing.normal
 
+                    // Subscribe to traffic monitoring when visible
+                    Component.onCompleted: Network.trafficRefCount++
+                    Component.onDestruction: Network.trafficRefCount--
+
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.normal

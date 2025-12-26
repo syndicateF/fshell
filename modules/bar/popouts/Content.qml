@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import qs.components
 import qs.config
-import qs.modules.overview as Overview
 import Quickshell
 import Quickshell.Services.SystemTray
 import QtQuick
@@ -32,13 +31,11 @@ Item {
             }
         }
 
-        // Dashboard popouts
+        // Calendar popout (triggered by clock)
         Popout {
-            name: "dash"
-            sourceComponent: Overview.Dash {
-                visibilities: null
-                state: null
-                facePicker: null
+            name: "calendar"
+            sourceComponent: CalendarPopout {
+                wrapper: root.wrapper
             }
         }
 
@@ -51,7 +48,9 @@ Item {
 
         Popout {
             name: "performance"
-            sourceComponent: Overview.Performance {}
+            sourceComponent: Performance {
+                wrapper: root.wrapper
+            }
         }
 
         Popout {

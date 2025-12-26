@@ -1,4 +1,5 @@
 import qs.components
+import qs.components.controls
 import qs.services
 import qs.config
 import QtQuick
@@ -16,6 +17,20 @@ Item {
         anchors.fill: parent
         spacing: Appearance.spacing.normal
 
+        // Tab bar
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Appearance.spacing.small
+
+            TabButton {
+                text: qsTr("Notifications")
+                icon: "notifications"
+                active: true
+                badge: Notifs.list.reduce((acc, n) => n.closed ? acc : acc + 1, 0)
+            }
+        }
+
+        // Content area
         StyledRect {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -23,7 +38,9 @@ Item {
             radius: Appearance.rounding.normal
             color: Colours.tPalette.m3surfaceContainerLow
 
+            // Notifications panel
             NotifDock {
+                visible: true
                 props: root.props
                 visibilities: root.visibilities
             }

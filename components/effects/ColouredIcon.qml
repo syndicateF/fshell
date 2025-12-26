@@ -11,15 +11,11 @@ IconImage {
 
     asynchronous: true
 
-    layer.enabled: true
+    // Only enable layer effect when image is ready - prevents ShaderEffect 'source' warning
+    layer.enabled: status === Image.Ready
     layer.effect: Colouriser {
         sourceColor: analyser.dominantColour
         colorizationColor: root.colour
-    }
-
-    layer.onEnabledChanged: {
-        if (layer.enabled && status === Image.Ready)
-            analyser.requestUpdate();
     }
 
     onStatusChanged: {
@@ -33,3 +29,4 @@ IconImage {
         sourceItem: root
     }
 }
+

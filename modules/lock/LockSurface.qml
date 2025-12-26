@@ -36,11 +36,7 @@ WlSessionLockSurface {
                 duration: Appearance.anim.durations.expressiveDefaultSpatial
                 easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
             }
-            Anim {
-                target: lockBg
-                property: "radius"
-                to: lockContent.radius
-            }
+            // lockBg animation removed - lockBg no longer exists
             Anim {
                 target: content
                 property: "scale"
@@ -137,21 +133,16 @@ WlSessionLockSurface {
                     easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
                 }
                 Anim {
-                    target: lockBg
-                    property: "radius"
-                    to: Appearance.rounding.large * 1.5
-                }
-                Anim {
                     target: lockContent
                     property: "implicitWidth"
-                    to: root.screen.height * Config.lock.sizes.heightMult * Config.lock.sizes.ratio
+                    to: (root.screen?.height ?? 0) * Config.lock.sizes.heightMult * Config.lock.sizes.ratio
                     duration: Appearance.anim.durations.expressiveDefaultSpatial
                     easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
                 }
                 Anim {
                     target: lockContent
                     property: "implicitHeight"
-                    to: root.screen.height * Config.lock.sizes.heightMult
+                    to: (root.screen?.height ?? 0) * Config.lock.sizes.heightMult
                     duration: Appearance.anim.durations.expressiveDefaultSpatial
                     easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
                 }
@@ -159,20 +150,35 @@ WlSessionLockSurface {
         }
     }
 
-    ScreencopyView {
+    // Background - Blurred current wallpaper (simpler than ScreencopyView)
+    Item {
         id: background
 
         anchors.fill: parent
-        captureSource: root.screen
         opacity: 0
 
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            autoPaddingEnabled: false
-            blurEnabled: true
-            blur: 1
-            blurMax: 64
-            blurMultiplier: 1
+        Image {
+            id: wallpaperImage
+            anchors.fill: parent
+            source: Wallpapers.actualCurrent ? `file://${Wallpapers.actualCurrent}` : ""
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                autoPaddingEnabled: false
+                blurEnabled: true
+                blur: 1
+                blurMax: 64
+                blurMultiplier: 1
+            }
+        }
+        
+        // Dim overlay for better contrast
+        Rectangle {
+            anchors.fill: parent
+            color: Colours.palette.m3surface
+            opacity: 0.4
         }
     }
 
@@ -189,21 +195,8 @@ WlSessionLockSurface {
         rotation: 180
         scale: 0
 
-        StyledRect {
-            id: lockBg
-
-            anchors.fill: parent
-            color: Colours.palette.m3surface
-            radius: parent.radius
-            opacity: Colours.transparency.enabled ? Colours.transparency.base : 1
-
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                blurMax: 15
-                shadowColor: Qt.alpha(Colours.palette.m3shadow, 0.7)
-            }
-        }
+        // lockBg REMOVED - was covering content
+        // Background now handled by gradient in background Rectangle
 
         MaterialIcon {
             id: lockIcon
@@ -219,6 +212,7 @@ WlSessionLockSurface {
             id: content
 
             anchors.centerIn: parent
+            // Size from Config for proper proportional sizing
             width: (root.screen?.height ?? 0) * Config.lock.sizes.heightMult * Config.lock.sizes.ratio - Appearance.padding.large * 2
             height: (root.screen?.height ?? 0) * Config.lock.sizes.heightMult - Appearance.padding.large * 2
 

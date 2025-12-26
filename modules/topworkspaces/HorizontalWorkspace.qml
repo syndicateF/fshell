@@ -163,7 +163,8 @@ Item {
                     id: windowIconLoader
                     required property var modelData
                     
-                    property string appClass: modelData.lastIpcObject.class
+                    // Handle case where lastIpcObject or class might be undefined
+                    property string appClass: modelData?.lastIpcObject?.class ?? ""
                     
                     sourceComponent: {
                         switch (Config.bar.workspaces.windowIconStyle) {
@@ -198,10 +199,11 @@ Item {
                     Component {
                         id: appIconComp
                         IconImage {
+                            id: appIconImg
                             source: Icons.getAppIcon(windowIconLoader.appClass, "application-x-executable")
                             implicitSize: Config.bar.sizes.font.materialIcon
-                            // Colorization only when iconColorization > 0
-                            layer.enabled: Config.bar.workspaces.iconColorization > 0
+                            // Colorization only when iconColorization > 0 AND image is ready
+                            layer.enabled: Config.bar.workspaces.iconColorization > 0 && appIconImg.status === Image.Ready
                             layer.effect: MultiEffect {
                                 colorization: Config.bar.workspaces.iconColorization
                                 colorizationColor: Colours.palette.m3onPrimary

@@ -1064,17 +1064,32 @@ Singleton {
         }
     }
 
-    // Refresh monitor info periodically when in use (but not during preview)
-    Timer {
-        id: refreshTimer
-        interval: 2000
-        repeat: true
-        running: root.selectedMonitor !== null && !root.inPreviewMode
-
-        onTriggered: {
+    // EVENT-DRIVEN REFRESH: Listen to Hyprland events instead of polling
+    // Monitor changes are detected via Hypr.qml's onRawEvent (monitoradded, monitorremoved, etc.)
+    Connections {
+        target: Hypr
+        enabled: root.selectedMonitor !== null && !root.inPreviewMode
+        
+        // configReloaded is emitted when Hyprland config changes
+        function onConfigReloaded(): void {
             root.refreshMonitorData();
             root.refreshGlobalVrr();
-            Hyprland.refreshMonitors();
+        }
+    }
+    
+    // Also refresh when monitorsChanged is signaled by Quickshell.Hyprland
+    Connections {
+        target: Hyprland.monitors
+        enabled: root.selectedMonitor !== null && !root.inPreviewMode
+        
+        function onObjectInsertedPost(): void {
+            root.refreshMonitorData();
+            root.refreshGlobalVrr();
+        }
+        
+        function onObjectRemovedPost(): void {
+            root.refreshMonitorData();
+            root.refreshGlobalVrr();
         }
     }
 

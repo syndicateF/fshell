@@ -76,16 +76,9 @@ Item {
     implicitWidth: currentWidth
     implicitHeight: currentHeight
 
-    // Smooth animation for dimension changes (like original launcher)
+    // Smooth animation for width only
+    // Height animation is at Content.qml level for smooth parent resize
     Behavior on implicitWidth {
-        enabled: visibilities.launcher
-        Anim {
-            duration: Appearance.anim.durations.large
-            easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
-        }
-    }
-
-    Behavior on implicitHeight {
         enabled: visibilities.launcher
         Anim {
             duration: Appearance.anim.durations.large

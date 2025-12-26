@@ -60,7 +60,7 @@ JsonObject {
         property real iconColorization: 0.0  // 0 = keep original icon colors, 1 = fully colorized to match indicator. Only applies when iconStyle is "icon"
         property bool activeTrail: true
         property bool perMonitorWorkspaces: true
-        property string label: ""//"⚫"//"•"//"●" // if empty, will show workspace name's first letter
+        property string label: "⚫"//"⚫"//"•"//"●" // if empty, will show workspace name's first letter
         property string occupiedLabel: "" //"󰮯"
         property string activeLabel: ""  //"󰮯"
         property string capitalisation: "preserve" // upper, lower, or preserve - relevant only if label is empty

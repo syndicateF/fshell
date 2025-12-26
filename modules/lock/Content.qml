@@ -9,7 +9,7 @@ RowLayout {
 
     required property var lock
 
-    spacing: Appearance.spacing.large * 2
+    spacing: Appearance.spacing.normal
 
     ColumnLayout {
         Layout.fillWidth: true
@@ -17,7 +17,8 @@ RowLayout {
 
         StyledRect {
             Layout.fillWidth: true
-            implicitHeight: weather.implicitHeight
+            Layout.minimumHeight: 120
+            implicitHeight: Math.max(120, weather.implicitHeight)
 
             topLeftRadius: Appearance.rounding.large
             radius: Appearance.rounding.small
@@ -37,7 +38,7 @@ RowLayout {
             radius: Appearance.rounding.small
             color: Colours.tPalette.m3surfaceContainer
 
-            Fetch {}
+            CalendarWidget {}
         }
 
         StyledClippingRect {
@@ -56,8 +57,17 @@ RowLayout {
         }
     }
 
-    Center {
-        lock: root.lock
+    StyledRect {
+        Layout.fillHeight: true
+        implicitWidth: center.implicitWidth
+        radius: Appearance.rounding.small
+        color: Colours.tPalette.m3surfaceContainer
+
+        Center {
+            id: center
+            anchors.centerIn: parent
+            lock: root.lock
+        }
     }
 
     ColumnLayout {

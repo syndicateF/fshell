@@ -28,7 +28,17 @@ FocusScope {
     property color activeBorderColor: Colours.palette.m3primary
     property int uniformRadius: Config.border.rounding
     
-    property var reserved: monitorData?.reserved ?? [0, 0, 0, 0]
+    // Get bar's exclusive zone as reliable fallback (always available from Config)
+    readonly property real barExclusiveZone: Visibilities.bars.get(screen)?.exclusiveZone ?? 0
+    
+    // Use bar's exclusiveZone as fallback when reserved[0] is 0 but bar should have zone
+    property var reserved: {
+        const r = monitorData?.reserved ?? [0, 0, 0, 0]
+        // If left reserved is 0 but bar has exclusiveZone, use bar's value
+        if (r[0] === 0 && barExclusiveZone > 0)
+            return [barExclusiveZone, r[1], r[2], r[3]]
+        return r
+    }
     
     property real wsWidth: (monitor.width / monitor.scale - reserved[0] - reserved[2]) * scale
     property real wsHeight: (monitor.height / monitor.scale - reserved[1] - reserved[3]) * scale
@@ -114,7 +124,11 @@ FocusScope {
                                             const specialName = specialWs.replace("special:", "")
                                             Hypr.dispatch(`togglespecialworkspace ${specialName}`)
                                         }
-                                        Hypr.dispatch(`workspace ${wsRect.wsNum}`)
+                                        // Only switch if not already on this workspace
+                                        if (wsRect.wsNum !== root.monitor.activeWorkspace?.id)
+                                            Hypr.dispatch(`workspace ${wsRect.wsNum}`)
+                                        else
+                                            root.visibilities.overview = false  // Close only if clicking active ws
                                     }
                                 }
                                 
@@ -417,7 +431,11 @@ FocusScope {
                                     const specialName = specialWs.replace("special:", "")
                                     Hypr.dispatch(`togglespecialworkspace ${specialName}`)
                                 }
-                                Hypr.dispatch(`workspace ${winItem.wsId}`)
+                                // Only switch if not already on this workspace
+                                if (winItem.wsId !== root.monitor.activeWorkspace?.id)
+                                    Hypr.dispatch(`workspace ${winItem.wsId}`)
+                                else
+                                    root.visibilities.overview = false  // Close only if clicking window in active ws
                             } else if (e.button === Qt.MiddleButton) {
                                 Hypr.dispatch(`closewindow address:${winItem.addr}`)
                             }

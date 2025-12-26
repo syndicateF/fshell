@@ -52,10 +52,17 @@ Singleton {
         }
     }
 
+    // On-demand uptime refresh - components that display uptime should:
+    // Component.onCompleted: SysInfo.uptimeRefCount++
+    // Component.onDestruction: SysInfo.uptimeRefCount--
+    property int uptimeRefCount: 0
+    
+    // Refresh uptime when refCount becomes > 0, then every 15s while needed
     Timer {
-        running: true
+        running: root.uptimeRefCount > 0
         repeat: true
         interval: 15000
+        triggeredOnStart: true
         onTriggered: fileUptime.reload()
     }
 

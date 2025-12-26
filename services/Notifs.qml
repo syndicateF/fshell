@@ -220,10 +220,16 @@ Singleton {
                         const hash = (h2 >>> 0).toString(16).padStart(8, 0) + (h1 >>> 0).toString(16).padStart(8, 0);
 
                         const cache = `${Paths.notifimagecache}/${hash}.png`;
-                        CUtils.saveItem(this, Qt.resolvedUrl(cache), () => {
-                            notif.image = cache;
+                        
+                        // Guard: only grab if dimensions are valid
+                        if (this.width > 0 && this.height > 0) {
+                            CUtils.saveItem(this, Qt.resolvedUrl(cache), () => {
+                                notif.image = cache;
+                                notif.dummyImageLoader.active = false;
+                            });
+                        } else {
                             notif.dummyImageLoader.active = false;
-                        });
+                        }
                     }
                 }
             }

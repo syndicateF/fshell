@@ -3,196 +3,119 @@ pragma ComponentBehavior: Bound
 import qs.components
 import qs.services
 import qs.config
-import qs.utils
 import QtQuick
 import QtQuick.Layouts
 
-ColumnLayout {
+// Lock Weather Widget - Option B: Horizontal Split Style
+// Icon left, Temp+description middle, Details right
+// NO polling - uses cached Weather data from service
+RowLayout {
     id: root
 
     required property int rootHeight
 
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.margins: Appearance.padding.large * 2
+    anchors.fill: parent
+    anchors.margins: Appearance.padding.large
+    spacing: Appearance.spacing.large
 
-    spacing: Appearance.spacing.small
-
-    Loader {
-        Layout.topMargin: Appearance.padding.large * 2
-        Layout.bottomMargin: -Appearance.padding.large
-        Layout.alignment: Qt.AlignHCenter
-
-        asynchronous: true
-        active: root.rootHeight > 610
-        visible: active
-
-        sourceComponent: StyledText {
-            text: qsTr("Weather")
-            color: Colours.palette.m3primary
-            font.pointSize: Appearance.font.size.extraLarge
-            font.weight: 500
-        }
-    }
-
-    RowLayout {
-        Layout.fillWidth: true
-        spacing: Appearance.spacing.large
+    // ═══════════════════════════════════════════════════
+    // LEFT: Large icon in box
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        implicitWidth: Appearance.font.size.extraLarge * 2.5
+        implicitHeight: implicitWidth
+        radius: Appearance.rounding.normal
+        color: Colours.palette.m3surfaceContainerHigh
 
         MaterialIcon {
+            anchors.centerIn: parent
             animate: true
             text: Weather.icon
-            color: Colours.palette.m3secondary
-            font.pointSize: Appearance.font.size.extraLarge * 2.5
-        }
-
-        ColumnLayout {
-            spacing: Appearance.spacing.small
-
-            StyledText {
-                Layout.fillWidth: true
-
-                animate: true
-                text: Weather.description
-                color: Colours.palette.m3secondary
-                font.pointSize: Appearance.font.size.large
-                font.weight: 500
-                elide: Text.ElideRight
-            }
-
-            StyledText {
-                Layout.fillWidth: true
-
-                animate: true
-                text: qsTr("Humidity: %1%").arg(Weather.humidity)
-                color: Colours.palette.m3onSurfaceVariant
-                font.pointSize: Appearance.font.size.normal
-                elide: Text.ElideRight
-            }
-        }
-
-        Loader {
-            Layout.rightMargin: Appearance.padding.smaller
-            asynchronous: true
-            active: root.width > 400
-            visible: active
-
-            sourceComponent: ColumnLayout {
-                spacing: Appearance.spacing.small
-
-                StyledText {
-                    Layout.fillWidth: true
-
-                    animate: true
-                    text: Weather.temp
-                    color: Colours.palette.m3primary
-                    horizontalAlignment: Text.AlignRight
-                    font.pointSize: Appearance.font.size.extraLarge
-                    font.weight: 500
-                    elide: Text.ElideLeft
-                }
-
-                StyledText {
-                    Layout.fillWidth: true
-
-                    animate: true
-                    text: qsTr("Feels like: %1").arg(Weather.feelsLike)
-                    color: Colours.palette.m3outline
-                    horizontalAlignment: Text.AlignRight
-                    font.pointSize: Appearance.font.size.smaller
-                    elide: Text.ElideLeft
-                }
-            }
+            font.pointSize: Appearance.font.size.extraLarge
+            color: Weather.hasError ? Colours.palette.m3error : Colours.palette.m3tertiary
         }
     }
 
-    Loader {
-        id: forecastLoader
-
-        Layout.topMargin: Appearance.spacing.smaller
-        Layout.bottomMargin: Appearance.padding.large * 2
+    // ═══════════════════════════════════════════════════
+    // MIDDLE: Temp + description
+    // ═══════════════════════════════════════════════════
+    ColumnLayout {
         Layout.fillWidth: true
+        spacing: -Appearance.spacing.smaller
 
-        asynchronous: true
-        active: root.rootHeight > 820
-        visible: active
+        StyledText {
+            animate: true
+            text: Weather.hasData ? Weather.temp : (Weather.loading ? "..." : "--")
+            font.pointSize: Appearance.font.size.extraLarge * 1.5
+            font.family: Appearance.font.family.clock
+            font.weight: Font.Bold
+            color: Colours.palette.m3onSurface
+        }
 
-        sourceComponent: RowLayout {
-            spacing: Appearance.spacing.large
+        StyledText {
+            animate: true
+            text: Weather.hasData ? Weather.displayDescription : (Weather.hasError ? qsTr("Offline") : qsTr("Loading..."))
+            font.pointSize: Appearance.font.size.normal
+            font.family: Appearance.font.family.mono
+            font.weight: Font.Medium
+            color: Colours.palette.m3tertiary
+        }
+    }
 
-            Repeater {
-                model: {
-                    const forecast = Weather.forecast;
-                    let count = root.width < 320 ? 3 : root.width < 400 ? 4 : 5;
-                    if (!forecast)
-                        return Array.from({
-                            length: count
-                        }, () => null);
+    // ═══════════════════════════════════════════════════
+    // RIGHT: Details column (humidity, feels like, location)
+    // ═══════════════════════════════════════════════════
+    ColumnLayout {
+        visible: Weather.hasData
+        spacing: Appearance.spacing.smaller
 
-                    const hours = [];
-                    const hour = new Date().getHours();
+        // Humidity
+        RowLayout {
+            spacing: Appearance.spacing.smaller
+            MaterialIcon {
+                text: "water_drop"
+                font.pointSize: Appearance.font.size.smaller
+                color: Colours.palette.m3outline
+            }
+            StyledText {
+                text: Weather.humidity + "%"
+                font.pointSize: Appearance.font.size.small
+                color: Colours.palette.m3outline
+            }
+        }
 
-                    const today = forecast[0].hourly;
-                    const arr = [...today, ...forecast[1].hourly];
-                    for (let i = 0; i < arr.length; i++) {
-                        const time = parseInt(arr[i].time, 10) / 100;
+        // Feels like
+        RowLayout {
+            spacing: Appearance.spacing.smaller
+            MaterialIcon {
+                text: "thermostat"
+                font.pointSize: Appearance.font.size.smaller
+                color: Colours.palette.m3outline
+            }
+            StyledText {
+                text: Weather.feelsLike
+                font.pointSize: Appearance.font.size.small
+                color: Colours.palette.m3outline
+            }
+        }
 
-                        if (i > today.length ? time < hour : time > hour) {
-                            hours.push(arr[i]);
-                            count--;
-                        }
-
-                        if (count === 0)
-                            break;
-                    }
-
-                    return hours;
-                }
-
-                ColumnLayout {
-                    id: forecastHour
-
-                    required property var modelData
-
-                    Layout.fillWidth: true
-                    spacing: Appearance.spacing.small
-
-                    StyledText {
-                        Layout.fillWidth: true
-                        text: {
-                            if (!forecastHour.modelData)
-                                return "00 AM";
-                            const hour = parseInt(forecastHour.modelData.time, 10) / 100;
-                            return hour > 12 ? `${(hour - 12).toString().padStart(2, "0")} PM` : `${hour.toString().padStart(2, "0")} AM`;
-                        }
-                        color: Colours.palette.m3outline
-                        horizontalAlignment: Text.AlignHCenter
-                        font.pointSize: Appearance.font.size.larger
-                    }
-
-                    MaterialIcon {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: forecastHour.modelData ? Icons.getWeatherIcon(forecastHour.modelData.weatherCode) : "cloud_alert"
-                        font.pointSize: Appearance.font.size.extraLarge * 1.5
-                        font.weight: 500
-                    }
-
-                    StyledText {
-                        Layout.alignment: Qt.AlignHCenter
-                        text: Config.services.useFahrenheit ? `${forecastHour.modelData?.tempF ?? 0}°F` : `${forecastHour.modelData?.tempC ?? 0}°C`
-                        color: Colours.palette.m3secondary
-                        font.pointSize: Appearance.font.size.larger
-                    }
-                }
+        RowLayout {
+            spacing: Appearance.spacing.smaller
+            MaterialIcon {
+                text: "location_on"
+                font.pointSize: Appearance.font.size.smaller
+                color: Colours.palette.m3outline
+            }
+            StyledText {
+                animate: true
+                text: Weather.city
+                font.pointSize: Appearance.font.size.small
+                font.family: Appearance.font.family.mono
+                color: Colours.palette.m3outline
+                elide: Text.ElideRight
             }
         }
     }
 
-    Timer {
-        running: true
-        triggeredOnStart: true
-        repeat: true
-        interval: 900000 // 15 minutes
-        onTriggered: Weather.reload()
-    }
+    // NO POLLING TIMER - uses cached data from Weather service
 }

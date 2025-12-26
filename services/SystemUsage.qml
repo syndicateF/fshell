@@ -10,10 +10,18 @@ Singleton {
 
     property real cpuPerc
     property real cpuTemp
-    readonly property string gpuType: Config.services.gpuType.toUpperCase() || autoGpuType
-    property string autoGpuType: "NONE"
-    property real gpuPerc
-    property real gpuTemp
+    
+    // Dual GPU support: iGPU (integrated) and dGPU (discrete)
+    property bool hasIGpu: false
+    property bool hasDGpu: false
+    property real iGpuPerc: 0
+    property real iGpuTemp: 0
+    property real dGpuPerc: 0
+    property real dGpuTemp: 0
+    
+    // Legacy compatibility (uses primary GPU - prefers dGPU if available)
+    readonly property real gpuPerc: hasDGpu ? dGpuPerc : iGpuPerc
+    readonly property real gpuTemp: hasDGpu ? dGpuTemp : iGpuTemp
     property real memUsed
     property real memTotal
     readonly property real memPerc: memTotal > 0 ? memUsed / memTotal : 0
@@ -61,7 +69,8 @@ Singleton {
             stat.reload();
             meminfo.reload();
             storage.running = true;
-            gpuUsage.running = true;
+            if (root.hasDGpu) dGpuUsage.running = true;
+            if (root.hasIGpu) iGpuUsage.running = true;
             sensors.running = true;
         }
     }
@@ -140,34 +149,45 @@ Singleton {
         }
     }
 
+    // Detect available GPUs on startup
     Process {
-        id: gpuTypeCheck
-
-        running: !Config.services.gpuType
-        command: ["sh", "-c", "if command -v nvidia-smi &>/dev/null && nvidia-smi -L &>/dev/null; then echo NVIDIA; elif ls /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | grep -q .; then echo GENERIC; else echo NONE; fi"]
+        id: gpuDetect
+        running: true
+        command: ["sh", "-c", "echo \"NVIDIA:$(command -v nvidia-smi &>/dev/null && nvidia-smi -L &>/dev/null && echo 1 || echo 0)\"; echo \"AMD:$(ls /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | head -1 | grep -q . && echo 1 || echo 0)\""]
         stdout: StdioCollector {
-            onStreamFinished: root.autoGpuType = text.trim()
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("NVIDIA:")) root.hasDGpu = line.endsWith("1");
+                    if (line.startsWith("AMD:")) root.hasIGpu = line.endsWith("1");
+                }
+            }
         }
     }
 
+    // dGPU (NVIDIA discrete) polling
     Process {
-        id: gpuUsage
-
-        command: root.gpuType === "GENERIC" ? ["sh", "-c", "cat /sys/class/drm/card*/device/gpu_busy_percent"] : root.gpuType === "NVIDIA" ? ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu", "--format=csv,noheader,nounits"] : ["echo"]
+        id: dGpuUsage
+        command: ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu", "--format=csv,noheader,nounits"]
         stdout: StdioCollector {
             onStreamFinished: {
-                if (root.gpuType === "GENERIC") {
-                    const percs = text.trim().split("\n");
-                    const sum = percs.reduce((acc, d) => acc + parseInt(d, 10), 0);
-                    root.gpuPerc = sum / percs.length / 100;
-                } else if (root.gpuType === "NVIDIA") {
-                    const [usage, temp] = text.trim().split(",");
-                    root.gpuPerc = parseInt(usage, 10) / 100;
-                    root.gpuTemp = parseInt(temp, 10);
-                } else {
-                    root.gpuPerc = 0;
-                    root.gpuTemp = 0;
+                const parts = text.trim().split(",");
+                if (parts.length >= 2) {
+                    root.dGpuPerc = parseInt(parts[0], 10) / 100;
+                    root.dGpuTemp = parseInt(parts[1], 10);
                 }
+            }
+        }
+    }
+
+    // iGPU (AMD integrated) polling
+    Process {
+        id: iGpuUsage
+        command: ["sh", "-c", "cat /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | head -1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const perc = parseInt(text.trim(), 10);
+                if (!isNaN(perc)) root.iGpuPerc = perc / 100;
             }
         }
     }
@@ -190,32 +210,31 @@ Singleton {
                 if (cpuTemp)
                     root.cpuTemp = parseFloat(cpuTemp[1]);
 
-                if (root.gpuType !== "GENERIC")
-                    return;
+                // Get iGPU temp from sensors (AMD)
+                if (root.hasIGpu) {
+                    let eligible = false;
+                    let sum = 0;
+                    let count = 0;
 
-                let eligible = false;
-                let sum = 0;
-                let count = 0;
+                    for (const line of text.trim().split("\n")) {
+                        if (line === "Adapter: PCI adapter")
+                            eligible = true;
+                        else if (line === "")
+                            eligible = false;
+                        else if (eligible) {
+                            let match = line.match(/^(temp[0-9]+|GPU core|edge)+:\s+\+([0-9]+\.[0-9]+)(°| )C/);
+                            if (!match)
+                                match = line.match(/^(junction|mem)+:\s+\+([0-9]+\.[0-9]+)(°| )C/);
 
-                for (const line of text.trim().split("\n")) {
-                    if (line === "Adapter: PCI adapter")
-                        eligible = true;
-                    else if (line === "")
-                        eligible = false;
-                    else if (eligible) {
-                        let match = line.match(/^(temp[0-9]+|GPU core|edge)+:\s+\+([0-9]+\.[0-9]+)(°| )C/);
-                        if (!match)
-                            // Fall back to junction/mem if GPU doesn't have edge temp (for AMD GPUs)
-                            match = line.match(/^(junction|mem)+:\s+\+([0-9]+\.[0-9]+)(°| )C/);
-
-                        if (match) {
-                            sum += parseFloat(match[2]);
-                            count++;
+                            if (match) {
+                                sum += parseFloat(match[2]);
+                                count++;
+                            }
                         }
                     }
-                }
 
-                root.gpuTemp = count > 0 ? sum / count : 0;
+                    root.iGpuTemp = count > 0 ? sum / count : 0;
+                }
             }
         }
     }

@@ -56,7 +56,6 @@ FocusScope {
             exitAnimation = false
             isClosing = false
             Hyprland.refreshToplevels()
-            refreshThumbs()
             // Start enter animation after a frame
             enterAnimTimer.start()
         } else {
@@ -80,24 +79,9 @@ FocusScope {
         onTriggered: root.exitAnimationDone()
     }
 
-    // Update thumbs periodically
-    Timer {
-        id: screencopyTimer
-        interval: 125
-        repeat: true
-        running: root.isActive
-        onTriggered: root.refreshThumbs()
-    }
-
-    function refreshThumbs() {
-        if (!root.isActive) return
-        for (var i = 0; i < winRepeater.count; ++i) {
-            var it = winRepeater.itemAt(i)
-            if (it && it.visible && it.refreshThumb) {
-                it.refreshThumb()
-            }
-        }
-    }
+    // NO POLLING: Using live: true mode for ScreencopyView
+    // Quickshell handles optimal refresh rate automatically
+    
 
     // Wallpaper background - covers Hyprland windows with same wallpaper
     Image {
@@ -362,11 +346,7 @@ FocusScope {
                     Hypr.dispatch("closewindow address:0x" + addr)
                 }
 
-                function refreshThumb() {
-                    if (screenCopy) {
-                        screenCopy.captureFrame()
-                    }
-                }
+
 
                 // Card visual
                 Item {
@@ -398,7 +378,7 @@ FocusScope {
                             id: screenCopy
                             anchors.fill: parent
                             captureSource: root.isActive ? thumbContainer.wHandle : null
-                            live: false
+                            live: true  // Event-driven: Quickshell handles refresh, no polling
                             paintCursor: false
                         }
 

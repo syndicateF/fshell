@@ -16,7 +16,11 @@ Item {
     anchors.right: parent.right
     implicitHeight: layout.implicitHeight
 
+    // Check if mask has valid dimensions - prevents ShaderEffect warning
+    readonly property bool maskReady: mask.width > 0 && mask.height > 0
+
     Image {
+        id: mediaArtImage
         anchors.fill: parent
         source: Players.active?.trackArtUrl ?? ""
 
@@ -25,9 +29,10 @@ Item {
         sourceSize.width: width
         sourceSize.height: height
 
-        layer.enabled: true
+        // Only enable layer when image is ready and mask is ready
+        layer.enabled: mediaArtImage.status === Image.Ready && root.maskReady
         layer.effect: OpacityMask {
-            mask: mask
+            mask: root.maskReady ? mask : null
         }
 
         opacity: status === Image.Ready ? 1 : 0
@@ -43,7 +48,7 @@ Item {
         id: mask
 
         anchors.fill: parent
-        layer.enabled: true
+        layer.enabled: root.maskReady
         visible: false
 
         gradient: Gradient {
@@ -75,7 +80,7 @@ Item {
             Layout.topMargin: Appearance.padding.large
             Layout.bottomMargin: Appearance.spacing.larger
             text: qsTr("Now playing")
-            color: Colours.palette.m3onSurfaceVariant
+            color: Colours.palette.m3peach
             font.family: Appearance.font.family.mono
             font.weight: 500
         }
@@ -84,7 +89,7 @@ Item {
             Layout.fillWidth: true
             animate: true
             text: Players.active?.trackArtist ?? qsTr("No media")
-            color: Colours.palette.m3primary
+            color: Colours.palette.m3peach
             horizontalAlignment: Text.AlignHCenter
             font.pointSize: Appearance.font.size.large
             font.family: Appearance.font.family.mono

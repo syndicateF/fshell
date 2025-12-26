@@ -19,16 +19,19 @@ Item {
     readonly property HyprlandMonitor monitor: Hypr.monitorFor(screen)
     readonly property string activeSpecial: (Config.bar.workspaces.perMonitorWorkspaces ? monitor : Hypr.focusedMonitor)?.lastIpcObject.specialWorkspace.name ?? ""
 
-    layer.enabled: true
+    // Only enable OpacityMask layer when component has valid dimensions
+    readonly property bool maskReady: width > 0 && height > 0
+    
+    layer.enabled: maskReady
     layer.effect: OpacityMask {
-        mask: mask
+        mask: maskReady ? mask : null
     }
 
     Item {
         id: mask
 
         anchors.fill: parent
-        layer.enabled: true
+        layer.enabled: root.maskReady
         visible: false
 
         Rectangle {
@@ -240,7 +243,8 @@ Item {
                             id: specialWindowIconLoader
                             required property var modelData
 
-                            property string appClass: modelData.lastIpcObject.class
+                            // Handle case where lastIpcObject or class might be undefined
+                            property string appClass: modelData?.lastIpcObject?.class ?? ""
 
                             sourceComponent: {
                                 switch (Config.bar.workspaces.windowIconStyle) {
@@ -275,11 +279,12 @@ Item {
                             Component {
                                 id: appIconComp
                                 IconImage {
+                                    id: specialAppIconImg
                                     source: Icons.getAppIcon(specialWindowIconLoader.appClass)
                                     implicitSize: Config.bar.sizes.font.materialIcon
                                     
-                                    // Optional colorization - Row's layer.enabled isolates from Colouriser
-                                    layer.enabled: Config.bar.workspaces.iconColorization > 0
+                                    // Optional colorization - only when image ready
+                                    layer.enabled: Config.bar.workspaces.iconColorization > 0 && specialAppIconImg.status === Image.Ready
                                     layer.effect: MultiEffect {
                                         colorization: Config.bar.workspaces.iconColorization
                                         colorizationColor: Colours.palette.m3onTertiary

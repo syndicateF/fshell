@@ -1,0 +1,13 @@
+[Unit]
+Description=x-fetch cache updater
+Documentation=https://github.com/your-repo/x-shell
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/x-fetch daemon
+Nice=10
+TimeoutStartSec=120
+
+# Don't clutter journal
+StandardOutput=null
+StandardError=journal

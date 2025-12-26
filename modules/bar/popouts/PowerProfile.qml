@@ -216,6 +216,7 @@ ColumnLayout {
     // Profile Section Header
     // ═══════════════════════════════════════════════════
     RowLayout {
+        visible: Power.availableProfiles && Power.availableProfiles.length > 0
         Layout.fillWidth: true
         spacing: Appearance.spacing.small
 
@@ -242,6 +243,7 @@ ColumnLayout {
     // Profile Icons Row (horizontal, icon-only)
     // ═══════════════════════════════════════════════════
     RowLayout {
+        visible: Power.availableProfiles && Power.availableProfiles.length > 0
         Layout.fillWidth: true
         spacing: Appearance.spacing.normal
         opacity: root.shimmerOpacity
@@ -264,10 +266,57 @@ ColumnLayout {
     }
 
     // ═══════════════════════════════════════════════════
-    // EPP Section Header (only when controllable)
+    // GOVERNOR FALLBACK (shown when Platform Profile NOT available)
     // ═══════════════════════════════════════════════════
     RowLayout {
-        visible: Power.eppControllable
+        visible: (!Power.availableProfiles || Power.availableProfiles.length === 0) && Power.availableGovernors.length > 0
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.small
+
+        Rectangle { Layout.fillWidth: true; height: 0.5; color: Colours.palette.m3outlineVariant }
+        
+        StyledText {
+            text: {
+                switch (Power.cpuGovernor) {
+                    case "powersave": return qsTr("Saver")
+                    case "performance": return qsTr("Performance")
+                    default: return Power.cpuGovernor
+                }
+            }
+            font.pointSize: Appearance.font.size.small
+        }
+        
+        Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
+    }
+
+    RowLayout {
+        visible: (!Power.availableProfiles || Power.availableProfiles.length === 0) && Power.availableGovernors.length > 0
+        Layout.fillWidth: true
+        spacing: Appearance.spacing.normal
+        opacity: root.shimmerOpacity
+
+        Repeater {
+            model: Power.availableGovernors
+
+            GovernorIcon {
+                required property string modelData
+                required property int index
+
+                Layout.fillWidth: true
+                governor: modelData
+                isActive: Power.cpuGovernor === modelData
+                enabled: !Power._busy && !Power.safeModeActive
+
+                onClicked: Power.setGovernor(modelData)
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // EPP Section Header (HIDDEN if EPP not available)
+    // ═══════════════════════════════════════════════════
+    RowLayout {
+        visible: Power.eppAvailable && Power.eppControllable
         Layout.fillWidth: true
         spacing: Appearance.spacing.small
 
@@ -281,10 +330,10 @@ ColumnLayout {
     }
 
     // ═══════════════════════════════════════════════════
-    // EPP Grid (2 columns)
+    // EPP Grid (HIDDEN if EPP not available)
     // ═══════════════════════════════════════════════════
     GridLayout {
-        visible: Power.eppControllable
+        visible: Power.eppAvailable && Power.eppControllable
         Layout.fillWidth: true
         columns: 2
         rowSpacing: Appearance.spacing.smaller
@@ -307,11 +356,12 @@ ColumnLayout {
         }
     }
     RowLayout {
+        visible: Power.chargeTypeWritable
         spacing: Appearance.spacing.small
 
         Rectangle { Layout.fillWidth: true; height: 1; color: Colours.palette.m3outlineVariant }
         StyledText {
-            text: qsTr("CCharge type")
+            text: qsTr("Charge type")
             font.pointSize: Appearance.font.size.small
             // color: Colours.palette.m3tertiary
         }
@@ -320,54 +370,29 @@ ColumnLayout {
     // ═══════════════════════════════════════════════════
     // Long Life Mode Card
     // ═══════════════════════════════════════════════════
-    StyledRect {
+    // ═══════════════════════════════════════════════════
+    // Charge Type Grid (Dynamic)
+    // ═══════════════════════════════════════════════════
+    GridLayout {
         visible: Power.chargeTypeWritable
         Layout.fillWidth: true
-        implicitHeight: longLifeRow.implicitHeight + Appearance.padding.normal * 2
-        radius: Appearance.rounding.small
-        color: Power.chargeType === "Long_Life"
-            ? Qt.alpha(Colours.palette.m3primary, 0.1)
-            : Colours.palette.m3surfaceContainerHigh
-        border.width: Power.chargeType === "Long_Life" ? 1 : 0
-        border.color: Qt.alpha(Colours.palette.m3primary, 0.3)
+        columns: 2
+        rowSpacing: Appearance.spacing.smaller
+        columnSpacing: Appearance.spacing.smaller
+        opacity: root.shimmerOpacity
 
-        Behavior on color { ColorAnimation { duration: 200 } }
+        Repeater {
+            model: Power.availableChargeTypes
 
-        RowLayout {
-            id: longLifeRow
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.margins: Appearance.padding.normal
-            spacing: Appearance.spacing.normal
+            ChargeTypeChip {
+                required property string modelData
+                required property int index
 
-            StyledRect {
-                implicitWidth: 28
-                implicitHeight: 28
-                radius: Appearance.rounding.small
-                color: Power.chargeType === "Long_Life"
-                    ? Colours.palette.m3tertiaryContainer
-                    : Colours.palette.m3surfaceContainerHighest
-
-                MaterialIcon {
-                    anchors.centerIn: parent
-                    text: "battery_saver"
-                    font.pointSize: Appearance.font.size.small
-                    color: Power.chargeType === "Long_Life"
-                        ? Colours.palette.m3onTertiaryContainer
-                        : Colours.palette.m3onSurfaceVariant
-                }
-            }
-
-            StyledText {
-                text: qsTr("Long Life Mode")
-                font.pointSize: Appearance.font.size.small
-            }
-
-            StyledSwitch {
-                checked: Power.chargeType === "Long_Life"
-                onClicked: Power.setChargeType(checked ? "Long_Life" : "Standard")
+                value: modelData
+                isActive: Power.chargeType === modelData
                 enabled: !Power._busy && !Power.safeModeActive
+
+                onClicked: Power.setChargeType(modelData)
             }
         }
     }
@@ -504,6 +529,128 @@ ColumnLayout {
                     ? Colours.palette.m3onSecondaryContainer 
                     : Colours.palette.m3onSurfaceVariant
             }
+        }
+    }
+    
+    // Charge Type Chip
+    component ChargeTypeChip: StyledRect {
+        id: ctChip
+
+        required property string value
+        property bool isActive: false
+
+        signal clicked()
+
+        readonly property string displayText: {
+            // Replace underscores with spaces and Capitalize
+            let s = value.replace(/_/g, " ");
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        readonly property string icon: {
+            const v = value.toLowerCase();
+            if (v.includes("standard") || v.includes("normal")) return "battery_full";
+            if (v.includes("long") || v.includes("life") || v.includes("saver") || v.includes("conservation")) return "battery_saver";
+            if (v.includes("express") || v.includes("rapid") || v.includes("fast")) return "bolt";
+            if (v.includes("trickle")) return "history_toggle_off";
+            return "battery_std";
+        }
+
+        Layout.fillWidth: true
+        implicitHeight: 36
+        radius: Appearance.rounding.small
+        color: isActive 
+            ? Colours.palette.m3tertiaryContainer 
+            : Colours.palette.m3surfaceContainerHigh
+
+        Behavior on color { ColorAnimation { duration: 150 } }
+
+        StateLayer {
+            color: ctChip.isActive 
+                ? Colours.palette.m3onTertiaryContainer 
+                : Colours.palette.m3onSurface
+            disabled: !ctChip.enabled
+
+            function onClicked(): void {
+                ctChip.clicked();
+            }
+        }
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: Appearance.spacing.smaller
+
+            MaterialIcon {
+                text: ctChip.icon
+                font.pointSize: Appearance.font.size.smaller
+                color: ctChip.isActive 
+                    ? Colours.palette.m3onTertiaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
+                fill: ctChip.isActive ? 1 : 0
+
+                Behavior on fill { NumberAnimation { duration: 150 } }
+            }
+
+            StyledText {
+                text: ctChip.displayText
+                font.pointSize: Appearance.font.size.smaller
+                color: ctChip.isActive 
+                    ? Colours.palette.m3onTertiaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
+            }
+        }
+    }
+    
+    // GovernorIcon - for fallback when Platform Profile is not available
+    component GovernorIcon: StyledRect {
+        id: govIcon
+
+        required property string governor
+        property bool isActive: false
+        property bool enabled: true
+
+        signal clicked()
+
+        readonly property string icon: {
+            switch (governor) {
+                case "powersave": return "eco"
+                case "performance": return "bolt"
+                default: return "speed"
+            }
+        }
+
+        implicitWidth: 44
+        implicitHeight: 44
+        radius: Appearance.rounding.small
+        
+        color: isActive 
+            ? Colours.palette.m3primary
+            : Colours.palette.m3surfaceContainerHigh
+
+        Behavior on color { ColorAnimation { duration: 150 } }
+
+        StateLayer {
+            color: govIcon.isActive 
+                ? Colours.palette.m3onPrimary 
+                : Colours.palette.m3onSurface
+            disabled: !govIcon.enabled
+
+            function onClicked(): void {
+                govIcon.clicked();
+            }
+        }
+
+        MaterialIcon {
+            anchors.centerIn: parent
+            text: govIcon.icon
+            font.pointSize: Appearance.font.size.larger
+            color: govIcon.isActive 
+                ? Colours.palette.m3onPrimary
+                : Colours.palette.m3onSurfaceVariant
+            fill: govIcon.isActive ? 1 : 0
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on fill { NumberAnimation { duration: 150 } }
         }
     }
 }

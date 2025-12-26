@@ -104,6 +104,8 @@ Searcher {
             root.currentScheme = `${name} ${flavour}`;
             // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-n", name, "-f", flavour]);
+            // Trigger starship reload in all fish shells
+            Quickshell.execDetached(["pkill", "-USR1", "fish"]);
         }
     }
 }

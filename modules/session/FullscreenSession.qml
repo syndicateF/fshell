@@ -34,6 +34,10 @@ FocusScope {
 
     focus: true
 
+    // Subscribe to uptime updates when session screen is visible
+    Component.onCompleted: SysInfo.uptimeRefCount++
+    Component.onDestruction: SysInfo.uptimeRefCount--
+
     readonly property var actions: [
         { icon: "logout", action: "logout" },
         { icon: "bedtime", action: "sleep" },

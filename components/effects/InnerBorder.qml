@@ -7,6 +7,8 @@ import QtQuick
 import QtQuick.Effects
 
 StyledRect {
+    id: innerBorderRoot
+    
     property alias innerRadius: maskInner.radius
     property alias thickness: maskInner.anchors.margins
     property alias leftThickness: maskInner.anchors.leftMargin
@@ -17,10 +19,13 @@ StyledRect {
     anchors.fill: parent
     color: Colours.tPalette.m3surfaceContainer
 
-    layer.enabled: true
+    // Check if mask has valid dimensions - this prevents ShaderEffect 'source' warning
+    readonly property bool maskReady: mask.width > 0 && mask.height > 0
+
+    layer.enabled: maskReady
     layer.effect: MultiEffect {
-        maskSource: mask
-        maskEnabled: true
+        maskSource: innerBorderRoot.maskReady ? mask : null
+        maskEnabled: innerBorderRoot.maskReady
         maskInverted: true
         maskThresholdMin: 0.5
         maskSpreadAtMin: 1
@@ -30,8 +35,8 @@ StyledRect {
         id: mask
 
         anchors.fill: parent
-        layer.enabled: true
-        opacity: 0  // Use opacity instead of visible to prevent ShaderEffect 'source' warning
+        layer.enabled: innerBorderRoot.maskReady
+        visible: false
 
         Rectangle {
             id: maskInner

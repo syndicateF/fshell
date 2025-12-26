@@ -16,33 +16,62 @@ StyledRect {
     color: Colours.tPalette.m3surfaceContainer
     radius: Config.border.rounding
     
+    // Determine what mode to display: platform profile or governor (fallback)
+    readonly property bool hasPlatformProfile: Power.availableProfiles.length > 0
+    readonly property string displayMode: hasPlatformProfile ? Power.platformProfile : Power.cpuGovernor
+    
     readonly property color profileColor: {
         if (Power.safeModeActive) return Colours.palette.m3error;
         if (Power._busy) return Colours.palette.m3outline;
-        switch (Power.platformProfile) {
+        // Platform profile colors
+        if (hasPlatformProfile) {
+            switch (displayMode) {
+                case "performance": return Colours.palette.m3error;
+                case "low-power": return Colours.palette.m3tertiary;
+                case "custom": return Colours.palette.m3secondary;
+                default: return Colours.palette.m3primary;
+            }
+        }
+        // Governor fallback colors
+        switch (displayMode) {
             case "performance": return Colours.palette.m3error;
-            case "low-power": return Colours.palette.m3tertiary;
-            case "custom": return Colours.palette.m3secondary;
+            case "powersave": return Colours.palette.m3tertiary;
             default: return Colours.palette.m3primary;
         }
     }
 
     readonly property string profileIcon: {
-        switch (Power.platformProfile) {
+        if (hasPlatformProfile) {
+            switch (displayMode) {
+                case "performance": return "bolt";
+                case "low-power": return "eco";
+                case "custom": return "tune";
+                default: return "speed";
+            }
+        }
+        // Governor fallback icons
+        switch (displayMode) {
             case "performance": return "bolt";
-            case "low-power": return "eco";
-            case "custom": return "tune";
+            case "powersave": return "eco";
             default: return "speed";
         }
     }
 
     readonly property string profileName: {
-        switch (Power.platformProfile) {
+        if (hasPlatformProfile) {
+            switch (displayMode) {
+                case "performance": return qsTr("Performance");
+                case "low-power": return qsTr("Low Power");
+                case "balanced": return qsTr("Balanced");
+                case "custom": return qsTr("Custom");
+                default: return displayMode;
+            }
+        }
+        // Governor fallback names
+        switch (displayMode) {
             case "performance": return qsTr("Performance");
-            case "low-power": return qsTr("Low Power");
-            case "balanced": return qsTr("Balanced");
-            case "custom": return qsTr("Custom");
-            default: return Power.platformProfile;
+            case "powersave": return qsTr("Power Save");
+            default: return displayMode;
         }
     }
 

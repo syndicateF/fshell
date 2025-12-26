@@ -23,7 +23,7 @@ ColumnLayout {
     StyledText {
         Layout.fillWidth: true
         text: Notifs.list.length > 0 ? qsTr("%1 notification%2").arg(Notifs.list.length).arg(Notifs.list.length === 1 ? "" : "s") : qsTr("Notifications")
-        color: Colours.palette.m3outline
+        color: Colours.palette.m3mauve
         font.family: Appearance.font.family.mono
         font.weight: 500
         elide: Text.ElideRight
@@ -48,12 +48,14 @@ ColumnLayout {
                 spacing: Appearance.spacing.large
 
                 Image {
+                    id: lockDinoImg
                     asynchronous: true
                     source: Qt.resolvedUrl(`${Quickshell.shellDir}/assets/dino.png`)
                     fillMode: Image.PreserveAspectFit
                     sourceSize.width: clipRect.width * 0.8
 
-                    layer.enabled: true
+                    // Only enable layer when image is ready - prevents ShaderEffect warning
+                    layer.enabled: lockDinoImg.status === Image.Ready
                     layer.effect: Colouriser {
                         colorizationColor: Colours.palette.m3outlineVariant
                         brightness: 1

@@ -1,0 +1,22 @@
+[Unit]
+Description=Run x-fetch periodically to update cache
+Documentation=https://github.com/your-repo/x-shell
+
+[Timer]
+# First run 10 seconds after boot
+OnBootSec=10s
+
+# Then every 30 minutes
+OnUnitActiveSec=30min
+
+# Run missed timers after suspend/hibernate
+Persistent=true
+
+# Spread timer activations to reduce load spikes
+RandomizedDelaySec=1min
+
+# Allow some flexibility in timing
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

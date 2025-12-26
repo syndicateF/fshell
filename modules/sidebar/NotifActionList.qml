@@ -18,17 +18,20 @@ Item {
     Layout.fillWidth: true
     implicitHeight: flickable.contentHeight
 
-    layer.enabled: true
+    // Check if mask has valid dimensions - prevents ShaderEffect 'source' warning
+    readonly property bool maskReady: gradientMask.width > 0 && gradientMask.height > 0
+
+    layer.enabled: maskReady
     layer.smooth: true
     layer.effect: OpacityMask {
-        mask: gradientMask
+        mask: root.maskReady ? gradientMask : null
     }
 
     Item {
         id: gradientMask
 
         anchors.fill: parent
-        layer.enabled: true
+        layer.enabled: root.maskReady
         visible: false
 
         Rectangle {

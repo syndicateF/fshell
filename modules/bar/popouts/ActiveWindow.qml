@@ -18,6 +18,10 @@ Item {
     implicitWidth: hasWindow ? preview.width : fetchContent.implicitWidth
     implicitHeight: hasWindow ? preview.height : fetchContent.implicitHeight
 
+    // Subscribe to uptime updates when visible
+    Component.onCompleted: SysInfo.uptimeRefCount++
+    Component.onDestruction: SysInfo.uptimeRefCount--
+
     // Caelestiafetch-style content - empty state (using SysInfo like lockscreen)
     Column {
         id: fetchContent

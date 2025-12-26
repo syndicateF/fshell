@@ -7,6 +7,7 @@ import qs.utils
 import qs.config
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Widgets
 import QtQuick
 
@@ -203,10 +204,47 @@ StyledRect {
                 totalWindows: root.workspaceWindows.length
                 activeWindowIndex: root.activeIndex
 
+                // Saved cursor position for restore after focus
+                property real savedCursorX: 0
+                property real savedCursorY: 0
+                property string pendingFocusAddr: ""
+
                 onClicked: {
                     if (!isActive) {
-                        // Focus window - cursor akan pindah (Hyprland behavior)
-                        Hypr.dispatch(`focuswindow address:${window.lastIpcObject.address}`);
+                        // Focus window WITHOUT cursor warp
+                        // 1. Save current cursor position and trigger focus
+                        pendingFocusAddr = window.lastIpcObject.address;
+                        cursorPosProcess.running = true;
+                    }
+                }
+
+                // Process to get cursor position
+                Process {
+                    id: cursorPosProcess
+                    command: ["hyprctl", "cursorpos"]
+                    stdout: StdioCollector {
+                        onStreamFinished: {
+                            // Parse "x, y" format
+                            const parts = text.trim().split(", ");
+                            if (parts.length === 2) {
+                                savedCursorX = parseFloat(parts[0]);
+                                savedCursorY = parseFloat(parts[1]);
+                            }
+                            // Now focus the window
+                            Hypr.dispatch(`focuswindow address:${pendingFocusAddr}`);
+                            // Restore cursor after short delay
+                            restoreCursorTimer.start();
+                        }
+                    }
+                }
+
+                Timer {
+                    id: restoreCursorTimer
+                    interval: 50
+                    repeat: false
+                    onTriggered: {
+                        // Move cursor back to original position
+                        Hypr.dispatch(`movecursor ${Math.round(savedCursorX)} ${Math.round(savedCursorY)}`);
                     }
                 }
             }

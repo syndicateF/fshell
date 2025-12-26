@@ -38,35 +38,25 @@ StyledRect {
 
         spacing: 0
 
-        // Dashboard icons section
+        // Performance icon
         WrappedLoader {
-            name: "dash"
+            name: "performance"
             active: true
 
             sourceComponent: MaterialIcon {
-                text: "dashboard"
+                text: "monitor_heart"
                 color: root.colour
                 font.pointSize: Config.bar.sizes.font.materialIcon
             }
         }
 
+        // Media icon
         WrappedLoader {
             name: "media"
             active: true
 
             sourceComponent: MaterialIcon {
                 text: "music_note"
-                color: root.colour
-                font.pointSize: Config.bar.sizes.font.materialIcon
-            }
-        }
-
-        WrappedLoader {
-            name: "performance"
-            active: true
-
-            sourceComponent: MaterialIcon {
-                text: "monitoring"
                 color: root.colour
                 font.pointSize: Config.bar.sizes.font.materialIcon
             }

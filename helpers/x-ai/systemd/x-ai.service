@@ -1,0 +1,14 @@
+[Unit]
+Description=x-ai AI Chatbot Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/x-ai daemon
+Environment=XDG_DATA_HOME=%h/.local/share
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

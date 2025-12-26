@@ -31,14 +31,8 @@ Item {
             height: 3
             radius: 1.5
             color: wifiIOS.connected ? wifiIOS.activeColor : wifiIOS.inactiveColor
-
-            // Breathing animation when connecting (weak signal)
-            SequentialAnimation on opacity {
-                running: wifiIOS.connected && wifiIOS.bars < 3
-                loops: Animation.Infinite
-                NumberAnimation { from: 1; to: 0.4; duration: 1200; easing.type: Easing.InOutQuad }
-                NumberAnimation { from: 0.4; to: 1; duration: 1200; easing.type: Easing.InOutQuad }
-            }
+            // REMOVED: Breathing animation that was causing 40% GPU load!
+            // Signal strength is already shown via the bars - no need for pulsing.
 
             Behavior on color {
                 ColorAnimation { duration: 300; easing.type: Easing.OutBack }

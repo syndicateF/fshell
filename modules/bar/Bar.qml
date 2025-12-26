@@ -99,7 +99,7 @@ Item {
                 popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
                 popouts.hasCurrent = true;
             } else {
-                const dashPopouts = ["dash", "media", "performance", "bluetooth"];
+                const dashPopouts = ["media", "bluetooth"];
                 if (!dashPopouts.includes(popouts.currentName)) {
                     popouts.hasCurrent = false;
                 }
@@ -127,6 +127,10 @@ Item {
             popouts.hasCurrent = true;
         } else if (id === "powerProfile" && Power.available) {
             popouts.currentName = "powerprofile";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
+        } else if (id === "clock") {
+            popouts.currentName = "calendar";
             popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
             popouts.hasCurrent = true;
         }

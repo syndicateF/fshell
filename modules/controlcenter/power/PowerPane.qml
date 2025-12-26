@@ -212,39 +212,27 @@ Item {
                         opacity: 0.5
                     }
 
-                    // Long Life Mode Toggle
-                    RowLayout {
+                    // Charge Type Selection (Dynamic)
+                    GridLayout {
                         Layout.fillWidth: true
-                        visible: Power.chargeTypeWritable
-                        spacing: Appearance.spacing.normal
+                        visible: Power.chargeTypeWritable && Power.availableChargeTypes.length > 0
+                        columns: 2
+                        rowSpacing: Appearance.spacing.smaller
+                        columnSpacing: Appearance.spacing.smaller
 
-                        MaterialIcon {
-                            text: Power.chargeType === "Long_Life" ? "battery_saver" : "battery_full"
-                            color: Power.chargeType === "Long_Life" ? Colours.palette.m3primary : Colours.palette.m3outline
-                        }
+                        Repeater {
+                            model: Power.availableChargeTypes
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
+                            ChargeTypeButton {
+                                required property string modelData
+                                required property int index
 
-                            StyledText {
-                                text: qsTr("Long Life Mode")
-                                font.weight: 500
+                                value: modelData
+                                isActive: Power.chargeType === modelData
+                                enabled: !Power._busy && !Power.safeModeActive
+
+                                onClicked: Power.setChargeType(modelData)
                             }
-
-                            StyledText {
-                                text: Power.chargeType === "Long_Life" 
-                                    ? qsTr("Enabled - Limits charge to ~80%") 
-                                    : qsTr("Disabled - Full charge capacity")
-                                color: Colours.palette.m3outline
-                                font.pointSize: Appearance.font.size.small
-                            }
-                        }
-
-                        StyledSwitch {
-                            checked: Power.chargeType === "Long_Life"
-                            onClicked: Power.setChargeType(checked ? "Long_Life" : "Standard")
-                            enabled: !Power._busy && !Power.safeModeActive
                         }
                     }
                 }
@@ -256,7 +244,7 @@ Item {
                 text: qsTr("Platform Profile")
                 font.pointSize: Appearance.font.size.larger
                 font.weight: 500
-                visible: Power.available
+                visible: Power.available && Power.availableProfiles && Power.availableProfiles.length > 0
             }
 
             StyledRect {
@@ -264,7 +252,7 @@ Item {
                 implicitHeight: profileColumn.implicitHeight + Appearance.padding.large * 2
                 radius: Appearance.rounding.normal
                 color: Colours.tPalette.m3surfaceContainer
-                visible: Power.available
+                visible: Power.available && Power.availableProfiles && Power.availableProfiles.length > 0
 
                 ColumnLayout {
                     id: profileColumn
@@ -358,13 +346,14 @@ Item {
                 }
             }
 
-            // EPP Section (dimmed if governor is performance)
+            // EPP Section - COMPLETELY HIDDEN if EPP not available (passive pstate mode)
+            // Dimmed if controllable but governor is performance
             StyledText {
                 Layout.topMargin: Appearance.spacing.large
                 text: qsTr("Energy Performance") + (!Power.eppControllable ? qsTr(" (bypassed in performance mode)") : "")
                 font.pointSize: Appearance.font.size.larger
                 font.weight: 500
-                visible: Power.available
+                visible: Power.available && Power.eppAvailable  // Hide completely if EPP not available
                 opacity: Power.eppControllable ? 1 : 0.5
             }
 
@@ -373,7 +362,7 @@ Item {
                 implicitHeight: eppColumn.implicitHeight + Appearance.padding.large * 2
                 radius: Appearance.rounding.normal
                 color: Colours.tPalette.m3surfaceContainer
-                visible: Power.available
+                visible: Power.available && Power.eppAvailable  // Hide completely if EPP not available
                 opacity: Power.eppControllable ? 1 : 0.5
 
                 ColumnLayout {
@@ -697,6 +686,69 @@ Item {
             text: value
             font.weight: 500
             color: highlight ? Colours.palette.m3primary : Colours.palette.m3onSurface
+        }
+    }
+
+    // Charge Type Button (Dynamic)
+    component ChargeTypeButton: StyledRect {
+        id: ctBtn
+
+        required property string value
+        property bool isActive: false
+
+        signal clicked()
+
+        readonly property string displayText: {
+            let s = value.replace(/_/g, " ");
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        readonly property string icon: {
+            const v = value.toLowerCase();
+            if (v.includes("standard") || v.includes("normal")) return "battery_full";
+            if (v.includes("long") || v.includes("life") || v.includes("saver") || v.includes("conservation")) return "battery_saver";
+            if (v.includes("express") || v.includes("rapid") || v.includes("fast")) return "bolt";
+            return "battery_std";
+        }
+
+        Layout.fillWidth: true
+        implicitHeight: 36
+        radius: Appearance.rounding.small
+        color: isActive 
+            ? Colours.palette.m3tertiaryContainer 
+            : Colours.palette.m3surfaceContainerHigh
+
+        StateLayer {
+            color: ctBtn.isActive 
+                ? Colours.palette.m3onTertiaryContainer 
+                : Colours.palette.m3onSurface
+            disabled: !ctBtn.enabled
+
+            function onClicked(): void {
+                ctBtn.clicked();
+            }
+        }
+
+        RowLayout {
+            anchors.centerIn: parent
+            spacing: Appearance.spacing.smaller
+
+            MaterialIcon {
+                text: ctBtn.icon
+                font.pointSize: Appearance.font.size.smaller
+                color: ctBtn.isActive 
+                    ? Colours.palette.m3onTertiaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
+                fill: ctBtn.isActive ? 1 : 0
+            }
+
+            StyledText {
+                text: ctBtn.displayText
+                font.pointSize: Appearance.font.size.smaller
+                color: ctBtn.isActive 
+                    ? Colours.palette.m3onTertiaryContainer 
+                    : Colours.palette.m3onSurfaceVariant
+            }
         }
     }
 }

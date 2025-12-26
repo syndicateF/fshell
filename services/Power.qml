@@ -13,22 +13,31 @@ Singleton {
     // PROPERTIES (read from D-Bus)
     // =====================================================
     
-    property string platformProfile: "balanced"
+    property string platformProfile: "unknown"  // Will be set by D-Bus
     property string cpuGovernor: "powersave"
     property string epp: "balance_performance"
     property bool cpuBoostEnabled: true
     property int amdGpuProfile: 0
     
-    property var availableProfiles: ["low-power", "balanced", "performance"]
-    property var availableGovernors: ["powersave", "performance"]
-    property var availableEpp: ["default", "performance", "balance_performance", "balance_power", "power"]
+    property var availableProfiles: []  // Empty until D-Bus reports actual capabilities
+    property var availableGovernors: []  // Empty until D-Bus reports
+    property var availableEpp: []  // Empty until D-Bus reports
     
     property bool safeModeActive: false
     property string lastError: ""
     property bool available: false
     property bool amdGpuAvailable: false
     property bool eppControllable: true
+    property bool eppAvailable: true  // NEW: Whether EPP feature exists
     property var availableGpuProfiles: []  // Dynamic from backend: [{id, name}, ...]
+    
+    // NEW: Capability properties from daemon V2
+    property string kernelVersion: "unknown"
+    property string amdPstateMode: "unknown"
+    property int policyCount: 0
+    property int cpuCount: 0
+    property string cpuDriver: "unknown"
+    
     
     // Battery properties
     property bool batteryAvailable: false
@@ -129,6 +138,46 @@ Singleton {
         Component.onCompleted: running = true
     }
     
+    // Watch sysfs platform_profile for external changes (FN+Q, CLI, etc.)
+    // NOTE: Only create the FileView AFTER init AND if platform profile is available
+    Loader {
+        active: root._initialized && root.availableProfiles.length > 0
+        sourceComponent: FileView {
+            id: profileWatcher
+            path: "/sys/firmware/acpi/platform_profile"
+            watchChanges: true
+            onFileChanged: {
+                // Debounce: only refresh if not already busy
+                if (!root._busy && !refreshDebounce.running) {
+                    refreshDebounce.start();
+                }
+            }
+        }
+    }
+
+    // Watch sysfs governor for external changes (FALLBACK for LTS kernel without platform_profile)
+    // Only active when platform profile is NOT available (to avoid watching both)
+    Loader {
+        active: root._initialized && root.availableProfiles.length === 0 && root.availableGovernors.length > 0
+        sourceComponent: FileView {
+            id: governorWatcher
+            path: "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
+            watchChanges: true
+            onFileChanged: {
+                if (!root._busy && !refreshDebounce.running) {
+                    refreshDebounce.start();
+                }
+            }
+        }
+    }
+
+    // Debounce timer to avoid rapid refresh spam
+    Timer {
+        id: refreshDebounce
+        interval: 100
+        onTriggered: root.refresh()
+    }
+    
     // Refresh all properties
     Process {
         id: refreshProc
@@ -139,11 +188,13 @@ Singleton {
             "SafeModeActive", "AmdGpuAvailable", "AmdGpuProfile", "EppControllable",
             "AvailableAmdGpuProfiles",
             // Battery properties
-            "BatteryAvailable", "BatteryInfo", "AvailableChargeTypes", "ChargeType", "ChargeTypeWritable"]
+            "BatteryAvailable", "BatteryInfo", "AvailableChargeTypes", "ChargeType", "ChargeTypeWritable",
+            // NEW: Capability properties
+            "EppAvailable", "KernelVersion", "AmdPstateMode", "PolicyCount", "CpuCount", "CpuDriver"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.trim().split("\n");
-                if (lines.length >= 17) {
+                if (lines.length >= 23) {
                     root.platformProfile = parseDbusString(lines[0]);
                     root.cpuGovernor = parseDbusString(lines[1]);
                     root.epp = parseDbusString(lines[2]);
@@ -162,11 +213,19 @@ Singleton {
                     root.availableChargeTypes = parseDbusStringArray(lines[14]);
                     root.chargeType = parseDbusString(lines[15]);
                     root.chargeTypeWritable = parseDbusBoolean(lines[16]);
+                    // NEW: Capability properties
+                    root.eppAvailable = parseDbusBoolean(lines[17]);
+                    root.kernelVersion = parseDbusString(lines[18]);
+                    root.amdPstateMode = parseDbusString(lines[19]);
+                    root.policyCount = parseDbusInt(lines[20]);
+                    root.cpuCount = parseDbusInt(lines[21]);
+                    root.cpuDriver = parseDbusString(lines[22]);
                 }
                 root._initialized = true;
             }
         }
     }
+
     
     // =====================================================
     // EVENT-DRIVEN REFRESH (Clean Architecture)

@@ -12,15 +12,18 @@ Item {
     required property Item bar
 
     anchors.fill: parent
+    
+    // Check if mask has valid dimensions - prevents ShaderEffect 'source' warning
+    readonly property bool maskReady: mask.width > 0 && mask.height > 0
 
     StyledRect {
         anchors.fill: parent
         color: "transparent"
 
-        layer.enabled: true
+        layer.enabled: root.maskReady
         layer.effect: MultiEffect {
-            maskSource: mask
-            maskEnabled: true
+            maskSource: root.maskReady ? mask : null
+            maskEnabled: root.maskReady
             maskInverted: true
             maskThresholdMin: 0.6
             maskSpreadAtMin: 1
@@ -31,7 +34,7 @@ Item {
         id: mask
 
         anchors.fill: parent
-        layer.enabled: true
+        layer.enabled: root.maskReady
         visible: false
 
         Rectangle {
@@ -42,3 +45,4 @@ Item {
         }
     }
 }
+
