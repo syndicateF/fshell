@@ -55,12 +55,12 @@ Variants {
             screen: scope.modelData
             name: "drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
-            // Switch to Overlay layer when spiral or fullscreen session is active (above all Hyprland windows)
-            WlrLayershell.layer: (visibilities.spiralOverview || visibilities.fullscreenSession) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            // Switch to Overlay layer when fullscreen overlay is active (above all Hyprland windows)
+            WlrLayershell.layer: (visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? WlrLayer.Overlay : WlrLayer.Top
 
-            // Disable mask when fullscreen overlay is active
-            mask: (visibilities.spiralOverview || visibilities.fullscreenSession) ? null : normalMask
+            // Disable mask when fullscreen overlay is active (keybinds needs full screen input)
+            mask: (visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? null : normalMask
 
             Region {
                 id: normalMask

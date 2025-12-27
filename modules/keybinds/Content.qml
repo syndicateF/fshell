@@ -24,6 +24,17 @@ Rectangle {
     border.width: 1
     border.color: Qt.alpha(Colours.palette.m3outline, 0.2)
 
+    // Block ALL clicks from propagating to scrim behind us
+    MouseArea {
+        id: contentBlocker
+        anchors.fill: parent
+        // Accept the click and do nothing - prevents propagation to parent scrim
+        acceptedButtons: Qt.AllButtons
+        hoverEnabled: true
+        // Don't propagate composed events to parent
+        propagateComposedEvents: false
+    }
+
     // Header
     ColumnLayout {
         anchors.fill: parent
@@ -153,17 +164,19 @@ Rectangle {
                             Item { Layout.fillWidth: true }
                         }
 
-                        // Keybinds grid
-                        Flow {
+                        // Keybinds grid - 2 columns for better readability
+                        Grid {
                             Layout.fillWidth: true
+                            columns: 2
                             spacing: Appearance.spacing.small
-
+                            
                             Repeater {
                                 model: root.categories[categorySection.modelData] ?? []
 
                                 KeybindItem {
                                     required property var modelData
                                     bind: modelData
+                                    width: (root.implicitWidth - Appearance.spacing.large * 2 - Appearance.spacing.small) / 2
                                 }
                             }
                         }

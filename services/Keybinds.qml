@@ -467,6 +467,9 @@ Singleton {
     // FETCH PROCESS
     // =====================================================
 
+    // Accumulator for stdout chunks
+    property string stdoutBuffer: ""
+
     Process {
         id: fetchProcess
         
@@ -476,8 +479,15 @@ Singleton {
             splitMarker: ""
             
             onRead: data => {
+                // Accumulate chunks, don't parse yet
+                root.stdoutBuffer += data;
+            }
+        }
+        
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0 && root.stdoutBuffer.length > 0) {
                 try {
-                    const parsed = JSON.parse(data);
+                    const parsed = JSON.parse(root.stdoutBuffer);
                     root.rawBinds = parsed;
                     root.processBinds(parsed);
                     root.isDirty = false;
@@ -490,15 +500,14 @@ Singleton {
                     root.isLoading = false;
                     root.refreshFailed(e.toString());
                 }
-            }
-        }
-        
-        onExited: (exitCode, exitStatus) => {
-            if (exitCode !== 0) {
+            } else if (exitCode !== 0) {
                 console.error("[Keybinds] hyprctl failed with code:", exitCode);
                 root.isLoading = false;
                 root.refreshFailed("hyprctl exited with code " + exitCode);
             }
+            // Clear buffer for next fetch
+            root.stdoutBuffer = "";
         }
     }
 }
+
