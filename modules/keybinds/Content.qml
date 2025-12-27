@@ -35,57 +35,115 @@ Rectangle {
         propagateComposedEvents: false
     }
 
-    // Header
+    // Search query
+    property string searchQuery: ""
+    
+    // Filtered categories based on search
+    readonly property var filteredCategories: {
+        if (searchQuery.trim() === "") {
+            return Keybinds.categories;
+        }
+        
+        const query = searchQuery.toLowerCase().trim();
+        const result = {
+            window: [],
+            workspace: [],
+            apps: [],
+            system: [],
+            media: [],
+            other: []
+        };
+        
+        // Filter each category
+        for (const cat of Object.keys(result)) {
+            const items = Keybinds.categories[cat] ?? [];
+            result[cat] = items.filter(bind => {
+                const desc = (bind.description ?? "").toLowerCase();
+                const key = (bind.key ?? "").toLowerCase();
+                const arg = (bind.arg ?? "").toLowerCase();
+                return desc.includes(query) || key.includes(query) || arg.includes(query);
+            });
+        }
+        
+        return result;
+    }
+
+    // Header with search bar
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Appearance.spacing.large
         spacing: Appearance.spacing.normal
 
-        // Title row
-        RowLayout {
+        // Search bar
+        Rectangle {
             Layout.fillWidth: true
-            spacing: Appearance.spacing.normal
+            height: 44
+            radius: Appearance.rounding.full
+            color: Colours.palette.m3surfaceContainerHighest
+            border.width: searchField.activeFocus ? 2 : 0
+            border.color: Colours.palette.m3primary
 
-            MaterialIcon {
-                text: "keyboard"
-                font.pointSize: Appearance.font.size.larger + 4
-                color: Colours.palette.m3primary
-            }
-
-            Text {
-                text: qsTr("Keyboard Shortcuts")
-                font.pointSize: Appearance.font.size.larger
-                font.weight: Font.Bold
-                font.family: Appearance.font.family.sans
-                color: Colours.palette.m3onSurface
-            }
-
-            Item { Layout.fillWidth: true }
-
-            // Close button
-            Rectangle {
-                width: 32
-                height: 32
-                radius: 16
-                color: closeHover.hovered ? Qt.alpha(Colours.palette.m3primary, 0.1) : "transparent"
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: Appearance.spacing.normal
+                anchors.rightMargin: Appearance.spacing.normal
+                spacing: Appearance.spacing.small
 
                 MaterialIcon {
-                    anchors.centerIn: parent
-                    text: "close"
+                    text: "search"
                     font.pointSize: Appearance.font.size.normal
                     color: Colours.palette.m3onSurfaceVariant
                 }
 
-                HoverHandler { id: closeHover }
-                TapHandler { onTapped: root.visibilities.keybinds = false }
-            }
-        }
+                TextInput {
+                    id: searchField
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    verticalAlignment: TextInput.AlignVCenter
+                    font.pointSize: Appearance.font.size.normal
+                    font.family: Appearance.font.family.sans
+                    color: Colours.palette.m3onSurface
+                    clip: true
+                    
+                    onTextChanged: root.searchQuery = text
+                    
+                    // Placeholder
+                    Text {
+                        anchors.fill: parent
+                        anchors.leftMargin: 0
+                        verticalAlignment: Text.AlignVCenter
+                        text: qsTr("Search shortcuts...")
+                        font: searchField.font
+                        color: Colours.palette.m3onSurfaceVariant
+                        opacity: 0.6
+                        visible: searchField.text.length === 0 && !searchField.activeFocus
+                    }
+                    
+                    // Focus on open
+                    Component.onCompleted: {
+                        Qt.callLater(() => searchField.forceActiveFocus());
+                    }
+                }
 
-        // Divider
-        Rectangle {
-            Layout.fillWidth: true
-            height: 1
-            color: Qt.alpha(Colours.palette.m3outlineVariant, 0.5)
+                // Clear button
+                Rectangle {
+                    width: 24
+                    height: 24
+                    radius: 12
+                    visible: searchField.text.length > 0
+                    color: clearHover.hovered ? Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.1) : "transparent"
+
+                    MaterialIcon {
+                        anchors.centerIn: parent
+                        text: "close"
+                        font.pointSize: Appearance.font.size.small
+                        color: Colours.palette.m3onSurfaceVariant
+                    }
+
+                    HoverHandler { id: clearHover }
+                    TapHandler { onTapped: { searchField.text = ""; searchField.forceActiveFocus(); } }
+                }
+            }
         }
 
         // Loading indicator
@@ -134,7 +192,7 @@ Rectangle {
                         
                         Layout.fillWidth: true
                         spacing: Appearance.spacing.small
-                        visible: root.categories[modelData]?.length > 0
+                        visible: root.filteredCategories[modelData]?.length > 0
 
                         // Category header
                         RowLayout {
@@ -156,7 +214,7 @@ Rectangle {
                             }
 
                             Text {
-                                text: `(${root.categories[categorySection.modelData]?.length ?? 0})`
+                                text: `(${root.filteredCategories[categorySection.modelData]?.length ?? 0})`
                                 font.pointSize: Appearance.font.size.small
                                 color: Colours.palette.m3onSurfaceVariant
                             }
@@ -171,7 +229,7 @@ Rectangle {
                             spacing: Appearance.spacing.small
                             
                             Repeater {
-                                model: root.categories[categorySection.modelData] ?? []
+                                model: root.filteredCategories[categorySection.modelData] ?? []
 
                                 KeybindItem {
                                     required property var modelData
