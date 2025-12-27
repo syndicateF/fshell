@@ -55,30 +55,10 @@ FocusScope {
         }
     }
 
-    // Main content container with its own MouseArea to BLOCK clicks
-    Rectangle {
-        id: contentContainer
+    // Main content - Content.qml has its own MouseArea to block clicks
+    Content {
+        id: content
         anchors.centerIn: parent
-        
-        implicitWidth: content.implicitWidth
-        implicitHeight: content.implicitHeight
-        
-        color: "transparent"
-        
-        // THIS is the key: MouseArea that blocks ALL clicks from reaching scrim
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.AllButtons
-            // Don't do anything, just block propagation
-            onClicked: event => event.accepted = true
-            onPressed: event => event.accepted = true
-            onReleased: event => event.accepted = true
-            onDoubleClicked: event => event.accepted = true
-        }
-        
-        Content {
-            id: content
-            visibilities: root.visibilities
-        }
+        visibilities: root.visibilities
     }
 }
