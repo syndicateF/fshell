@@ -74,6 +74,16 @@ Scope {
         }
     }
 
+    // AI Chat shortcut - DISABLED
+    // CustomShortcut {
+    //     name: "aiChat"
+    //     description: "Toggle AI chat widget"
+    //     onPressed: {
+    //         const visibilities = Visibilities.getForActive();
+    //         visibilities.aiChat = !visibilities.aiChat;
+    //     }
+    // }
+
     CustomShortcut {
         name: "launcher"
         description: "Toggle launcher"

@@ -74,7 +74,7 @@ func DefaultConfig() *Config {
 	return &Config{
 		SocketPath:        "/tmp/x-ai.sock",
 		DataDir:           dataDir,
-		IdleTimeout:       5 * time.Minute,
+		IdleTimeout:       30 * time.Minute,
 		HeartbeatInterval: 15 * time.Second,
 		OpenAI: OpenAIConfig{
 			APIKey:    os.Getenv("OPENAI_API_KEY"),

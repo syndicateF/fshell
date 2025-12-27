@@ -341,12 +341,18 @@ func (s *Server) removeClient(client *Client) {
 	log.Printf("IPC client disconnected: %s", client.id)
 }
 
-// Send queues a message to be sent to the client
+// Send queues a message to be sent to the client (safe for closed channel)
 func (c *Client) Send(msg *Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("IPC send recovered from panic for %s: %v", c.id, r)
+		}
+	}()
+
 	select {
 	case c.sendCh <- msg:
 	default:
-		log.Printf("IPC send buffer full for %s, dropping message", c.id)
+		log.Printf("IPC send buffer full or closed for %s, dropping message", c.id)
 	}
 }
 

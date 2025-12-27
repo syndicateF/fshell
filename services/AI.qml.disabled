@@ -1,0 +1,344 @@
+pragma Singleton
+import Quickshell
+import Quickshell.Io
+import QtQuick
+
+/**
+ * AI Service - Connects to x-ai daemon via persistent Unix socket.
+ * Uses Quickshell.Io Socket for proper bidirectional communication.
+ */
+Singleton {
+    id: root
+
+    // === Connection State ===
+    readonly property bool connected: socket.connected
+    readonly property bool connecting: _connecting
+    readonly property int reconnectAttempts: _reconnectAttempts
+
+    // === Loading State ===
+    readonly property bool loading: _loading
+    readonly property bool streaming: _streaming
+
+    // === Provider State ===
+    readonly property string currentProvider: _provider
+    readonly property string currentModel: _model
+
+    // === Conversation State ===
+    readonly property var conversations: _conversations
+    readonly property string activeConversationId: _activeConvId
+    readonly property var currentMessages: _messages
+    readonly property string streamingContent: _streamContent
+
+    // === Error State ===
+    readonly property bool hasError: _error !== ""
+    readonly property string errorMessage: _error
+    readonly property bool errorRetryable: _errorRetryable
+
+    // === Internal State ===
+    property bool _connecting: false
+    property int _reconnectAttempts: 0
+    property bool _loading: false
+    property bool _streaming: false
+    property string _provider: "gemini"
+    property string _model: "gemini-2.5-flash"
+    property string _activeConvId: ""
+    property string _streamContent: ""
+    property string _error: ""
+    property bool _errorRetryable: false
+    property string _buffer: ""
+
+    // Conversation list model
+    property ListModel _conversations: ListModel {}
+
+    // Message list model
+    property ListModel _messages: ListModel {}
+
+    // Pending requests
+    property var _pendingRequests: ({})
+
+    // === Public Actions ===
+
+    function sendMessage(text, attachments) {
+        if (!socket.connected || _loading || !text || !text.trim()) return
+
+        _loading = true
+        _streaming = true
+        _streamContent = ""
+        _error = ""
+
+        const payload = {
+            conversation_id: _activeConvId,
+            content: text.trim(),
+            attachments: attachments || []
+        }
+
+        _send("chat", payload)
+    }
+
+    function newConversation(title) {
+        _messages.clear()
+        _send("new_conv", { title: title || "" })
+    }
+
+    function loadConversation(id) {
+        if (id === _activeConvId) return
+
+        _loading = true
+        _messages.clear()
+        _send("load_conv", { id: id })
+    }
+
+    function deleteConversation(id) {
+        _send("delete_conv", { id: id })
+    }
+
+    function refreshConversations() {
+        _send("list_convs", {})
+    }
+
+    function setProvider(provider) {
+        _send("set_provider", { provider: provider })
+    }
+
+    function setModel(model) {
+        _send("set_model", { model: model })
+    }
+
+    function retry() {
+        _error = ""
+        _send("retry", {})
+    }
+
+    function clearError() {
+        _error = ""
+        _errorRetryable = false
+    }
+
+    function getStatus() {
+        _send("status", {})
+    }
+
+    // === Socket Connection ===
+
+    Socket {
+        id: socket
+        path: "/tmp/x-ai.sock"
+
+        onConnectedChanged: {
+            if (connected) {
+                console.log("[AI] Connected to daemon via Socket")
+                root._connecting = false
+                root._reconnectAttempts = 0
+                root._error = ""
+                // Request initial state
+                root.refreshConversations()
+                root.getStatus()
+            } else {
+                console.log("[AI] Socket disconnected")
+                root._scheduleReconnect()
+            }
+        }
+
+        // Handle incoming data - using SplitParser for line-based JSON
+        parser: SplitParser {
+            onRead: data => {
+                root._handleMessage(data)
+            }
+        }
+    }
+
+    function _send(type, payload) {
+        if (!socket.connected) {
+            console.warn("[AI] Cannot send, not connected")
+            _error = "Not connected to AI daemon"
+            return
+        }
+
+        const requestId = _generateId()
+        const msg = {
+            type: type,
+            request_id: requestId,
+            payload: payload,
+            timestamp: Date.now()
+        }
+
+        _pendingRequests[requestId] = { type: type, time: Date.now() }
+
+        // Write to socket
+        socket.write(JSON.stringify(msg) + "\n")
+        socket.flush()
+    }
+
+    function _handleMessage(data) {
+        try {
+            if (!data || !data.trim()) return
+            const msg = JSON.parse(data)
+            _processMessage(msg)
+        } catch (e) {
+            console.error("[AI] Failed to parse message:", e, data)
+        }
+    }
+
+    function _processMessage(msg) {
+        console.log("[AI] Received:", msg.type)
+
+        switch (msg.type) {
+            case "chat_chunk":
+                _handleChatChunk(msg)
+                break
+            case "chat_complete":
+                _streaming = false
+                _loading = false
+                break
+            case "error":
+                _handleError(msg)
+                break
+            case "conv_list":
+                _handleConvList(msg)
+                break
+            case "conv_data":
+                _handleConvData(msg)
+                break
+            case "status":
+                _handleStatus(msg)
+                break
+            case "ack":
+                _handleAck(msg)
+                break
+            case "heartbeat":
+                break
+            default:
+                console.warn("[AI] Unknown message type:", msg.type)
+        }
+
+        if (msg.request_id && _pendingRequests[msg.request_id]) {
+            delete _pendingRequests[msg.request_id]
+        }
+    }
+
+    function _handleChatChunk(msg) {
+        const payload = msg.payload
+
+        if (payload.content) {
+            _streamContent += payload.content
+        }
+
+        if (payload.done) {
+            _messages.append({
+                id: payload.message_id || _generateId(),
+                role: "assistant",
+                content: _streamContent,
+                created_at: Date.now()
+            })
+            _streamContent = ""
+            _streaming = false
+            _loading = false
+        }
+    }
+
+    function _handleError(msg) {
+        const payload = msg.payload
+        _error = payload.message || "Unknown error"
+        _errorRetryable = payload.retryable || false
+        _loading = false
+        _streaming = false
+        console.error("[AI] Error:", _error)
+    }
+
+    function _handleConvList(msg) {
+        _conversations.clear()
+        const convs = msg.payload || []
+        for (const conv of convs) {
+            _conversations.append({
+                id: conv.id,
+                title: conv.title,
+                provider: conv.provider,
+                model: conv.model,
+                updated_at: conv.updated_at
+            })
+        }
+    }
+
+    function _handleConvData(msg) {
+        const payload = msg.payload
+
+        if (payload.conversation) {
+            _activeConvId = payload.conversation.id
+            _provider = payload.conversation.provider
+            _model = payload.conversation.model
+        }
+
+        if (payload.messages) {
+            _messages.clear()
+            for (const m of payload.messages) {
+                _messages.append({
+                    id: m.id,
+                    role: m.role,
+                    content: m.content,
+                    created_at: m.created_at
+                })
+            }
+        }
+
+        _loading = false
+        
+        // Refresh conversation list to show new/updated conversation
+        refreshConversations()
+    }
+
+    function _handleStatus(msg) {
+        const payload = msg.payload
+        _provider = payload.provider || _provider
+        _model = payload.model || _model
+    }
+
+    function _handleAck(msg) {
+        const payload = msg.payload
+        if (payload && payload.conversation_id) {
+            _activeConvId = payload.conversation_id
+        }
+    }
+
+    function _generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+    }
+
+    function _scheduleReconnect() {
+        if (_reconnectAttempts >= 5) {
+            _error = "Failed to connect to AI daemon after 5 attempts"
+            _connecting = false
+            return
+        }
+
+        _connecting = true
+        _reconnectAttempts++
+        const delay = Math.min(1000 * Math.pow(2, _reconnectAttempts - 1), 10000)
+        console.log("[AI] Reconnecting in", delay, "ms (attempt", _reconnectAttempts, ")")
+        reconnectTimer.interval = delay
+        reconnectTimer.start()
+    }
+
+    Timer {
+        id: reconnectTimer
+        repeat: false
+        onTriggered: {
+            if (!socket.connected) {
+                socket.connected = true
+            }
+        }
+    }
+
+    // Heartbeat to keep connection alive
+    Timer {
+        id: heartbeatTimer
+        interval: 30000
+        repeat: true
+        running: socket.connected
+        onTriggered: root.getStatus()
+    }
+
+    Component.onCompleted: {
+        console.log("[AI] Service initialized, connecting...")
+        socket.connected = true
+    }
+}

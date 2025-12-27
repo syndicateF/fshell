@@ -177,7 +177,7 @@ Variants {
                 property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
-                property bool aiChat: false  // AI Chat widget
+                // property bool aiChat: false  // AI Chat widget - DISABLED
 
                 // Timer untuk reset overviewClickPending setelah cursor warp selesai
                 property Timer _overviewClickTimer: Timer {
@@ -318,38 +318,8 @@ Variants {
                 }
             }
 
-            // AI Chat Widget - Floating chat overlay
-            Loader {
-                id: aiChatLoader
-                anchors.top: parent.top
-                anchors.right: parent.right
-                anchors.topMargin: 50
-                anchors.rightMargin: 20
-                active: visibilities.aiChat
-                
-                sourceComponent: AIChatWidgetComponent {}
-            }
+            // AI Chat Widget - REMOVED (run helpers/x-ai/uninstall.sh --restore to re-enable)
 
-            Component {
-                id: AIChatWidgetComponent
-                
-                Rectangle {
-                    id: aiWidget
-                    width: 450
-                    height: 600
-                    radius: 16
-                    color: "#1e1e2e"
-                    border.color: "#45475a"
-                    border.width: 1
-
-                    // Use the chat module
-                    Loader {
-                        anchors.fill: parent
-                        source: "../chat/AITestWidget.qml"
-                        onLoaded: item.visible = true
-                    }
-                }
-            }
         }
     }
 }
