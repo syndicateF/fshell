@@ -74,6 +74,17 @@ Scope {
         }
     }
 
+    CustomShortcut {
+        name: "keybinds"
+        description: "Toggle keybinds cheatsheet overlay"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            visibilities.keybinds = !visibilities.keybinds;
+        }
+    }
+
     // AI Chat shortcut - DISABLED
     // CustomShortcut {
     //     name: "aiChat"

@@ -7,6 +7,7 @@ import qs.config
 import qs.modules.bar as Bar
 import qs.modules.overview as Overview
 import qs.modules.session as Session
+import qs.modules.keybinds as KeybindsModule
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -96,7 +97,7 @@ Variants {
             HyprlandFocusGrab {
                 id: focusGrab
 
-                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
+                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
                 windows: [win]
                 onCleared: {
                     visibilities.launcher = false;
@@ -106,6 +107,7 @@ Variants {
                     visibilities.overview = false;
                     visibilities.spiralOverview = false;
                     visibilities.fullscreenSession = false;
+                    visibilities.keybinds = false;
                     panels.popouts.hasCurrent = false;
                     bar.closeTray();
                 }
@@ -177,6 +179,7 @@ Variants {
                 property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
+                property bool keybinds: false
                 // property bool aiChat: false  // AI Chat widget - DISABLED
 
                 // Timer untuk reset overviewClickPending setelah cursor warp selesai
@@ -315,6 +318,19 @@ Variants {
                             visibilities.fullscreenSession = false
                         }
                     }
+                }
+            }
+
+            // Keybinds Cheatsheet Overlay
+            Loader {
+                id: keybindsOverlayLoader
+                anchors.fill: parent
+                active: visibilities.keybinds
+                visible: active
+                
+                sourceComponent: KeybindsModule.Wrapper {
+                    screen: scope.modelData
+                    visibilities: visibilities
                 }
             }
 
