@@ -321,16 +321,45 @@ Variants {
                 }
             }
 
-            // Keybinds Cheatsheet Overlay
-            Loader {
-                id: keybindsOverlayLoader
+            // Keybinds Cheatsheet Overlay - Uses container pattern for close animation
+            Item {
+                id: keybindsContainer
                 anchors.fill: parent
-                active: visibilities.keybinds
-                visible: active
                 
-                sourceComponent: KeybindsModule.Wrapper {
-                    screen: scope.modelData
-                    visibilities: visibilities
+                property bool shouldShow: visibilities.keybinds
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+                
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        if (!isLoaded) {
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        if (isLoaded && !isAnimatingOut && keybindsOverlayLoader.item) {
+                            isAnimatingOut = true
+                            keybindsOverlayLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+                
+                Loader {
+                    id: keybindsOverlayLoader
+                    anchors.fill: parent
+                    active: keybindsContainer.isLoaded
+                    visible: active
+                    
+                    sourceComponent: KeybindsModule.Wrapper {
+                        visibilities: visibilities
+                        
+                        onExitAnimationDone: {
+                            keybindsContainer.isLoaded = false
+                            keybindsContainer.isAnimatingOut = false
+                        }
+                    }
                 }
             }
 

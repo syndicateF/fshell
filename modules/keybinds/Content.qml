@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import qs.components
+import qs.components.controls
 import qs.services
 import qs.config
 import Quickshell
@@ -16,13 +17,11 @@ Rectangle {
     readonly property var categories: Keybinds.categories
     readonly property bool isLoading: Keybinds.isLoading
 
-    implicitWidth: Math.min(900, Screen.width * 0.8)
+    implicitWidth: Math.min(1200, Screen.width * 0.85)
     implicitHeight: Math.min(700, Screen.height * 0.8)
     
-    radius: Appearance.rounding.large
-    color: Colours.palette.m3surfaceContainer
-    border.width: 1
-    border.color: Qt.alpha(Colours.palette.m3outline, 0.2)
+    radius: 8
+    color: Colours.palette.m3surface
 
     // Block ALL clicks from propagating to scrim behind us
     MouseArea {
@@ -74,78 +73,74 @@ Rectangle {
         anchors.margins: Appearance.spacing.large
         spacing: Appearance.spacing.normal
 
-        // Search bar
-        Rectangle {
+        // Search bar - matches launcher style
+        StyledRect {
             Layout.fillWidth: true
-            height: 44
+            color: Colours.tPalette.m3surfaceContainer
             radius: Appearance.rounding.full
-            color: Colours.palette.m3surfaceContainerHighest
-            border.width: searchField.activeFocus ? 2 : 0
-            border.color: Colours.palette.m3primary
+            implicitHeight: Math.max(searchIcon.implicitHeight, searchField.implicitHeight, clearIcon.implicitHeight)
 
-            RowLayout {
-                anchors.fill: parent
+            MaterialIcon {
+                id: searchIcon
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
                 anchors.leftMargin: Appearance.spacing.normal
-                anchors.rightMargin: Appearance.spacing.normal
-                spacing: Appearance.spacing.small
+                text: "search"
+                font.pointSize: Appearance.font.size.normal
+                color: Colours.palette.m3onSurfaceVariant
+            }
 
-                MaterialIcon {
-                    text: "search"
-                    font.pointSize: Appearance.font.size.normal
-                    color: Colours.palette.m3onSurfaceVariant
-                }
-
-                TextInput {
-                    id: searchField
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    verticalAlignment: TextInput.AlignVCenter
-                    font.pointSize: Appearance.font.size.normal
-                    font.family: Appearance.font.family.sans
-                    color: Colours.palette.m3onSurface
-                    clip: true
-                    
-                    onTextChanged: root.searchQuery = text
-                    
-                    // Placeholder
-                    Text {
-                        anchors.fill: parent
-                        anchors.leftMargin: 0
-                        verticalAlignment: Text.AlignVCenter
-                        text: qsTr("Search shortcuts...")
-                        font: searchField.font
-                        color: Colours.palette.m3onSurfaceVariant
-                        opacity: 0.6
-                        visible: searchField.text.length === 0 && !searchField.activeFocus
-                    }
-                    
-                    // Focus on open
-                    Component.onCompleted: {
-                        Qt.callLater(() => searchField.forceActiveFocus());
-                    }
-                }
-
-                // Clear button
-                Rectangle {
-                    width: 24
-                    height: 24
-                    radius: 12
-                    visible: searchField.text.length > 0
-                    color: clearHover.hovered ? Qt.alpha(Colours.palette.m3onSurfaceVariant, 0.1) : "transparent"
-
-                    MaterialIcon {
-                        anchors.centerIn: parent
-                        text: "close"
-                        font.pointSize: Appearance.font.size.small
-                        color: Colours.palette.m3onSurfaceVariant
-                    }
-
-                    HoverHandler { id: clearHover }
-                    TapHandler { onTapped: { searchField.text = ""; searchField.forceActiveFocus(); } }
+            StyledTextField {
+                id: searchField
+                anchors.left: searchIcon.right
+                anchors.right: clearIcon.left
+                anchors.leftMargin: Appearance.spacing.small
+                anchors.rightMargin: Appearance.spacing.small
+                topPadding: Appearance.padding.normal
+                bottomPadding: Appearance.padding.normal
+                placeholderText: qsTr("Search shortcuts...")
+                
+                // Debounce search input to prevent lag during rapid typing
+                onTextChanged: searchDebounce.restart()
+                
+                Component.onCompleted: {
+                    Qt.callLater(() => searchField.forceActiveFocus());
                 }
             }
-        }
+            
+            // Debounce timer for search (100ms delay) - no animation
+            Timer {
+                id: searchDebounce
+                interval: 100
+                onTriggered: root.searchQuery = searchField.text
+            }
 
+            MaterialIcon {
+                id: clearIcon
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: Appearance.spacing.normal
+                width: searchField.text ? implicitWidth : 0
+                opacity: searchField.text ? (clearMouse.pressed ? 0.7 : (clearMouse.containsMouse ? 0.8 : 1)) : 0
+                text: "close"
+                font.pointSize: Appearance.font.size.normal
+                color: Colours.palette.m3onSurfaceVariant
+
+                MouseArea {
+                    id: clearMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: searchField.text ? Qt.PointingHandCursor : undefined
+                    onClicked: {
+                        searchField.text = "";
+                        searchField.forceActiveFocus();
+                    }
+                }
+
+                Behavior on width { Anim { duration: Appearance.anim.durations.small } }
+                Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
+            }
+        }
         // Loading indicator
         Item {
             Layout.fillWidth: true
@@ -186,55 +181,89 @@ Rectangle {
                 Repeater {
                     model: ["workspace", "window", "apps", "media", "system", "other"]
 
-                    ColumnLayout {
-                        id: categorySection
+                    // Category section (simple, no accent colors or borders)
+                    Item {
+                        id: categoryCard
                         required property string modelData
+                        required property int index
                         
                         Layout.fillWidth: true
-                        spacing: Appearance.spacing.small
                         visible: root.filteredCategories[modelData]?.length > 0
-
-                        // Category header
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: Appearance.spacing.small
-
-                            MaterialIcon {
-                                text: Keybinds.getCategoryIcon(categorySection.modelData)
-                                font.pointSize: Appearance.font.size.normal
-                                color: Colours.palette.m3primary
+                        
+                        // Card dimensions
+                        implicitHeight: categoryContent.implicitHeight + Appearance.spacing.small * 2
+                        
+                        // Staggered fade-in animation
+                        opacity: 0
+                        Component.onCompleted: fadeIn.start()
+                        
+                        SequentialAnimation {
+                            id: fadeIn
+                            PauseAnimation { duration: categoryCard.index * 50 }
+                            NumberAnimation {
+                                target: categoryCard
+                                property: "opacity"
+                                from: 0
+                                to: 1
+                                duration: 200
+                                easing.type: Easing.OutCubic
                             }
-
-                            Text {
-                                text: Keybinds.getCategoryName(categorySection.modelData)
-                                font.pointSize: Appearance.font.size.normal
-                                font.weight: Font.DemiBold
-                                font.family: Appearance.font.family.sans
-                                color: Colours.palette.m3primary
-                            }
-
-                            Text {
-                                text: `(${root.filteredCategories[categorySection.modelData]?.length ?? 0})`
-                                font.pointSize: Appearance.font.size.small
-                                color: Colours.palette.m3onSurfaceVariant
-                            }
-
-                            Item { Layout.fillWidth: true }
                         }
 
-                        // Keybinds grid - 2 columns for better readability
-                        Grid {
-                            Layout.fillWidth: true
-                            columns: 2
+                        ColumnLayout {
+                            id: categoryContent
+                            anchors.fill: parent
+                            anchors.margins: Appearance.spacing.small
                             spacing: Appearance.spacing.small
-                            
-                            Repeater {
-                                model: root.filteredCategories[categorySection.modelData] ?? []
 
-                                KeybindItem {
-                                    required property var modelData
-                                    bind: modelData
-                                    width: (root.implicitWidth - Appearance.spacing.large * 2 - Appearance.spacing.small) / 2
+                            // Category header
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: Appearance.spacing.small
+
+                                MaterialIcon {
+                                    text: Keybinds.getCategoryIcon(categoryCard.modelData)
+                                    font.pointSize: Appearance.font.size.normal
+                                    color: Colours.palette.m3onSurfaceVariant
+                                }
+
+                                Text {
+                                    text: Keybinds.getCategoryName(categoryCard.modelData)
+                                    font.pointSize: Appearance.font.size.normal
+                                    font.weight: Font.DemiBold
+                                    font.family: Appearance.font.family.sans
+                                    color: Colours.palette.m3onSurface
+                                }
+
+                                Text {
+                                    text: `(${root.filteredCategories[categoryCard.modelData]?.length ?? 0})`
+                                    font.pointSize: Appearance.font.size.small
+                                    color: Colours.palette.m3onSurfaceVariant
+                                }
+
+                                Item { Layout.fillWidth: true }
+                            }
+
+                            // Fixed 6 column grid - items fill available width
+                            Grid {
+                                id: keybindGrid
+                                Layout.fillWidth: true
+                                columns: 6
+                                spacing: Appearance.spacing.small
+                                
+                                // Dynamic item width: (parent width - total spacing) / columns
+                                readonly property real itemWidth: (width - (spacing * (columns - 1))) / columns
+                                
+                                Repeater {
+                                    model: root.filteredCategories[categoryCard.modelData] ?? []
+
+                                    KeybindItem {
+                                        required property var modelData
+                                        required property int index
+                                        bind: modelData
+                                        width: keybindGrid.itemWidth
+                                        animationDelay: index * 10
+                                    }
                                 }
                             }
                         }

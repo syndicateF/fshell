@@ -13,14 +13,10 @@ Item {
     required property FileSystemEntry modelData
     required property PersistentProperties visibilities
 
-    scale: 0.5
-    opacity: 0
+    // Direct bindings - no animation, instant based on PathView state
+    scale: PathView.isCurrentItem ? 1 : PathView.onPath ? 0.8 : 0
+    opacity: PathView.onPath ? 1 : 0
     z: PathView.z ?? 0
-
-    Component.onCompleted: {
-        scale = Qt.binding(() => PathView.isCurrentItem ? 1 : PathView.onPath ? 0.8 : 0);
-        opacity = Qt.binding(() => PathView.onPath ? 1 : 0);
-    }
 
     implicitWidth: image.width + Appearance.padding.larger * 2
     implicitHeight: image.height + label.height + Appearance.spacing.small / 2 + Appearance.padding.large + Appearance.padding.normal
@@ -87,10 +83,12 @@ Item {
         font.pointSize: Appearance.font.size.normal
     }
 
+    // Scale animation for smooth preview scrolling
     Behavior on scale {
         Anim {}
     }
 
+    // Opacity animation for smooth preview scrolling
     Behavior on opacity {
         Anim {}
     }

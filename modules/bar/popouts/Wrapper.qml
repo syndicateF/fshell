@@ -44,6 +44,9 @@ Item {
 
     property int animLength: Appearance.anim.durations.normal
     property list<real> animCurve: Appearance.anim.curves.emphasized
+    
+    // Height animation enabled only during open/close, not content changes
+    property bool heightAnimEnabled: false
 
     function detach(mode: string): void {
         animLength = Appearance.anim.durations.large;
@@ -78,7 +81,8 @@ Item {
     }
 
     function close(): void {
-        // SATU LOGIC UNTUK SEMUA!
+        // Enable height animation for close transition
+        heightAnimEnabled = true;
         animCurve = Appearance.anim.curves.emphasizedAccel;
         animLength = Appearance.anim.durations.large;
         hasCurrent = false;
@@ -86,6 +90,29 @@ Item {
         loadingWsName = "";
         loadingAppInfo = {};
         animCurve = Appearance.anim.curves.emphasized;
+    }
+    
+    // Disable height animation after open transition completes
+    // Content handles its own height changes (e.g., calendar expand/collapse)
+    onHasCurrentChanged: {
+        if (hasCurrent) {
+            heightAnimEnabled = true;  // Enable for open
+            heightAnimDisableTimer.restart();
+        }
+    }
+    
+    // Re-enable height animation when switching between popouts
+    onCurrentNameChanged: {
+        if (hasCurrent && currentName.length > 0) {
+            heightAnimEnabled = true;  // Enable for popout switch
+            heightAnimDisableTimer.restart();
+        }
+    }
+    
+    Timer {
+        id: heightAnimDisableTimer
+        interval: animLength + 50  // Wait for open animation to finish
+        onTriggered: heightAnimEnabled = false
     }
 
     Timer {
@@ -184,8 +211,10 @@ Item {
         enabled: root.implicitWidth > 0
 
         Anim {
-            duration: root.animLength
-            easing.bezierCurve: root.animCurve
+            // 350ms matches CalendarPopout rootWrapper Behavior for content height changes
+            // animLength for open/close transitions
+            duration: root.heightAnimEnabled ? root.animLength : 350
+            easing.bezierCurve: root.heightAnimEnabled ? root.animCurve : Appearance.anim.curves.emphasized
         }
     }
 
@@ -197,7 +226,8 @@ Item {
     }
 
     Behavior on implicitHeight {
-        enabled: root.implicitWidth > 0
+        // Only animate during open/close, not during content changes
+        enabled: root.implicitWidth > 0 && root.heightAnimEnabled
 
         Anim {
             duration: root.animLength

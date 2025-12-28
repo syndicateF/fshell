@@ -131,15 +131,4 @@ Item {
             }
         }
     }
-
-    // Hint text
-    StyledText {
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.rightMargin: Appearance.padding.small
-        text: "Shift+</>"
-        font.pointSize: Appearance.font.size.smaller
-        color: Colours.palette.m3outline
-        opacity: 0.5
-    }
 }

@@ -36,6 +36,38 @@ Singleton {
     
     // Last refresh timestamp
     property real lastRefresh: 0
+    
+    // =====================================================
+    // DESCRIPTION CONFIG (loaded from JSON)
+    // =====================================================
+    
+    // External config for keybind descriptions
+    property var descConfig: ({})
+    property bool configLoaded: false
+    
+    // Load config file
+    FileView {
+        id: configFile
+        path: Qt.resolvedUrl("../data/keybind-descriptions.json")
+        
+        onLoaded: {
+            try {
+                root.descConfig = JSON.parse(text());
+                root.configLoaded = true;
+                console.log("[Keybinds] Loaded description config");
+            } catch (e) {
+                console.error("[Keybinds] Failed to parse config:", e);
+            }
+        }
+        
+        onLoadFailed: err => {
+            console.warn("[Keybinds] Failed to load config:", err);
+        }
+    }
+    
+    Component.onCompleted: {
+        configFile.reload();
+    }
 
     // =====================================================
     // SIGNALS
@@ -85,99 +117,161 @@ Singleton {
         const dispatcher = bind.dispatcher;
         const arg = bind.arg ?? "";
         
-        // Dispatcher-based inference
-        switch (dispatcher) {
-            // Workspace management
-            case "workspace":
-                return qsTr("Go to workspace %1").arg(arg);
-            case "movetoworkspace":
-                return qsTr("Move window to workspace %1").arg(arg);
-            case "movetoworkspacesilent":
-                return qsTr("Move window silently to workspace %1").arg(arg);
-            case "togglespecialworkspace":
-                return qsTr("Toggle special workspace %1").arg(arg || "scratchpad");
+        // Try JSON config lookup first
+        if (configLoaded && descConfig.dispatchers) {
+            const result = lookupDispatcher(dispatcher, arg);
+            if (result) return result;
+        }
+        
+        // Fallback to hardcoded logic when config not loaded
+        return fallbackInferDescription(dispatcher, arg);
+    }
+    
+    // Dynamic dispatcher lookup from JSON config
+    function lookupDispatcher(dispatcher: string, arg: string): string {
+        const dispatchers = descConfig.dispatchers;
+        const transforms = descConfig.transforms || {};
+        
+        if (!dispatchers || !dispatchers[dispatcher]) return "";
+        
+        const config = dispatchers[dispatcher];
+        
+        // Handle function references
+        if (typeof config === "string" && config.startsWith("__function:")) {
+            const funcName = config.replace("__function:", "");
+            if (funcName === "inferFromExec") return inferFromExec(arg);
+            if (funcName === "inferGlobalShortcut") return inferGlobalShortcut(arg);
+            return "";
+        }
+        
+        // Simple string value
+        if (typeof config === "string") {
+            return applyTemplate(config, arg, transforms);
+        }
+        
+        // Object with arg overrides
+        if (typeof config === "object") {
+            // Check exact arg match first
+            if (config[arg]) {
+                return applyTemplate(config[arg], arg, transforms);
+            }
             
-            // Window management
+            // Check startsWith patterns
+            for (const key of Object.keys(config)) {
+                if (key.startsWith("__startsWith:")) {
+                    const prefix = key.replace("__startsWith:", "");
+                    if (arg.startsWith(prefix)) {
+                        return applyTemplate(config[key], arg, transforms);
+                    }
+                }
+            }
+            
+            // Use __default
+            if (config.__default) {
+                return applyTemplate(config.__default, arg, transforms);
+            }
+        }
+        
+        return "";
+    }
+    
+    // Apply template substitutions like {arg} and {arg:direction}
+    function applyTemplate(template: string, arg: string, transforms: var): string {
+        if (!template) return "";
+        
+        let result = template;
+        
+        // Replace {arg:transform|default} patterns (with optional default)
+        const transformWithDefaultPattern = /\{arg:(\w+)\|([^}]+)\}/g;
+        let match;
+        while ((match = transformWithDefaultPattern.exec(template)) !== null) {
+            const transformName = match[1];
+            const defaultVal = match[2];
+            const transformMap = transforms[transformName] || {};
+            const transformed = transformMap[arg] || arg || defaultVal;
+            result = result.replace(match[0], transformed);
+        }
+        
+        // Replace {arg:transform} patterns (without default)
+        const transformPattern = /\{arg:(\w+)\}/g;
+        while ((match = transformPattern.exec(result)) !== null) {
+            const transformName = match[1];
+            const transformMap = transforms[transformName] || {};
+            const transformed = transformMap[arg] || arg;
+            result = result.replace(match[0], transformed);
+        }
+        
+        // Replace {arg|default}
+        result = result.replace(/\{arg\|([^}]+)\}/g, arg || "$1");
+        // Replace {arg}
+        result = result.replace(/\{arg\}/g, arg);
+        
+        return result;
+    }
+    
+    // Minimal hardcoded fallback for when config not loaded
+    function fallbackInferDescription(dispatcher: string, arg: string): string {
+        const directionMap = { l: "left", r: "right", u: "up", d: "down" };
+        const toDirection = (d) => directionMap[d] ?? d;
+        
+        switch (dispatcher) {
+            case "workspace":
+                if (arg === "+1") return qsTr("Next workspace");
+                if (arg === "-1") return qsTr("Previous workspace");
+                return qsTr("Go to workspace %1").arg(arg);
             case "killactive":
                 return qsTr("Close active window");
             case "fullscreen":
-                if (arg === "1") return qsTr("Toggle maximize");
-                if (arg === "2") return qsTr("Toggle fake fullscreen");
                 return qsTr("Toggle fullscreen");
             case "togglefloating":
                 return qsTr("Toggle floating");
-            case "pseudo":
-                return qsTr("Toggle pseudo-tiling");
-            case "pin":
-                return qsTr("Pin window");
-            case "centerwindow":
-                return qsTr("Center window");
-            case "focuswindow":
-                return qsTr("Focus window: %1").arg(arg);
-            
-            // Focus & movement
             case "movefocus":
-                return qsTr("Move focus %1").arg(arg);
+                return qsTr("Move focus %1").arg(toDirection(arg));
             case "movewindow":
-                return qsTr("Move window %1").arg(arg);
-            case "swapwindow":
-                return qsTr("Swap window %1").arg(arg);
-            case "resizeactive":
-                return qsTr("Resize window: %1").arg(arg);
-            case "cyclenext":
-                return qsTr("Cycle to next window");
-            case "focuscurrentorlast":
-                return qsTr("Focus current or last window");
-            
-            // Layout
-            case "layoutmsg":
-                return qsTr("Layout: %1").arg(arg);
-            case "togglesplit":
-                return qsTr("Toggle split direction");
-            case "splitratio":
-                return qsTr("Adjust split ratio: %1").arg(arg);
-            
-            // Groups
-            case "togglegroup":
-                return qsTr("Toggle window group");
-            case "changegroupactive":
-                return qsTr("Change active in group: %1").arg(arg || "next");
-            case "moveoutofgroup":
-                return qsTr("Move window out of group");
-            case "moveintogroup":
-                return qsTr("Move window into group: %1").arg(arg);
-            
-            // Monitors
-            case "focusmonitor":
-                return qsTr("Focus monitor: %1").arg(arg);
-            case "movecurrentworkspacetomonitor":
-                return qsTr("Move workspace to monitor: %1").arg(arg);
-            case "movewindowtomonitor":
-                return qsTr("Move window to monitor: %1").arg(arg);
-            
-            // System
-            case "exit":
-                return qsTr("Exit Hyprland");
-            case "forcerendererreload":
-                return qsTr("Force renderer reload");
-            case "dpms":
-                return qsTr("Toggle DPMS: %1").arg(arg || "toggle");
-            
-            // Misc
+                return qsTr("Move window %1").arg(toDirection(arg));
             case "exec":
-                return inferFromExec(arg);
             case "execr":
                 return inferFromExec(arg);
-            case "pass":
-                return qsTr("Pass to: %1").arg(arg);
-            case "submap":
-                return qsTr("Enter submap: %1").arg(arg || "reset");
-            
+            case "global":
+                return inferGlobalShortcut(arg);
             default:
-                // Fallback: Show dispatcher and arg
                 if (arg) return `${dispatcher}: ${arg}`;
                 return dispatcher;
         }
+    }
+
+    function inferGlobalShortcut(shortcutName: string): string {
+        if (!shortcutName) return qsTr("Global shortcut");
+        
+        // First try JSON config lookup (full name like "caelestia:launcher")
+        if (configLoaded && descConfig.globalShortcuts) {
+            const configDesc = descConfig.globalShortcuts[shortcutName];
+            if (configDesc) return configDesc;
+        }
+        
+        // caelestia: prefixed shortcuts - fallback to hardcoded map
+        if (shortcutName.startsWith("caelestia:")) {
+            const action = shortcutName.replace("caelestia:", "");
+            
+            // Try config lookup for just the action part
+            if (configLoaded && descConfig.globalShortcuts) {
+                const configDesc = descConfig.globalShortcuts["caelestia:" + action];
+                if (configDesc) return configDesc;
+            }
+            
+            // Hardcoded fallback (kept for when config not loaded)
+            const fallbackMap = {
+                "screenshotFreeze": qsTr("Screenshot region"),
+                "screenshot": qsTr("Screenshot"),
+                "launcher": qsTr("Open launcher"),
+                "overview": qsTr("Workspace overview"),
+                "keybinds": qsTr("Keybinds overlay"),
+                "lock": qsTr("Lock screen")
+            };
+            return fallbackMap[action] ?? qsTr("Shortcut: %1").arg(action);
+        }
+        
+        return qsTr("Global: %1").arg(shortcutName);
     }
 
     function inferFromExec(cmd: string): string {
@@ -187,70 +281,128 @@ Singleton {
         const parts = cmd.split(/\s+/);
         const baseCmd = parts[0].split("/").pop(); // Get filename from path
         
-        // Common command mappings
-        const cmdMap = {
-            // Terminals
+        // Handle caelestia specially - parse full command
+        if (baseCmd === "caelestia") {
+            return inferCaelestiaCmd(cmd);
+        }
+        
+        // pkill + caelestia compound commands
+        if (cmd.includes("pkill") && cmd.includes("caelestia")) {
+            return inferCaelestiaCmd(cmd);
+        }
+        
+        // Check for caelestia in qs command
+        if (baseCmd === "qs" && cmd.includes("caelestia")) {
+            return inferCaelestiaCmd(cmd);
+        }
+        
+        // Try JSON config execPatterns for commands like wpctl, systemctl
+        if (configLoaded && descConfig.execPatterns && descConfig.execPatterns[baseCmd]) {
+            const result = lookupExecPattern(baseCmd, cmd);
+            if (result) return result;
+        }
+        
+        // Try JSON config lookup for simple commands
+        if (configLoaded && descConfig.execCommands) {
+            const configDesc = descConfig.execCommands[baseCmd];
+            if (configDesc) return configDesc;
+        }
+        
+        // Minimal hardcoded fallback
+        const fallbackMap = {
             "kitty": qsTr("Open terminal"),
-            "alacritty": qsTr("Open terminal"),
-            "foot": qsTr("Open terminal"),
-            "wezterm": qsTr("Open terminal"),
-            
-            // Browsers
             "firefox": qsTr("Open Firefox"),
-            "chromium": qsTr("Open Chromium"),
-            "brave": qsTr("Open Brave"),
-            "zen-browser": qsTr("Open Zen Browser"),
-            
-            // File managers
             "nautilus": qsTr("Open file manager"),
-            "thunar": qsTr("Open file manager"),
-            "dolphin": qsTr("Open file manager"),
-            "nemo": qsTr("Open file manager"),
-            
-            // Launchers
-            "rofi": qsTr("Open launcher"),
-            "wofi": qsTr("Open launcher"),
-            "fuzzel": qsTr("Open launcher"),
-            
-            // Screenshot
-            "grim": qsTr("Take screenshot"),
-            "grimblast": qsTr("Take screenshot"),
-            "flameshot": qsTr("Screenshot tool"),
-            
-            // Clipboard
-            "wl-copy": qsTr("Copy to clipboard"),
-            "wl-paste": qsTr("Paste from clipboard"),
-            "cliphist": qsTr("Clipboard history"),
-            
-            // Audio
-            "wpctl": qsTr("Audio control"),
-            "pactl": qsTr("Audio control"),
-            "playerctl": qsTr("Media control"),
-            
-            // Brightness
-            "brightnessctl": qsTr("Brightness control"),
-            "light": qsTr("Brightness control"),
-            
-            // Lock/Power
-            "loginctl": qsTr("Session control"),
-            "systemctl": qsTr("System control"),
             "hyprlock": qsTr("Lock screen"),
-            "swaylock": qsTr("Lock screen"),
-            
-            // Quickshell/Caelestia
             "qs": qsTr("Quickshell command"),
-            "caelestia": inferCaelestiaCmd(cmd)
+            "sleep": qsTr("Delay command")
         };
         
-        return cmdMap[baseCmd] ?? qsTr("Run: %1").arg(baseCmd);
+        // wsaction.fish script (workspace actions) - requires runtime parsing
+        if (cmd.includes("wsaction.fish")) {
+            const wsMatch = cmd.match(/wsaction\.fish\s+(?:-g\s+)?(\w+)\s+(\d+)/);
+            if (wsMatch) {
+                const action = wsMatch[1];
+                const num = wsMatch[2];
+                if (action === "workspace") {
+                    if (cmd.includes("-g")) {
+                        return qsTr("Move to workspace %1").arg(num);
+                    }
+                    return qsTr("Go to workspace %1").arg(num);
+                } else if (action === "movetoworkspace") {
+                    return qsTr("Move window to workspace %1").arg(num);
+                }
+            }
+            return qsTr("Workspace action");
+        }
+        
+        // app2unit/systemd-run patterns (for sandboxed apps)
+        if (baseCmd === "app2unit" || cmd.includes("app2unit")) {
+            // Extract the actual app being launched
+            const appMatch = cmd.match(/--\s+(\S+)/);
+            if (appMatch) {
+                const appName = appMatch[1].split("/").pop();
+                return qsTr("Open %1").arg(appName);
+            }
+            return qsTr("Launch application");
+        }
+        
+        return fallbackMap[baseCmd] ?? qsTr("Run: %1").arg(baseCmd);
+    }
+    
+    // Lookup pattern for exec commands with complex patterns (wpctl, systemctl)
+    function lookupExecPattern(baseCmd: string, fullCmd: string): string {
+        const patterns = descConfig.execPatterns[baseCmd];
+        if (!patterns) return "";
+        
+        // Check __contains patterns
+        for (const key of Object.keys(patterns)) {
+            if (key.startsWith("__contains:")) {
+                const pattern = key.replace("__contains:", "");
+                try {
+                    const regex = new RegExp(pattern);
+                    if (regex.test(fullCmd)) {
+                        return patterns[key];
+                    }
+                } catch (e) {
+                    if (fullCmd.includes(pattern.replace(/\\.\\*/g, ""))) {
+                        return patterns[key];
+                    }
+                }
+            }
+        }
+        
+        // Return __default if exists
+        return patterns.__default ?? "";
     }
 
     function inferCaelestiaCmd(cmd: string): string {
-        if (cmd.includes("toggle sysmon")) return qsTr("Toggle system monitor");
-        if (cmd.includes("shell")) return qsTr("Reload shell");
-        if (cmd.includes("scheme")) return qsTr("Change color scheme");
-        if (cmd.includes("wallpaper")) return qsTr("Change wallpaper");
-        return qsTr("Caelestia command");
+        // Try JSON config patterns first
+        if (configLoaded && descConfig.caelestiaPatterns) {
+            for (const pattern of descConfig.caelestiaPatterns) {
+                try {
+                    const regex = new RegExp(pattern.match);
+                    if (regex.test(cmd) || cmd.includes(pattern.match)) {
+                        return pattern.desc;
+                    }
+                } catch (e) {
+                    // If regex fails, try simple includes match
+                    if (cmd.includes(pattern.match)) {
+                        return pattern.desc;
+                    }
+                }
+            }
+        }
+        
+        // Minimal hardcoded fallback
+        if (cmd.includes("screenshot")) return qsTr("Screenshot");
+        if (cmd.includes("record")) return qsTr("Record screen");
+        if (cmd.includes("toggle")) return qsTr("Toggle");
+        if (cmd.includes("lock")) return qsTr("Lock screen");
+        
+        // Fallback - show truncated command
+        const subCmd = cmd.replace(/.*caelestia\s+/, "").slice(0, 25);
+        return subCmd ? qsTr("Caelestia: %1").arg(subCmd) : qsTr("Caelestia command");
     }
 
     // =====================================================
@@ -261,37 +413,42 @@ Singleton {
         const dispatcher = bind.dispatcher;
         const arg = bind.arg ?? "";
         
-        // Window management
-        if (["killactive", "fullscreen", "togglefloating", "pseudo", "pin", 
-             "centerwindow", "focuswindow", "movefocus", "movewindow", 
-             "swapwindow", "resizeactive", "cyclenext", "focuscurrentorlast",
-             "togglesplit", "splitratio", "togglegroup", "changegroupactive",
-             "moveoutofgroup", "moveintogroup", "layoutmsg"].includes(dispatcher)) {
+        // Try JSON config categories first
+        if (configLoaded && descConfig.categories) {
+            const cats = descConfig.categories;
+            
+            // Check dispatcher categories
+            if (cats.dispatchers) {
+                for (const category of Object.keys(cats.dispatchers)) {
+                    if (cats.dispatchers[category].includes(dispatcher)) {
+                        return category;
+                    }
+                }
+            }
+            
+            // Exec-based categorization
+            if (dispatcher === "exec" || dispatcher === "execr") {
+                if (cats.execPatterns) {
+                    for (const category of Object.keys(cats.execPatterns)) {
+                        for (const pattern of cats.execPatterns[category]) {
+                            if (arg.includes(pattern)) {
+                                return category;
+                            }
+                        }
+                    }
+                }
+                return cats.default ?? "apps";
+            }
+        }
+        
+        // Minimal hardcoded fallback
+        if (["killactive", "fullscreen", "togglefloating", "movefocus", "movewindow"].includes(dispatcher)) {
             return "window";
         }
-        
-        // Workspace
-        if (["workspace", "movetoworkspace", "movetoworkspacesilent",
-             "togglespecialworkspace", "focusmonitor", "movecurrentworkspacetomonitor",
-             "movewindowtomonitor"].includes(dispatcher)) {
+        if (["workspace", "movetoworkspace", "togglespecialworkspace"].includes(dispatcher)) {
             return "workspace";
         }
-        
-        // System
-        if (["exit", "forcerendererreload", "dpms", "submap"].includes(dispatcher)) {
-            return "system";
-        }
-        
-        // Exec-based categorization
         if (dispatcher === "exec" || dispatcher === "execr") {
-            if (arg.includes("playerctl") || arg.includes("wpctl") || 
-                arg.includes("pactl") || arg.includes("volume")) {
-                return "media";
-            }
-            if (arg.includes("screenshot") || arg.includes("grim") || 
-                arg.includes("flameshot")) {
-                return "system";
-            }
             return "apps";
         }
         
@@ -304,17 +461,25 @@ Singleton {
 
     function filterBinds(rawBinds: var): var {
         return rawBinds.filter(bind => {
-            // Skip internal GlobalShortcut binds
-            if (bind.dispatcher === "global") return false;
+            // Skip empty key binds
+            if (!bind.key || bind.key === "") return false;
             
             // Skip catch-all handlers
             if (bind.catch_all) return false;
             
-            // Skip empty key binds
-            if (!bind.key || bind.key === "") return false;
-            
             // Skip mouse binds (optional - can enable if wanted)
             if (bind.key.startsWith("mouse:")) return false;
+            
+            // For global dispatcher, skip internal handlers
+            if (bind.dispatcher === "global") {
+                const arg = bind.arg ?? "";
+                // Skip interrupt handlers
+                if (arg.includes("Interrupt") || arg.includes("interrupt")) return false;
+                // Skip refreshDevices (Caps_Lock/Num_Lock device refresh - duplicated many times)
+                if (arg.includes("refreshDevices")) return false;
+                // Allow useful global shortcuts
+                return true;
+            }
             
             // Skip submap entry/exit (keep only actual binds)
             // if (bind.dispatcher === "submap") return false;

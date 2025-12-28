@@ -19,6 +19,9 @@ Item {
         reloadableId: "utilities"
     }
     readonly property bool shouldBeActive: visibilities.sidebar || (visibilities.utilities && Config.utilities.enabled && !(visibilities.fullscreenSession))
+    
+    // contentReady flag - delays animation until content is fully loaded
+    property bool contentReady: false
 
     visible: height > 0
     implicitHeight: 0
@@ -30,12 +33,23 @@ Item {
             timer.stop();
         }
     }
+    
+    // When should become active, wait for content to be ready before animating
+    onShouldBeActiveChanged: {
+        if (shouldBeActive && !contentReady) {
+            // Delay state change until content ready
+            contentReadyTimer.start();
+        }
+    }
 
     states: State {
         name: "visible"
-        when: root.shouldBeActive
+        // Only enter visible state when content is ready
+        when: root.shouldBeActive && root.contentReady
 
         PropertyChanges {
+            // Use LIVE binding to content.implicitHeight - follows instantly
+            // Record.qml handles its own internal animation, Wrapper just follows
             root.implicitHeight: content.implicitHeight + Appearance.padding.large * 2 + Config.border.thickness
         }
     }
@@ -61,8 +75,25 @@ Item {
                 property: "implicitHeight"
                 easing.bezierCurve: Appearance.anim.curves.emphasized
             }
+            
+            // Reset contentReady when closing
+            ScriptAction {
+                script: root.contentReady = false
+            }
         }
     ]
+    
+    // Timer to wait for content to settle before starting open animation
+    Timer {
+        id: contentReadyTimer
+        interval: 50  // Small delay to let content.implicitHeight stabilize
+        repeat: false
+        onTriggered: {
+            if (content.item) {
+                root.contentReady = true;
+            }
+        }
+    }
 
     Timer {
         id: timer

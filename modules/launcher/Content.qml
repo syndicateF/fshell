@@ -15,12 +15,20 @@ Item {
     required property var panels
     required property real maxHeight
 
-    readonly property int padding: 40  // Fixed 40px padding horizontal & vertical
+    readonly property int padding: 40
     readonly property int rounding: Appearance.rounding.large
     readonly property int innerPadding: Appearance.padding.large
 
     // Tab state: 0=Apps, 1=Commands, 2=Calc, 3=Schemes, 4=Wallpapers, 5=Variants
     property int currentTab: 0
+    
+    // Throttle for key HOLD repeat (not for manual fast presses)
+    property bool tabRepeatAllowed: true
+    Timer {
+        id: tabRepeatThrottle
+        interval: 300  // Match animation speed
+        onTriggered: root.tabRepeatAllowed = true
+    }
 
     // Dynamic width/height based on content
     implicitWidth: gridContent.implicitWidth + padding * 2
@@ -36,12 +44,13 @@ Item {
     }
 
 
-    // Reset tab and cleanup when launcher closes
+    // Reset tab when launcher OPENS (not closes) to avoid visible jump during close animation
     Connections {
         target: root.visibilities
 
         function onLauncherChanged(): void {
-            if (!root.visibilities.launcher) {
+            if (root.visibilities.launcher) {
+                // Reset to apps tab when launcher opens
                 root.currentTab = 0;
                 // Reset visited tabs flags to free memory from lazy-loaded components
                 gridContent.tab1Visited = false;
@@ -136,15 +145,35 @@ Item {
 
             Keys.onPressed: event => {
                 // Tab switching with Shift + < / >
+                // Manual presses (isAutoRepeat=false): always work
+                // Key hold repeat (isAutoRepeat=true): throttled via tabRepeatAllowed
                 if (event.modifiers & Qt.ShiftModifier) {
                     if (event.key === Qt.Key_Greater || event.key === Qt.Key_Period) {
+                        // Throttle auto-repeat, allow manual press
+                        if (event.isAutoRepeat && !root.tabRepeatAllowed) {
+                            event.accepted = true;
+                            return;
+                        }
                         // Shift + > : Next tab
                         root.currentTab = (root.currentTab + 1) % 6;
+                        if (event.isAutoRepeat) {
+                            root.tabRepeatAllowed = false;
+                            tabRepeatThrottle.restart();
+                        }
                         event.accepted = true;
                         return;
                     } else if (event.key === Qt.Key_Less || event.key === Qt.Key_Comma) {
+                        // Throttle auto-repeat, allow manual press
+                        if (event.isAutoRepeat && !root.tabRepeatAllowed) {
+                            event.accepted = true;
+                            return;
+                        }
                         // Shift + < : Previous tab
                         root.currentTab = (root.currentTab + 5) % 6;
+                        if (event.isAutoRepeat) {
+                            root.tabRepeatAllowed = false;
+                            tabRepeatThrottle.restart();
+                        }
                         event.accepted = true;
                         return;
                     }

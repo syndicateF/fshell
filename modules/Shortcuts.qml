@@ -85,6 +85,17 @@ Scope {
         }
     }
 
+    CustomShortcut {
+        name: "sidebar"
+        description: "Toggle sidebar"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            visibilities.sidebar = !visibilities.sidebar;
+        }
+    }
+
     // AI Chat shortcut - DISABLED
     // CustomShortcut {
     //     name: "aiChat"

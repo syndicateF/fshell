@@ -1,0 +1,416 @@
+{
+    "__comment": "Keybind description patterns for x-shell. Edit this file to customize descriptions.",
+    "transforms": {
+        "direction": {
+            "l": "left",
+            "r": "right",
+            "u": "up",
+            "d": "down"
+        },
+        "groupDirection": {
+            "f": "forward",
+            "b": "backward"
+        }
+    },
+    "dispatchers": {
+        "workspace": {
+            "__default": "Go to workspace {arg}",
+            "+1": "Next workspace",
+            "-1": "Previous workspace"
+        },
+        "movetoworkspace": {
+            "__default": "Move window to workspace {arg}",
+            "+1": "Move window to next workspace",
+            "-1": "Move window to previous workspace"
+        },
+        "movetoworkspacesilent": {
+            "__default": "Move window silently to workspace {arg}",
+            "+1": "Move window to next workspace (silent)",
+            "-1": "Move window to previous workspace (silent)"
+        },
+        "togglespecialworkspace": "Toggle special workspace {arg|scratchpad}",
+        "killactive": "Close active window",
+        "closewindow": "Close window: {arg}",
+        "fullscreen": {
+            "__default": "Toggle fullscreen",
+            "0": "Toggle fullscreen",
+            "1": "Toggle maximize",
+            "2": "Toggle fake fullscreen"
+        },
+        "togglefloating": "Float/unfloat window",
+        "setfloating": "Set window floating",
+        "settiled": "Set window tiled",
+        "pseudo": "Toggle pseudo-tiling",
+        "pin": "Pin window (show on all workspaces)",
+        "centerwindow": "Center window",
+        "focuswindow": "Focus window: {arg}",
+        "movefocus": "Move focus {arg:direction}",
+        "movewindow": "Move window {arg:direction}",
+        "swapwindow": "Swap window {arg:direction}",
+        "resizeactive": "Resize window by {arg}",
+        "moveactive": "Move window by {arg}",
+        "cyclenext": {
+            "__default": "Cycle to next window",
+            "prev": "Cycle to previous window"
+        },
+        "swapnext": {
+            "__default": "Swap with next window",
+            "prev": "Swap with previous window"
+        },
+        "focuscurrentorlast": "Focus current or last window",
+        "focusurgentorlast": "Focus urgent or last window",
+        "bringactivetotop": "Bring window to top",
+        "alterzorder": "Change window z-order: {arg}",
+        "layoutmsg": "Layout: {arg}",
+        "togglesplit": "Toggle split direction",
+        "splitratio": {
+            "__default": "Adjust split ratio",
+            "__startsWith:-": "Decrease split ratio",
+            "__startsWith:+": "Increase split ratio"
+        },
+        "togglegroup": "Toggle window group",
+        "changegroupactive": "Change active in group: {arg:groupDirection|next}",
+        "moveoutofgroup": "Move window out of group",
+        "moveintogroup": "Move window into group: {arg:direction}",
+        "movewindoworgroup": "Move window or group: {arg:direction}",
+        "movegroupwindow": "Move group window: {arg:groupDirection}",
+        "lockgroups": "Lock groups: {arg}",
+        "lockactivegroup": "Lock active group: {arg}",
+        "denywindowfromgroup": "Deny window from group: {arg}",
+        "focusmonitor": "Focus monitor: {arg}",
+        "movecurrentworkspacetomonitor": "Move workspace to monitor: {arg}",
+        "movewindowtomonitor": "Move window to monitor: {arg}",
+        "moveworkspacetomonitor": "Move workspace to monitor: {arg}",
+        "swapactiveworkspaces": "Swap workspaces between monitors",
+        "focusworkspaceoncurrentmonitor": "Focus workspace on current monitor: {arg}",
+        "exit": "Exit Hyprland",
+        "forcerendererreload": "Force renderer reload",
+        "dpms": "Toggle DPMS: {arg|toggle}",
+        "exec": "__function:inferFromExec",
+        "execr": "__function:inferFromExec",
+        "pass": "Pass to: {arg}",
+        "submap": "Enter submap: {arg|reset}",
+        "global": "__function:inferGlobalShortcut",
+        "tagwindow": "Tag window: {arg}",
+        "renameworkspace": "Rename workspace: {arg}",
+        "movecursortocorner": "Move cursor to corner: {arg}",
+        "movecursor": "Move cursor: {arg}",
+        "event": "Emit event: {arg}",
+        "setprop": "Set property: {arg}",
+        "toggleswallow": "Toggle window swallow",
+        "setignoregrouplock": "Set ignore group lock: {arg}"
+    },
+    "globalShortcuts": {
+        "caelestia:screenshotFreeze": "Screenshot region",
+        "caelestia:screenshot": "Screenshot",
+        "caelestia:record": "Screen recording",
+        "caelestia:colorpicker": "Color picker",
+        "caelestia:launcher": "Open launcher",
+        "caelestia:overview": "Workspace overview",
+        "caelestia:spiralOverview": "Spiral overview",
+        "caelestia:workspaceOverview": "Workspace overview",
+        "caelestia:sidebar": "Toggle sidebar",
+        "caelestia:keybinds": "Keybinds overlay",
+        "caelestia:session": "Session menu",
+        "caelestia:controlcenter": "Control center",
+        "caelestia:clipboard": "Clipboard history",
+        "caelestia:emoji": "Emoji picker",
+        "caelestia:showall": "Show all windows",
+        "caelestia:lock": "Lock screen",
+        "caelestia:mediaNext": "Next track",
+        "caelestia:mediaPrev": "Previous track",
+        "caelestia:mediaToggle": "Play/pause",
+        "caelestia:mediaStop": "Stop",
+        "caelestia:brightnessUp": "Brightness up",
+        "caelestia:brightnessDown": "Brightness down",
+        "caelestia:clearNotifs": "Clear notifications",
+        "caelestia:resizewindow": "Resize window"
+    },
+    "execCommands": {
+        "kitty": "Open terminal",
+        "alacritty": "Open terminal",
+        "foot": "Open terminal",
+        "wezterm": "Open terminal",
+        "firefox": "Open Firefox",
+        "chromium": "Open Chromium",
+        "brave": "Open Brave",
+        "zen-browser": "Open Zen Browser",
+        "nautilus": "Open file manager",
+        "thunar": "Open file manager",
+        "dolphin": "Open file manager",
+        "nemo": "Open file manager",
+        "rofi": "Open launcher",
+        "wofi": "Open launcher",
+        "fuzzel": "Open launcher",
+        "grim": "Screenshot",
+        "grimblast": "Screenshot",
+        "flameshot": "Screenshot tool",
+        "hyprpicker": "Color picker",
+        "wl-copy": "Copy to clipboard",
+        "wl-paste": "Paste from clipboard",
+        "cliphist": "Clipboard history",
+        "pactl": "Audio control",
+        "playerctl": "Media control",
+        "brightnessctl": "Brightness control",
+        "light": "Brightness control",
+        "loginctl": "Session control",
+        "hyprlock": "Lock screen",
+        "swaylock": "Lock screen"
+    },
+    "execPatterns": {
+        "wpctl": {
+            "__contains:set-mute.*toggle": "Toggle mute",
+            "__contains:set-volume.*\\+": "Volume up",
+            "__contains:set-volume.*-": "Volume down",
+            "__contains:set-volume": "Set volume",
+            "__contains:set-mute": "Mute",
+            "__default": "Audio control"
+        },
+        "systemctl": {
+            "__contains:suspend-then-hibernate": "Suspend then hibernate",
+            "__contains:suspend": "Suspend",
+            "__contains:hibernate": "Hibernate",
+            "__contains:poweroff": "Shutdown",
+            "__contains:reboot": "Reboot",
+            "__default": "System control"
+        }
+    },
+    "caelestiaPatterns": [
+        {
+            "match": "screenshot\\s+-r",
+            "desc": "Screenshot region"
+        },
+        {
+            "match": "screenshot\\s+-f",
+            "desc": "Screenshot (freeze)"
+        },
+        {
+            "match": "screenshot",
+            "desc": "Screenshot"
+        },
+        {
+            "match": "record\\s+.*-r.*-s|record\\s+.*-s.*-r",
+            "desc": "Record region with audio"
+        },
+        {
+            "match": "record\\s+-r",
+            "desc": "Record region"
+        },
+        {
+            "match": "record\\s+-s",
+            "desc": "Record screen with audio"
+        },
+        {
+            "match": "record\\s+-p",
+            "desc": "Pause/resume recording"
+        },
+        {
+            "match": "record",
+            "desc": "Record screen"
+        },
+        {
+            "match": "colorpicker|color-picker|pick",
+            "desc": "Color picker"
+        },
+        {
+            "match": "toggle sysmon",
+            "desc": "Toggle system monitor"
+        },
+        {
+            "match": "toggle overview",
+            "desc": "Toggle overview"
+        },
+        {
+            "match": "toggle launcher",
+            "desc": "Toggle launcher"
+        },
+        {
+            "match": "toggle sidebar",
+            "desc": "Toggle sidebar"
+        },
+        {
+            "match": "toggle keybinds",
+            "desc": "Toggle keybinds overlay"
+        },
+        {
+            "match": "toggle session",
+            "desc": "Toggle session menu"
+        },
+        {
+            "match": "toggle specialws",
+            "desc": "Toggle scratchpad"
+        },
+        {
+            "match": "toggle music",
+            "desc": "Toggle music player"
+        },
+        {
+            "match": "toggle communication",
+            "desc": "Toggle communication"
+        },
+        {
+            "match": "toggle todo",
+            "desc": "Toggle todo list"
+        },
+        {
+            "match": "toggle controlcenter",
+            "desc": "Toggle control center"
+        },
+        {
+            "match": "toggle notification",
+            "desc": "Toggle notifications"
+        },
+        {
+            "match": "toggle",
+            "desc": "Toggle UI"
+        },
+        {
+            "match": "clipboard\\s+-d",
+            "desc": "Delete clipboard item"
+        },
+        {
+            "match": "caelestia clipboard",
+            "desc": "Clipboard history"
+        },
+        {
+            "match": "emoji\\s+-p",
+            "desc": "Emoji picker (paste)"
+        },
+        {
+            "match": "caelestia emoji",
+            "desc": "Emoji picker"
+        },
+        {
+            "match": "scheme",
+            "desc": "Change color scheme"
+        },
+        {
+            "match": "wallpaper",
+            "desc": "Change wallpaper"
+        },
+        {
+            "match": "variant",
+            "desc": "Change variant"
+        },
+        {
+            "match": "apps|app",
+            "desc": "App launcher"
+        },
+        {
+            "match": "caelestia lock",
+            "desc": "Lock screen"
+        },
+        {
+            "match": "caelestia logout",
+            "desc": "Logout"
+        },
+        {
+            "match": "caelestia shutdown|caelestia poweroff",
+            "desc": "Shutdown"
+        },
+        {
+            "match": "caelestia reboot|caelestia restart",
+            "desc": "Reboot"
+        },
+        {
+            "match": "caelestia suspend|caelestia sleep",
+            "desc": "Suspend"
+        },
+        {
+            "match": "caelestia hibernate",
+            "desc": "Hibernate"
+        },
+        {
+            "match": "caelestia shell -d",
+            "desc": "Reload shell"
+        },
+        {
+            "match": "caelestia shell reload",
+            "desc": "Reload shell"
+        },
+        {
+            "match": "caelestia\\s+shell\\b",
+            "desc": "Shell command"
+        },
+        {
+            "match": "caelestia\\s+kill\\b",
+            "desc": "Kill shell"
+        }
+    ],
+    "categories": {
+        "dispatchers": {
+            "window": [
+                "killactive",
+                "fullscreen",
+                "togglefloating",
+                "pseudo",
+                "pin",
+                "centerwindow",
+                "focuswindow",
+                "movefocus",
+                "movewindow",
+                "swapwindow",
+                "resizeactive",
+                "cyclenext",
+                "focuscurrentorlast",
+                "togglesplit",
+                "splitratio",
+                "togglegroup",
+                "changegroupactive",
+                "moveoutofgroup",
+                "moveintogroup",
+                "layoutmsg",
+                "closewindow",
+                "alterzorder",
+                "bringactivetotop",
+                "moveactive",
+                "swapnext",
+                "focusurgentorlast",
+                "movewindoworgroup",
+                "movegroupwindow",
+                "lockgroups",
+                "lockactivegroup",
+                "denywindowfromgroup"
+            ],
+            "workspace": [
+                "workspace",
+                "movetoworkspace",
+                "movetoworkspacesilent",
+                "togglespecialworkspace",
+                "focusmonitor",
+                "movecurrentworkspacetomonitor",
+                "movewindowtomonitor",
+                "moveworkspacetomonitor",
+                "swapactiveworkspaces",
+                "focusworkspaceoncurrentmonitor",
+                "renameworkspace"
+            ],
+            "system": [
+                "exit",
+                "forcerendererreload",
+                "dpms",
+                "submap",
+                "event",
+                "setprop"
+            ]
+        },
+        "execPatterns": {
+            "media": [
+                "playerctl",
+                "wpctl",
+                "pactl",
+                "volume",
+                "audio"
+            ],
+            "system": [
+                "screenshot",
+                "grim",
+                "flameshot",
+                "hyprlock",
+                "swaylock",
+                "brightnessctl"
+            ]
+        },
+        "default": "apps"
+    }
+}
