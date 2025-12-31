@@ -27,7 +27,6 @@ JsonObject {
     
     property list<var> bottomEntries: [
         { id: "statusIcons", enabled: true },
-        { id: "powerMode", enabled: true },
         { id: "powerProfile", enabled: true },
         { id: "batteryIcon", enabled: true },
         { id: "power", enabled: false }
@@ -81,7 +80,7 @@ JsonObject {
     component Status: JsonObject {
         property bool showAudio: false
         property bool showMicrophone: false
-        property bool showKbLayout: true
+        property bool showKbLayout: false
         property bool showNetwork: true
         property bool showBluetooth: true
         property bool showBattery: true
@@ -118,6 +117,5 @@ JsonObject {
         property int networkTraffic: 10       // Network traffic labels (was 13px)
         property int windowTitle: 11          // Window title text (was 15px)
         property int materialIcon: 15         // Material icons in bar
-        property int powerModeLabel: 11       // Power mode text label (was 15px)
     }
 }

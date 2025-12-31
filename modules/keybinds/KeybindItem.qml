@@ -8,6 +8,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+// Vertical grid item: keys on top (centered), badges below, description at bottom
 Rectangle {
     id: root
 
@@ -18,56 +19,39 @@ Rectangle {
     readonly property string key: bind?.key ?? ""
     readonly property string description: bind?.description ?? ""
 
-    // Fixed height for consistent grid layout (DPI-aware)
+    // All sizes dynamic based on Appearance (DPI-aware)
     readonly property real badgeHeight: Appearance.font.size.smaller * 2
-    readonly property real descLineHeight: Appearance.font.size.smaller * 1.4 // deskkripsi
-    implicitHeight: badgeHeight + (descLineHeight * 2) + Appearance.spacing.small * 4
+    readonly property real modeBadgeSize: Appearance.font.size.smaller * 1.2
+    readonly property real descLineHeight: Appearance.font.size.smaller * 1.4
+    
+    // Dynamic height based on content
+    implicitHeight: badgeHeight + modeBadgeSize + (descLineHeight * 2) + Appearance.spacing.small * 5
 
     radius: Appearance.rounding.small
     color: hovered ? Qt.alpha(Colours.palette.m3surfaceContainerHighest, 0.5) : Colours.tPalette.m3surfaceContainer
 
     property bool hovered: hoverHandler.hovered
 
-    // Staggered fade-in animation
-    // opacity: 1
-    // Component.onCompleted: itemFadeIn.start()
-    
-    // SequentialAnimation {
-    //     id: itemFadeIn
-    //     PauseAnimation { duration: root.animationDelay }
-    //     NumberAnimation {
-    //         target: root
-    //         property: "opacity"
-    //         from: 0
-    //         to: 1
-    //         duration: 150
-    //         easing.type: Easing.OutCubic
-    //     }
-    // }
-
     // Hover scale effect
     scale: hovered ? 1.05 : 1.0
     Behavior on scale { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-    // Behavior on color { ColorAnimation { duration: 150 } }
-    // Behavior on border.color { ColorAnimation { duration: 150 } }
 
     HoverHandler { id: hoverHandler }
 
-    // Vertical layout: keys on top, description below
+    // Vertical layout: keys top, badges middle, description bottom
     ColumnLayout {
         id: contentColumn
         anchors.fill: parent
         anchors.margins: Appearance.spacing.small
         spacing: Appearance.spacing.small
         
-        // Key combination (centered)
+        // ROW 1: Key combination (centered)
         Row {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 4
+            spacing: Appearance.spacing.small * 0.5
 
             Repeater {
                 model: root.modifiers ? root.modifiers.split(" + ").concat([root.key]) : [root.key]
-                
 
                 Rectangle {
                     id: keyBadge
@@ -77,12 +61,11 @@ Rectangle {
                     visible: modelData !== ""
                     width: keyContent.implicitWidth + Appearance.spacing.normal
                     height: root.badgeHeight
-                    radius: 4
+                    radius: Appearance.rounding.small * 0.5
                     color: badgeHover.hovered ? Colours.palette.m3surfaceContainerHighest : Colours.palette.m3surfaceContainerHigh
                     border.width: 1
                     border.color: Qt.alpha(Colours.palette.m3outline, 0.3)
 
-                    // Check if this key should use icon
                     readonly property bool useIcon: getIconForKey(modelData) !== ""
                     readonly property string iconName: getIconForKey(modelData)
                     readonly property string keyText: formatKey(modelData)
@@ -90,13 +73,12 @@ Rectangle {
 
                     HoverHandler { id: badgeHover }
 
-                    // Tooltip on hover
                     ToolTip {
                         visible: badgeHover.hovered && keyBadge.keyLabel !== ""
                         text: keyBadge.keyLabel
                         delay: 500
                         timeout: 3000
-                        y: keyBadge.height + 4
+                        y: keyBadge.height + Appearance.spacing.small * 0.5
                         
                         contentItem: Text {
                             text: keyBadge.keyLabel
@@ -107,13 +89,12 @@ Rectangle {
                         
                         background: Rectangle {
                             color: Colours.palette.m3surfaceContainer
-                            radius: 4
+                            radius: Appearance.rounding.small * 0.5
                             border.width: 1
                             border.color: Qt.alpha(Colours.palette.m3outline, 0.3)
                         }
                     }
 
-                    // Icon or Text display
                     Loader {
                         id: keyContent
                         anchors.centerIn: parent
@@ -141,12 +122,9 @@ Rectangle {
                     }
 
                     function getIconForKey(k: string): string {
-                        // Keys that should use MaterialIcon
                         const iconMap = {
-                            // Modifiers (Ctrl/Alt use text symbols instead)
                             "Super": "keyboard_command_key",
                             "Shift": "shift",
-                            // Navigation keys
                             "Return": "keyboard_return",
                             "RETURN": "keyboard_return",
                             "Tab": "keyboard_tab",
@@ -157,7 +135,6 @@ Rectangle {
                             "ESCAPE": "close",
                             "BackSpace": "backspace",
                             "Delete": "delete",
-                            // Arrow keys
                             "Up": "keyboard_arrow_up",
                             "Down": "keyboard_arrow_down",
                             "Left": "keyboard_arrow_left",
@@ -166,7 +143,6 @@ Rectangle {
                             "down": "keyboard_arrow_down",
                             "left": "keyboard_arrow_left",
                             "right": "keyboard_arrow_right",
-                            // Page keys
                             "Home": "first_page",
                             "End": "last_page",
                             "Page_Up": "keyboard_double_arrow_up",
@@ -174,22 +150,17 @@ Rectangle {
                             "PgUp": "keyboard_double_arrow_up",
                             "PgDn": "keyboard_double_arrow_down",
                             "Print": "screenshot",
-                            // Lock keys
                             "Caps_Lock": "keyboard_capslock",
                             "Num_Lock": "pin",
                             "Scroll_Lock": "lock",
-                            // Super variants
                             "Super_L": "keyboard_command_key",
                             "Super_R": "keyboard_command_key",
-                            // Insert
                             "Insert": "content_paste",
-                            // Mouse
                             "mouse_up": "expand_less",
                             "mouse_down": "expand_more",
                             "mouse:272": "mouse",
                             "mouse:273": "ads_click",
                             "mouse:274": "radio_button_checked",
-                            // Media keys
                             "XF86AudioRaiseVolume": "volume_up",
                             "XF86AudioLowerVolume": "volume_down",
                             "XF86AudioMute": "volume_off",
@@ -207,12 +178,9 @@ Rectangle {
                     }
 
                     function formatKey(k: string): string {
-                        // Fallback text for keys without Material Icons
                         const keyMap = {
-                            // Modifiers - Unicode symbols
                             "Ctrl": "⌃",
                             "Alt": "⌥",
-                            // Punctuation - no Material Icons available
                             "Comma": ",",
                             "comma": ",",
                             "Minus": "−",
@@ -239,21 +207,17 @@ Rectangle {
                     }
 
                     function getKeyLabel(k: string): string {
-                        // Human-readable labels for tooltips
                         const labelMap = {
-                            // Modifiers
                             "Super": "Super/Win Key",
                             "Ctrl": "Control",
                             "Alt": "Alt/Option",
                             "Shift": "Shift",
-                            // Navigation
                             "Return": "Enter",
                             "Tab": "Tab",
                             "Space": "Space",
                             "Escape": "Escape",
                             "BackSpace": "Backspace",
                             "Delete": "Delete",
-                            // Arrows
                             "Up": "Arrow Up",
                             "Down": "Arrow Down",
                             "Left": "Arrow Left",
@@ -262,7 +226,6 @@ Rectangle {
                             "down": "Arrow Down",
                             "left": "Arrow Left",
                             "right": "Arrow Right",
-                            // Page keys
                             "Home": "Home",
                             "End": "End",
                             "Page_Up": "Page Up",
@@ -270,13 +233,11 @@ Rectangle {
                             "PgUp": "Page Up",
                             "PgDn": "Page Down",
                             "Print": "Print Screen",
-                            // Mouse
                             "mouse_up": "Scroll Up",
                             "mouse_down": "Scroll Down",
                             "mouse:272": "Left Click",
                             "mouse:273": "Right Click",
                             "mouse:274": "Middle Click",
-                            // Media
                             "XF86AudioRaiseVolume": "Volume Up",
                             "XF86AudioLowerVolume": "Volume Down",
                             "XF86AudioMute": "Mute",
@@ -293,7 +254,79 @@ Rectangle {
             }
         }
 
-        // Description (centered, can wrap)
+        // ROW 2: Mode badges (centered)
+        Row {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Appearance.spacing.small * 0.25
+
+            Rectangle {
+                width: root.modeBadgeSize
+                height: root.modeBadgeSize
+                radius: Appearance.rounding.small * 0.4
+                color: Qt.alpha(Colours.palette.m3primary, 0.15)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "lock_open"
+                    font.pointSize: Appearance.font.size.smaller - 3
+                    color: Colours.palette.m3primary
+                }
+            }
+
+            Rectangle {
+                visible: root.bind?.flags?.locked ?? false
+                width: root.modeBadgeSize
+                height: root.modeBadgeSize
+                radius: Appearance.rounding.small * 0.4
+                color: Qt.alpha(Colours.palette.m3tertiary, 0.15)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "lock"
+                    font.pointSize: Appearance.font.size.smaller - 3
+                    color: Colours.palette.m3tertiary
+                }
+            }
+
+            Rectangle {
+                visible: (root.bind?.flags?.repeat ?? false) || (root.bind?.flags?.release ?? false)
+                width: 1
+                height: root.modeBadgeSize * 0.75
+                color: Qt.alpha(Colours.palette.m3outline, 0.3)
+            }
+
+            Rectangle {
+                visible: root.bind?.flags?.repeat ?? false
+                width: root.modeBadgeSize
+                height: root.modeBadgeSize
+                radius: Appearance.rounding.small * 0.4
+                color: Qt.alpha(Colours.palette.m3secondary, 0.15)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "repeat"
+                    font.pointSize: Appearance.font.size.smaller - 3
+                    color: Colours.palette.m3secondary
+                }
+            }
+
+            Rectangle {
+                visible: root.bind?.flags?.release ?? false
+                width: root.modeBadgeSize
+                height: root.modeBadgeSize
+                radius: Appearance.rounding.small * 0.4
+                color: Qt.alpha(Colours.palette.m3outline, 0.15)
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "keyboard_arrow_up"
+                    font.pointSize: Appearance.font.size.smaller - 3
+                    color: Colours.palette.m3outline
+                }
+            }
+        }
+
+        // ROW 3: Description (centered, wraps)
         Text {
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignHCenter

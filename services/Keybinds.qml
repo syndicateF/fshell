@@ -38,6 +38,34 @@ Singleton {
     property real lastRefresh: 0
     
     // =====================================================
+    // KEYBOARD LAYOUT DETECTION
+    // =====================================================
+    
+    // Whether resolve_binds_by_sym is enabled in Hyprland
+    property bool resolveBySymbol: false
+    
+    // Whether multiple keyboard layouts are configured
+    // Check if keyboard layout config contains comma (e.g., "us,ru")
+    property bool multiLayout: (Hypr.keyboard?.layout ?? "").includes(",")
+    
+    // Show warning if multi-layout but not resolving by symbol
+    readonly property bool showLayoutWarning: multiLayout && !resolveBySymbol
+    
+    // =====================================================
+    // SUBMAP TRACKING
+    // =====================================================
+    
+    // List of unique submaps from processed binds
+    readonly property var submaps: {
+        if (binds.length === 0) return ["global"];
+        const subs = new Set(binds.map(b => b.submap ?? "global"));
+        return Array.from(subs).sort();
+    }
+    
+    // Whether there are multiple submaps (show filter UI)
+    readonly property bool hasMultipleSubmaps: submaps.length > 1
+    
+    // =====================================================
     // DESCRIPTION CONFIG (loaded from JSON)
     // =====================================================
     
@@ -67,6 +95,7 @@ Singleton {
     
     Component.onCompleted: {
         configFile.reload();
+        layoutOptionProcess.running = true;
     }
 
     // =====================================================
@@ -502,17 +531,25 @@ Singleton {
             modmask: bind.modmask,
             dispatcher: bind.dispatcher,
             arg: bind.arg,
-            submap: bind.submap,
+            
+            // Submap context
+            submap: bind.submap ?? "global",
+            isGlobal: (bind.submap ?? "global") === "global",
             
             // Processed data
             modifiers: decodeModmask(bind.modmask),
             description: inferDescription(bind),
             category: categorize(bind),
             
-            // Flags
-            repeat: bind.repeat,
-            release: bind.release,
-            locked: bind.locked
+            // Bind flags (for visual badges)
+            flags: {
+                locked: bind.locked ?? false,
+                repeat: bind.repeat ?? false,
+                release: bind.release ?? false,
+                nonConsuming: bind.non_consuming ?? false,
+                mouse: bind.mouse ?? false,
+                longPress: bind.longPress ?? false
+            }
         }));
         
         // Sort by category, then by modmask, then by key
@@ -624,6 +661,8 @@ Singleton {
         function onConfigReloaded(): void {
             // Invalidate cache when Hyprland config is reloaded
             root.invalidate();
+            // Also refresh layout option
+            layoutOptionProcess.running = true;
             console.log("[Keybinds] Config reloaded - cache invalidated");
         }
     }
@@ -674,5 +713,36 @@ Singleton {
             root.stdoutBuffer = "";
         }
     }
-}
 
+    // =====================================================
+    // LAYOUT OPTION FETCH
+    // =====================================================
+
+    property string layoutOptionBuffer: ""
+
+    Process {
+        id: layoutOptionProcess
+        
+        command: ["hyprctl", "getoption", "input:resolve_binds_by_sym", "-j"]
+        
+        stdout: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                root.layoutOptionBuffer += data;
+            }
+        }
+        
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 0 && root.layoutOptionBuffer.length > 0) {
+                try {
+                    const parsed = JSON.parse(root.layoutOptionBuffer);
+                    root.resolveBySymbol = (parsed.int === 1) || (parsed.set === true);
+                    console.log("[Keybinds] resolve_binds_by_sym:", root.resolveBySymbol);
+                } catch (e) {
+                    console.warn("[Keybinds] Failed to parse layout option:", e);
+                }
+            }
+            root.layoutOptionBuffer = "";
+        }
+    }
+}

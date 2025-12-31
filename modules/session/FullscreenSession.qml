@@ -8,7 +8,6 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Widgets
 
 FocusScope {
     id: root
@@ -27,7 +26,14 @@ FocusScope {
     property bool isClosing: false
 
     property string pendingAction: ""
+    property string displayAction: ""  // Preserved during close animation for correct content
     property int countdown: Config.session.sizes.countdownSecs
+    
+    // Shutdown progress state (hooks execution)
+    property bool isExecuting: false
+    property string executingAction: ""
+    property var completedHooks: []
+    property string currentHook: ""
 
     implicitWidth: screen.width
     implicitHeight: screen.height
@@ -54,9 +60,11 @@ FocusScope {
         exitAnimTimer.start()
     }
 
+    // Linux-grade: go directly to confirmation, trust systemd to handle apps
     function requestAction(actionType: string) {
         pendingAction = actionType
-        confirmFocusIndex = 1  // Default to Confirm
+        displayAction = actionType  // Update display content
+        confirmFocusIndex = 1
         countdown = Config.session.sizes.countdownSecs
         countdownTimer.start()
     }
@@ -72,15 +80,47 @@ FocusScope {
         const actionType = pendingAction
         pendingAction = ""
         
-        let cmd = []
-        if (actionType === "logout") cmd = Config.session.commands.logout
-        else if (actionType === "sleep") cmd = Config.session.commands.sleep
-        else if (actionType === "restart") cmd = Config.session.commands.reboot
-        else if (actionType === "shutdown") cmd = Config.session.commands.shutdown
+        // Enter executing state - keep overlay visible to show progress
+        isExecuting = true
+        executingAction = actionType
+        completedHooks = []
+        currentHook = ""
         
-        if (cmd.length > 0) {
+        // Use SessionManager service for power actions (goes through x-session daemon)
+        // force=true because user already confirmed via countdown - run hooks and proceed
+        if (actionType === "logout") {
+            // Logout doesn't go through daemon, close immediately
             closeWithAnimation()
-            Qt.callLater(() => Quickshell.execDetached(cmd))
+            Qt.callLater(() => SessionManager.logout ? SessionManager.logout() : Quickshell.execDetached(Config.session.commands.logout))
+        } else if (actionType === "sleep") {
+            // Suspend is quick, no progress needed
+            Qt.callLater(() => SessionManager.suspend())
+            closeWithAnimation()
+        } else if (actionType === "restart") {
+            Qt.callLater(() => SessionManager.reboot(true))
+            // Don't close - wait for progress
+        } else if (actionType === "shutdown") {
+            Qt.callLater(() => SessionManager.shutdown(true))
+            // Don't close - wait for progress
+        }
+    }
+    
+    // Listen to SessionManager signals for hook progress
+    Connections {
+        target: SessionManager
+        
+        function onHookStarted(name) {
+            root.currentHook = name
+        }
+        
+        function onHookCompleted(name) {
+            root.currentHook = ""
+            root.completedHooks = [...root.completedHooks, name]
+        }
+        
+        function onShutdownProceed() {
+            // System is about to shutdown, add final message
+            root.currentHook = "Powering off..."
         }
     }
 
@@ -200,19 +240,19 @@ FocusScope {
 
     // ========== POWER BUTTONS ==========
     Column {
+        id: powerButtonsColumn
         anchors.centerIn: parent
         spacing: 32
-        visible: root.pendingAction === ""
+        // Wait for confirmation dialog close animation to finish before showing buttons
+        visible: root.pendingAction === "" && !root.isExecuting && !confirmDialogCloseAnim.running
         opacity: (root.enterAnimation || root.exitAnimation) ? 0 : 1
-        scale: (root.enterAnimation || root.exitAnimation) ? 0.85 : 1
+        scale: (root.enterAnimation || root.exitAnimation) ? 0.8 : 1
 
-        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+        Behavior on opacity { NumberAnimation { duration: Appearance.anim.durations.normal } }
+        Behavior on scale { NumberAnimation { duration: Appearance.anim.durations.normal; easing.type: Easing.OutBack } }
 
         // Uptime badge (above buttons)
         StyledRect {
-            // anchors.horizontalCenter: parent.horizontalCenter
-            // color: Colours.palette.m3secondaryContainer
             color: Colours.palette.m3secondary
             radius: Appearance.rounding.full
             implicitWidth: uptimeRow.implicitWidth + Appearance.padding.large * 2
@@ -221,7 +261,6 @@ FocusScope {
             Row {
                 id: uptimeRow
                 anchors.centerIn: parent
-                // spacing: Appearance.spacing.small
 
                 MaterialIcon {
                     anchors.verticalCenter: parent.verticalCenter
@@ -233,10 +272,8 @@ FocusScope {
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    // text: "uptime: " + SysInfo.uptime
                     text: " " + SysInfo.uptime
                     font.pointSize: Appearance.font.size.small
-                    // font.weight: Font.Medium
                     color: Colours.palette.m3surface
                 }
             }
@@ -328,30 +365,31 @@ FocusScope {
     Item {
         id: confirmDialogContainer
         anchors.fill: parent
-        visible: opacity > 0
-        opacity: root.pendingAction !== "" ? 1 : 0
-        scale: root.pendingAction !== "" ? 1 : 0.85
+        visible: opacity > 0 || confirmDialogCloseAnim.running
+        opacity: (root.pendingAction !== "" && !root.isExecuting) ? 1 : 0
+        scale: (root.pendingAction !== "" && !root.isExecuting) ? 1 : 0.8
 
-        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-        Behavior on scale { NumberAnimation { duration: 350; easing.type: root.pendingAction !== "" ? Easing.OutBack : Easing.InCubic } }
+        Behavior on opacity { NumberAnimation { duration: Appearance.anim.durations.normal } }
+        Behavior on scale { NumberAnimation { id: confirmDialogCloseAnim; duration: Appearance.anim.durations.normal; easing.type: Easing.OutBack } }
 
-        property bool isShutdownAction: root.pendingAction === "shutdown"
+        // Use displayAction for content - it's preserved during close animation
+        property bool isShutdownAction: root.displayAction === "shutdown"
         property string actionDescription: {
-            if (root.pendingAction === "logout") return "You will be logged out and all unsaved work will be lost."
-            if (root.pendingAction === "sleep") return "Your computer will enter sleep mode."
-            if (root.pendingAction === "restart") return "Your computer will restart. Save your work before continuing."
+            if (root.displayAction === "logout") return "You will be logged out and all unsaved work will be lost."
+            if (root.displayAction === "sleep") return "Your computer will enter sleep mode."
+            if (root.displayAction === "restart") return "Your computer will restart. Save your work before continuing."
             return "Your computer will shut down. Save your work before continuing."
         }
         property string actionIcon: {
-            if (root.pendingAction === "logout") return "logout"
-            if (root.pendingAction === "sleep") return "bedtime"
-            if (root.pendingAction === "restart") return "restart_alt"
+            if (root.displayAction === "logout") return "logout"
+            if (root.displayAction === "sleep") return "bedtime"
+            if (root.displayAction === "restart") return "restart_alt"
             return "power_settings_new"
         }
         property string actionTitle: {
-            if (root.pendingAction === "logout") return "Log Out?"
-            if (root.pendingAction === "sleep") return "Sleep?"
-            if (root.pendingAction === "restart") return "Restart?"
+            if (root.displayAction === "logout") return "Log Out?"
+            if (root.displayAction === "sleep") return "Sleep?"
+            if (root.displayAction === "restart") return "Restart?"
             return "Shut Down?"
         }
 
@@ -497,6 +535,135 @@ FocusScope {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // ========== SHUTDOWN PROGRESS OVERLAY ==========
+    Item {
+        id: progressOverlay
+        anchors.fill: parent
+        visible: opacity > 0 || progressCloseAnim.running
+        opacity: root.isExecuting ? 1 : 0
+        scale: root.isExecuting ? 1 : 0.8
+        
+        Behavior on opacity { NumberAnimation { duration: Appearance.anim.durations.normal } }
+        Behavior on scale { NumberAnimation { id: progressCloseAnim; duration: Appearance.anim.durations.normal; easing.type: Easing.OutBack } }
+        
+        property bool isShutdown: root.executingAction === "shutdown"
+        property string actionTitle: {
+            if (root.executingAction === "restart") return "Restarting..."
+            if (root.executingAction === "shutdown") return "Shutting Down..."
+            return "Please wait..."
+        }
+        property string actionIcon: {
+            if (root.executingAction === "restart") return "restart_alt"
+            return "power_settings_new"
+        }
+
+        // Center content
+        Column {
+            anchors.centerIn: parent
+            spacing: 24
+            
+            // Animated icon
+            StyledRect {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 96
+                height: 96
+                radius: 48
+                color: progressOverlay.isShutdown 
+                    ? Colours.palette.m3errorContainer 
+                    : Colours.palette.m3primaryContainer
+
+                MaterialIcon {
+                    anchors.centerIn: parent
+                    text: progressOverlay.actionIcon
+                    font.pointSize: 48
+                    color: progressOverlay.isShutdown 
+                        ? Colours.palette.m3onErrorContainer 
+                        : Colours.palette.m3onPrimaryContainer
+                    
+                    // Subtle pulse animation
+                    SequentialAnimation on opacity {
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 0.6; duration: 800; easing.type: Easing.InOutQuad }
+                        NumberAnimation { to: 1; duration: 800; easing.type: Easing.InOutQuad }
+                    }
+                }
+            }
+
+            // Title
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: progressOverlay.actionTitle
+                font.pointSize: Appearance.font.size.larger
+                font.weight: Font.Bold
+                color: Colours.palette.m3onSurface
+            }
+            
+            // Hook progress
+            Column {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 8
+                
+                // Completed hooks
+                Repeater {
+                    model: root.completedHooks
+                    
+                    delegate: Row {
+                        spacing: 8
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        
+                        MaterialIcon {
+                            text: "check_circle"
+                            font.pointSize: Appearance.font.size.normal
+                            color: Colours.palette.m3primary
+                        }
+                        
+                        StyledText {
+                            text: modelData
+                            font.pointSize: Appearance.font.size.normal
+                            color: Colours.palette.m3onSurfaceVariant
+                        }
+                    }
+                }
+                
+                // Current hook (with spinner)
+                Row {
+                    visible: root.currentHook !== ""
+                    spacing: 8
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    
+                    MaterialIcon {
+                        text: "hourglass_top"
+                        font.pointSize: Appearance.font.size.normal
+                        color: progressOverlay.isShutdown ? Colours.palette.m3error : Colours.palette.m3primary
+                        
+                        RotationAnimation on rotation {
+                            from: 0
+                            to: 360
+                            duration: 2000
+                            loops: Animation.Infinite
+                        }
+                    }
+                    
+                    StyledText {
+                        text: root.currentHook
+                        font.pointSize: Appearance.font.size.normal
+                        font.weight: Font.Medium
+                        color: progressOverlay.isShutdown ? Colours.palette.m3error : Colours.palette.m3primary
+                    }
+                }
+            }
+            
+            // Status hint
+            StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "Please wait while your system prepares..."
+                font.pointSize: Appearance.font.size.small
+                color: Colours.palette.m3outline
+                visible: root.currentHook === "" && root.completedHooks.length === 0
             }
         }
     }

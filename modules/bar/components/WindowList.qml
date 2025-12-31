@@ -202,7 +202,6 @@ StyledRect {
                 windowIndex: index
                 isActive: index === root.activeIndex
                 totalWindows: root.workspaceWindows.length
-                activeWindowIndex: root.activeIndex
 
                 // Saved cursor position for restore after focus
                 property real savedCursorX: 0
@@ -258,7 +257,6 @@ StyledRect {
         required property int windowIndex
         required property bool isActive
         required property int totalWindows
-        required property int activeWindowIndex
 
         signal clicked()
 
@@ -280,34 +278,9 @@ StyledRect {
             }
         }
 
-        // Combined title: "AppName · WindowTitle" atau hanya "AppName"
-        // Menghilangkan nama app di akhir title (universal - tanpa hardcode)
-        readonly property string appName: window.lastIpcObject.class ?? "Unknown"
-        readonly property string displayTitle: {
-            let t = window.title ?? "";
-            if (t.length === 0) return appName;
-            
-            // Universal: hapus " - AppName" atau " — AppName" atau " – AppName" di akhir
-            // Pattern: spasi + dash/emdash/endash + spasi + kata-kata sampai akhir
-            // Ini akan menghapus bagian terakhir setelah separator terakhir
-            const lastSeparator = t.lastIndexOf(" - ");
-            const lastEmDash = t.lastIndexOf(" — ");
-            const lastEnDash = t.lastIndexOf(" – ");
-            
-            // Ambil posisi separator terakhir
-            const separatorPos = Math.max(lastSeparator, lastEmDash, lastEnDash);
-            
-            if (separatorPos > 0) {
-                // Hapus bagian setelah separator terakhir
-                t = t.substring(0, separatorPos);
-            }
-            
-            // Gabungkan app name dan title jika berbeda
-            if (t.length > 0 && t.toLowerCase() !== appName.toLowerCase()) {
-                return appName + " · " + t;
-            }
-            return appName;
-        }
+        // Display title - simply use window's native title as-is
+        // Let apps control their own display name, no manipulation needed
+        readonly property string displayTitle: window.title || window.lastIpcObject.class || "Unknown"
 
         implicitWidth: Math.max(iconContainer.implicitWidth, isActive ? titleContainer.width : 0)
         implicitHeight: {
@@ -420,19 +393,6 @@ StyledRect {
             implicitWidth: icon.implicitSize + Appearance.padding.small * 2
             implicitHeight: icon.implicitSize + Appearance.padding.small * 2
 
-            // State layer untuk hover - HANYA untuk active window
-            // StateLayer {
-            //     anchors.fill: parent
-            //     radius: Appearance.rounding.small
-            //     // Hover hanya enabled untuk active window
-            //     enabled: windowItem.isActive
-            //     hoverEnabled: windowItem.isActive
-
-            //     function onClicked(): void {
-            //         windowItem.clicked();
-            //     }
-            // }
-
             // Click area untuk inactive windows (tanpa hover effect)
             MouseArea {
                 anchors.fill: parent
@@ -447,9 +407,6 @@ StyledRect {
                 anchors.centerIn: parent
                 implicitSize: Config.bar.sizes.iconSize
                 source: Icons.getAppIcon(windowItem.window.lastIpcObject.class ?? "", "application-x-executable")
-
-                // Opacity: active = full, inactive = dimmed
-                // opacity: windowItem.isActive ? 1.0 : 0.5
 
                 onStatusChanged: {
                     if (status === Image.Ready && windowItem.isActive) {

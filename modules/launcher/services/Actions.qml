@@ -49,10 +49,35 @@ Searcher {
             } else if (command[0] === "setMode" && command.length > 1) {
                 // Don't close launcher for mode change - let user see the change
                 Colours.setMode(command[1]);
-            } else {
-                // Close launcher for system commands (shutdown, reboot, lock, etc)
+            } else if (dangerous && command.length >= 2) {
+                // Route dangerous power actions through SessionManager service
+                // force=true because user clicked action directly (no separate confirmation)
                 gridContent.visibilities.launcher = false;
-                Quickshell.execDetached(command);
+                
+                const cmd0 = command[0];
+                const cmd1 = command[1];
+                
+                if (cmd0 === "systemctl" && cmd1 === "poweroff") {
+                    SessionManager.shutdown(true);  // force=true
+                } else if (cmd0 === "systemctl" && cmd1 === "reboot") {
+                    SessionManager.reboot(true);  // force=true
+                } else if (cmd0 === "loginctl" && cmd1 === "terminate-user") {
+                    // Logout - fallback to direct command (SessionManager doesn't handle logout yet)
+                    Quickshell.execDetached(command);
+                } else {
+                    // Other dangerous commands - direct exec
+                    Quickshell.execDetached(command);
+                }
+            } else {
+                // Non-dangerous system commands (lock, sleep, etc)
+                gridContent.visibilities.launcher = false;
+                
+                // Route suspend through SessionManager for consistency
+                if (command[0] === "systemctl" && (command[1] === "suspend" || command[1] === "suspend-then-hibernate")) {
+                    SessionManager.suspend();
+                } else {
+                    Quickshell.execDetached(command);
+                }
             }
         }
     }

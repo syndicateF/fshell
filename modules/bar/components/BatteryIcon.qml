@@ -4,8 +4,8 @@ import qs.services
 import qs.config
 import Quickshell.Services.UPower
 import QtQuick
+import Qt5Compat.GraphicalEffects
 
-// Battery icon - iOS 16 style with percentage inside (original style)
 Item {
     id: root
 
@@ -17,8 +17,16 @@ Item {
     Item {
         id: batteryIOS
         anchors.centerIn: parent
-        implicitWidth: 35
-        implicitHeight: 16
+        
+        readonly property real bodyWidth: 30
+        readonly property real bodyHeight: 16
+        readonly property real bodyRadius: 5
+        readonly property real terminalWidth: 2.5
+        readonly property real terminalHeight: 4.5
+        readonly property real terminalGap: 1
+        
+        implicitWidth: bodyWidth + terminalGap + terminalWidth
+        implicitHeight: bodyHeight
 
         readonly property real level: UPower.displayDevice.percentage
         readonly property real pct: level * 100
@@ -29,10 +37,9 @@ Item {
         ].includes(UPower.displayDevice.state)
 
         readonly property color frameColor: {
-            // Frame color dari color scheme - darker version for contrast
-            if (charging) return Qt.darker(Colours.palette.m3secondary, 2.5);  // Secondary (charging)
-            if (pct <= 20) return Qt.darker(Colours.palette.m3error, 2.5);  // Error (critical)
-            return Qt.darker(Colours.palette.m3primary, 2.5);  // Primary (normal discharge)
+            if (charging) return Qt.darker(Colours.palette.m3secondary, 2.5);
+            if (pct <= 20) return Qt.darker(Colours.palette.m3error, 2.5);
+            return Qt.darker(Colours.palette.m3primary, 2.5);
         }
         readonly property color fillColor: {
             if (charging) return Colours.palette.m3secondary;
@@ -40,57 +47,65 @@ Item {
             return Colours.palette.m3primary;
         }
 
-        // BODY (iOS Solid Capsule)
-        Rectangle {
-            id: body
+        Item {
+            id: bodyContainer
             anchors.verticalCenter: parent.verticalCenter
-            width: 30
-            height: 16
-            radius: 6
-            color: batteryIOS.frameColor
-            clip: true
+            width: batteryIOS.bodyWidth
+            height: batteryIOS.bodyHeight
             
-            // Fill dengan radius per-corner
+            // Enable layer for masking
+            layer.enabled: true
+            layer.effect: OpacityMask {
+                maskSource: Rectangle {
+                    width: bodyContainer.width
+                    height: bodyContainer.height
+                    radius: batteryIOS.bodyRadius
+                }
+            }
+            
+            // Frame (background)
+            Rectangle {
+                id: frame
+                anchors.fill: parent
+                color: batteryIOS.frameColor
+            }
+            
+            // Fill - PLAIN RECTANGLE, no radius! Masked by body shape.
             Rectangle {
                 id: fill
                 anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                
-                readonly property bool isFull: batteryIOS.pct >= 99
-                width: isFull ? parent.width : (parent.width - 6) * Math.min(batteryIOS.pct / 100, 1)
-                height: parent.height
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: parent.width * Math.min(batteryIOS.pct / 100, 1)
                 color: batteryIOS.fillColor
                 
-                topLeftRadius: 6
-                bottomLeftRadius: 6
-                topRightRadius: isFull ? 6 : 0
-                bottomRightRadius: isFull ? 6 : 0
-            }
-
-            // persentase di dalam
-            Text {
-                anchors.centerIn: parent
-                text: Math.round(batteryIOS.pct).toString()
-                font.pointSize: Config.bar.sizes.font.batteryPercentage
-                font.bold: true
-                color: Colours.palette.m3surface
-                visible: root.showPercent
+                // NO RADIUS - the OpacityMask clips it to body shape
             }
         }
+        
+        // Percentage text (outside mask layer so it's always visible)
+        Text {
+            anchors.centerIn: bodyContainer
+            text: Math.round(batteryIOS.pct).toString()
+            font.pointSize: Config.bar.sizes.font.batteryPercentage
+            font.bold: true
+            color: Colours.palette.m3surface
+            visible: root.showPercent
+        }
 
-        // Pentil
+        // Terminal (pentil)
         Rectangle {
-            anchors.left: body.right
-            anchors.leftMargin: 1
+            anchors.left: bodyContainer.right
+            anchors.leftMargin: batteryIOS.terminalGap
             anchors.verticalCenter: parent.verticalCenter
-            width: 2
-            height: 4.5
+            width: batteryIOS.terminalWidth
+            height: batteryIOS.terminalHeight
             color: batteryIOS.frameColor
             
             topLeftRadius: 0
             bottomLeftRadius: 0
-            topRightRadius: 6
-            bottomRightRadius: 6
+            topRightRadius: batteryIOS.bodyRadius
+            bottomRightRadius: batteryIOS.bodyRadius
         }
     }
 }

@@ -45,13 +45,27 @@ StyledRect {
 
                     Layout.alignment: Qt.AlignHCenter
                     text: modelData.padStart(2, "0")
-                    font.pointSize: modelData.match(/am|pm/i) ? Config.bar.sizes.font.clockAmPm : Config.bar.sizes.font.clockDigits
+                    font.pointSize: Config.bar.sizes.font.clockDigits
                     font.family: Appearance.font.family.clock
                     font.hintingPreference: Font.PreferDefaultHinting
                     font.variableAxes: ({ "wght": 450 })
                     color: root.colour
                     renderType: Text.NativeRendering
                 }
+            }
+            
+            // AM/PM indicator
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 2
+                text: Time.format("AP")
+                font.pointSize: 8
+                font.family: Appearance.font.family.sans
+                font.hintingPreference: Font.PreferDefaultHinting
+                font.variableAxes: ({ "wght": 500 })
+                color: root.colour
+                opacity: 0.7
+                renderType: Text.NativeRendering
             }
         }
 

@@ -4,6 +4,7 @@ import qs.components
 import qs.services
 import qs.config
 import Quickshell
+import Quickshell.Services.UPower
 import QtQuick
 
 // Power Profile quick indicator for bar
@@ -20,24 +21,21 @@ StyledRect {
     readonly property bool hasPlatformProfile: Power.availableProfiles.length > 0
     readonly property string displayMode: hasPlatformProfile ? Power.platformProfile : Power.cpuGovernor
     
+    // Color follows battery state for visual consistency (icon+text already distinguish mode)
+    readonly property real batteryPct: UPower.displayDevice.percentage * 100
+    readonly property bool isCharging: [
+        UPowerDeviceState.Charging,
+        UPowerDeviceState.FullyCharged,
+        UPowerDeviceState.PendingCharge
+    ].includes(UPower.displayDevice.state)
+    
     readonly property color profileColor: {
         if (Power.safeModeActive) return Colours.palette.m3error;
         if (Power._busy) return Colours.palette.m3outline;
-        // Platform profile colors
-        if (hasPlatformProfile) {
-            switch (displayMode) {
-                case "performance": return Colours.palette.m3error;
-                case "low-power": return Colours.palette.m3tertiary;
-                case "custom": return Colours.palette.m3secondary;
-                default: return Colours.palette.m3primary;
-            }
-        }
-        // Governor fallback colors
-        switch (displayMode) {
-            case "performance": return Colours.palette.m3error;
-            case "powersave": return Colours.palette.m3tertiary;
-            default: return Colours.palette.m3primary;
-        }
+        // Follow battery fillColor logic
+        if (isCharging) return Colours.palette.m3secondary;
+        if (batteryPct <= 20) return Colours.palette.m3error;
+        return Colours.palette.m3primary;
     }
 
     readonly property string profileIcon: {

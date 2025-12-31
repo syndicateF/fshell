@@ -1,0 +1,14 @@
+[Unit]
+Description=x-shell Session Manager
+Documentation=https://github.com/user/x-shell
+After=graphical-session.target
+
+[Service]
+Type=dbus
+BusName=org.xshell.Session
+ExecStart=%h/.local/bin/x-session
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

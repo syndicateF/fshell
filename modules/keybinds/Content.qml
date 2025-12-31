@@ -141,6 +141,37 @@ Rectangle {
                 Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
             }
         }
+
+        // Keyboard layout warning banner
+        Rectangle {
+            Layout.fillWidth: true
+            visible: Keybinds.showLayoutWarning
+            implicitHeight: warningContent.implicitHeight + Appearance.spacing.small * 2
+            radius: Appearance.rounding.small
+            color: Qt.alpha(Colours.palette.m3errorContainer, 0.8)
+            
+            Row {
+                id: warningContent
+                anchors.centerIn: parent
+                spacing: Appearance.spacing.small
+                
+                MaterialIcon {
+                    text: "warning"
+                    font.pointSize: Appearance.font.size.small
+                    color: Colours.palette.m3onErrorContainer
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Text {
+                    text: qsTr("Multiple keyboard layouts detected. Key symbols may not match your current layout.")
+                    font.pointSize: Appearance.font.size.small
+                    font.family: Appearance.font.family.sans
+                    color: Colours.palette.m3onErrorContainer
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
+
         // Loading indicator
         Item {
             Layout.fillWidth: true
@@ -244,14 +275,13 @@ Rectangle {
                                 Item { Layout.fillWidth: true }
                             }
 
-                            // Fixed 6 column grid - items fill available width
+                            // Grid layout with vertical items
                             Grid {
                                 id: keybindGrid
                                 Layout.fillWidth: true
                                 columns: 6
                                 spacing: Appearance.spacing.small
                                 
-                                // Dynamic item width: (parent width - total spacing) / columns
                                 readonly property real itemWidth: (width - (spacing * (columns - 1))) / columns
                                 
                                 Repeater {

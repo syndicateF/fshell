@@ -14,7 +14,8 @@ StyledRect {
     implicitHeight: mainLayout.implicitHeight + Config.bar.sizes.itemPadding
     
     radius: Appearance.rounding.small
-    color: Colours.palette.m3surfaceContainerHigh
+    // color: Colours.palette.m3surfaceContainerHigh
+    color: Colours.tPalette.m3surfaceContainer
 
     // Check if network is connected
     readonly property bool isConnected: Network.active !== null
