@@ -42,27 +42,52 @@ StyledRect {
     // Check if workspace has windows
     readonly property bool hasWindows: workspaceWindows.length > 0
     
+    // Workspace display name for empty state
+    readonly property int currentWorkspaceId: {
+        const mon = Hypr.monitorFor(screen);
+        if (!mon) return 1;
+        const special = mon.lastIpcObject.specialWorkspace;
+        return special.name ? special.id : (mon.activeWorkspace?.id ?? 1);
+    }
+    
+    readonly property bool isSpecialWorkspace: {
+        const mon = Hypr.monitorFor(screen);
+        return mon?.lastIpcObject.specialWorkspace.name ? true : false;
+    }
+    
+    readonly property string workspaceDisplayName: {
+        if (isSpecialWorkspace) {
+            const mon = Hypr.monitorFor(screen);
+            const name = mon?.lastIpcObject.specialWorkspace.name ?? "Special";
+            // Remove "special:" prefix if present
+            return name.startsWith("special:") ? name.slice(8) : name;
+        }
+        return "Workspace " + currentWorkspaceId;
+    }
+    
     // Size for empty state icon
     readonly property real emptyIconSize: Config.bar.sizes.iconSize
 
     clip: true
     implicitWidth: Config.bar.sizes.innerWidth
-    implicitHeight: (hasWindows ? windowColumn.implicitHeight : emptyState.implicitHeight) + Config.bar.sizes.itemPadding * 2
+    implicitHeight: (hasWindows ? windowColumn.implicitHeight : emptyState.targetHeight) + Config.bar.sizes.itemPadding * 2
 
-    // Empty state - no windows in workspace (simple: icon + "Desktop" title)
+    // Empty state - no windows in workspace (shows "Workspace X" or special ws name)
     Item {
         id: emptyState
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        
         visible: !root.hasWindows
-        opacity: visible ? 1 : 0
+        
+        // Target height for root's implicitHeight calculation
+        property real targetHeight: emptyIcon.implicitSize + emptyTitleContainer.height + Appearance.spacing.smaller
         
         // Dynamic color dari icon
         property color dynamicColor: Colours.palette.m3primary
         
         implicitWidth: emptyIcon.implicitSize
-        implicitHeight: emptyIcon.implicitSize + emptyTitleContainer.height + Appearance.spacing.smaller
-        
-        Behavior on opacity { Anim {} }
+        implicitHeight: targetHeight
         
         // Timer untuk delay color extraction
         Timer {
@@ -156,7 +181,7 @@ StyledRect {
             
             Text {
                 id: emptyTitle
-                text: "Desktop"
+                text: root.workspaceDisplayName
                 font.pointSize: Config.bar.sizes.font.windowTitle
                 font.family: Appearance.font.family.sans
                 font.hintingPreference: Font.PreferDefaultHinting
@@ -175,18 +200,13 @@ StyledRect {
                 ]
             }
         }
-        
-        Behavior on implicitHeight {
-            Anim {
-                duration: Appearance.anim.durations.expressiveDefaultSpatial
-                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
-            }
-        }
     }
 
     Column {
         id: windowColumn
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        
         visible: root.hasWindows
 
         spacing: Appearance.spacing.small
@@ -436,7 +456,6 @@ StyledRect {
             anchors.topMargin: Appearance.spacing.smaller
             
             visible: windowItem.isActive
-            opacity: visible ? 1 : 0
             
             // Setelah rotasi: visual width = text height, visual height = text width (capped)
             width: titleText.implicitHeight
@@ -482,7 +501,8 @@ StyledRect {
 
             Behavior on opacity { Anim {} }
         }
-
+        
+        // Animate height changes for smooth active/inactive transitions
         Behavior on implicitHeight {
             Anim {
                 duration: Appearance.anim.durations.expressiveDefaultSpatial

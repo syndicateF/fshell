@@ -17,8 +17,8 @@ StyledRect {
     // color: Colours.palette.m3surfaceContainerHigh
     color: Colours.tPalette.m3surfaceContainer
 
-    // Check if network is connected
-    readonly property bool isConnected: Network.active !== null
+    // Check if network is connected (WiFi OR USB tethering)
+    readonly property bool isConnected: Network.active !== null || Network.usbTetheringConnected
 
     // Subscribe to traffic monitoring when this component is active
     Component.onCompleted: Network.trafficRefCount++

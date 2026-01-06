@@ -230,10 +230,11 @@ Singleton {
     // =====================================================
     // EVENT-DRIVEN REFRESH (Clean Architecture)
     // =====================================================
-    // NO periodic polling! Refresh happens:
+    // NO periodic polling! NO UI-triggered refresh! Data stays fresh via:
     // 1. On startup (checkProc → refresh)
     // 2. After each successful action (write procs → refresh)
-    // 3. Panes call Power.refresh() in their Component.onCompleted
+    // 3. On sysfs file changes (FileView watchers → debounced refresh)
+    // UI components just bind to service properties (reactive)
 
     // =====================================================
     // D-BUS WRITE PROCESSES

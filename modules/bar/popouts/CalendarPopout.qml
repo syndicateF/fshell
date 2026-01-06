@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import qs.components
 import qs.services
 import qs.config
+import qs.utils
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
@@ -20,13 +21,18 @@ Item {
     // Font-based width for DPI scaling
     // Sized to fit events list panel content (longer event names)
     readonly property real popoutWidth: Appearance.font.size.normal * 21
-    
-    // Fixed width, dynamic height
     implicitWidth: popoutWidth
     implicitHeight: mainContent.implicitHeight + Appearance.padding.small * 2
 
     // Toggle between main view and events list
     property bool eventsListMode: false
+
+    // Refresh weather when popout opens for more real-time data
+    onVisibleChanged: {
+        if (visible) {
+            Weather.checkAndRefresh();
+        }
+    }
 
     // Horizontal slide container
     Item {
@@ -65,11 +71,6 @@ Item {
                     spacing: Appearance.spacing.small
 
                     // ───────────────────────────────────────────────
-                    // iOS Drag Handle
-                    // ───────────────────────────────────────────────
-
-
-                    // ───────────────────────────────────────────────
                     // WEATHER HERO
                     // ───────────────────────────────────────────────
                     StyledRect {
@@ -85,25 +86,14 @@ Item {
                             y: Appearance.padding.normal
                             spacing: Appearance.spacing.normal
 
-                            // Month and Date header
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: Appearance.spacing.small
+                            // Date header - elegant and light
+                            StyledText {
+                                text: Qt.formatDate(new Date(), "dddd, MMMM d")
+                                font.pointSize: Appearance.font.size.small
+                                    color: Colours.palette.m3outline
 
-                                StyledText {
-                                    text: Qt.locale().monthName(new Date().getMonth()) + " " + new Date().getFullYear()
-                                    font.pointSize: Appearance.font.size.normal
-                                    font.weight: Font.DemiBold
-                                    color: Colours.palette.m3primary
-                                }
-
-                                Item { Layout.fillWidth: true }
-
-                                StyledText {
-                                    text: Qt.formatDate(new Date(), "dddd, d")
-                                    font.pointSize: Appearance.font.size.small
-                                    color: Colours.palette.m3onSurfaceVariant
-                                }
+                                // font.weight: Font.Medium
+                                // color: Colours.palette.m3primary
                             }
 
                             // Weather row
@@ -157,6 +147,33 @@ Item {
                                     font.pointSize: Appearance.font.size.small
                                     color: Colours.palette.m3outline
                                 }
+                                
+                                // Stale indicator
+                                Rectangle {
+                                    visible: Weather.isStale
+                                    width: staleRow.width + 8
+                                    height: staleRow.height + 4
+                                    radius: height / 2
+                                    color: Qt.alpha(Colours.palette.m3error, 0.15)
+                                    
+                                    Row {
+                                        id: staleRow
+                                        anchors.centerIn: parent
+                                        spacing: 2
+                                        
+                                        MaterialIcon {
+                                            text: "sync_problem"
+                                            font.pointSize: Appearance.font.size.smaller
+                                            color: Colours.palette.m3error
+                                        }
+                                        
+                                        StyledText {
+                                            text: qsTr("Stale")
+                                            font.pointSize: Appearance.font.size.smaller
+                                            color: Colours.palette.m3error
+                                        }
+                                    }
+                                }
 
                                 Item { Layout.fillWidth: true }
 
@@ -191,6 +208,7 @@ Item {
                                 id: dayItem
                                 required property int index
 
+                                // Today in CENTER (index 3)
                                 readonly property int dayOffset: index - 3
                                 readonly property date dayDate: {
                                     const d = new Date();
@@ -199,14 +217,16 @@ Item {
                                 }
                                 readonly property int dayNum: dayDate.getDate()
                                 readonly property bool isToday: dayOffset === 0
+                                readonly property bool isPast: dayOffset < 0
                                 readonly property bool isHoliday: Holidays.hasEvent(dayDate)
                                 readonly property bool isSunday: dayDate.getDay() === 0
-                                readonly property real distanceOpacity: 1.0 - (Math.abs(dayOffset) * 0.15)
+                                // Past days fade more, future days fade less
+                                readonly property real distanceOpacity: 1.0 - (Math.abs(dayOffset) * 0.12)
 
                                 Layout.fillWidth: true
-                                // Minimum width based on font size (DPI-safe)
                                 implicitWidth: Appearance.font.size.small * 3
-                                implicitHeight: Appearance.font.size.normal * 4
+                                // Uniform height for all days
+                                implicitHeight: Appearance.font.size.normal * 5
                                 radius: Appearance.rounding.small
                                 color: isToday ? Colours.palette.m3primary : Colours.palette.m3surfaceContainerHigh
 
@@ -236,10 +256,43 @@ Item {
                                             return Colours.palette.m3onSurface;
                                         }
                                     }
-
+                                    
+                                    // Forecast icon for ALL days (past uses today's, future uses forecast)
+                                    MaterialIcon {
+                                        id: forecastIcon
+                                        Layout.alignment: Qt.AlignHCenter
+                                        property string weatherIcon: ""
+                                        
+                                        function updateIcon() {
+                                            // For past days, use today's weather icon
+                                            // For today and future, use forecast
+                                            const forecastIndex = Math.max(0, dayItem.dayOffset);
+                                            if (forecastIndex < Weather.dailyForecast.length) {
+                                                const f = Weather.dailyForecast[forecastIndex];
+                                                if (f && typeof f.weather_code === 'number') {
+                                                    weatherIcon = Icons.getWeatherIcon(f.weather_code, true);
+                                                    return;
+                                                }
+                                            }
+                                            weatherIcon = "";
+                                        }
+                                        
+                                        Component.onCompleted: updateIcon()
+                                        Connections {
+                                            target: Weather
+                                            function onForecastVersionChanged() { forecastIcon.updateIcon(); }
+                                        }
+                                        
+                                        visible: weatherIcon !== ""
+                                        text: weatherIcon
+                                        font.pointSize: Appearance.font.size.small
+                                        color: dayItem.isToday ? Colours.palette.m3onPrimary : Colours.palette.m3outline
+                                    }
+                                    
+                                    // Holiday indicator (only if no forecast icon)
                                     Rectangle {
                                         Layout.alignment: Qt.AlignHCenter
-                                        visible: dayItem.isHoliday
+                                        visible: dayItem.isHoliday && forecastIcon.weatherIcon === ""
                                         width: 4
                                         height: 4
                                         radius: 2
@@ -250,246 +303,114 @@ Item {
                         }
                     }
 
-                    // ───────────────────────────────────────────────
-                    // TODAY SECTION HEADER
-                    // ───────────────────────────────────────────────
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: Appearance.spacing.small
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Colours.palette.m3outlineVariant
-                        }
 
-                        StyledText {
-                            text: qsTr("Today")
-                            font.pointSize: Appearance.font.size.smaller
-                            font.weight: Font.Medium
-                            // font.letterSpacing: 2
-                            color: Colours.palette.m3outline
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Colours.palette.m3outlineVariant
-                        }
-                    }
-
-                    // ───────────────────────────────────────────────
-                    // TODAY'S HOLIDAY CARD
-                    // ───────────────────────────────────────────────
-                    StyledRect {
-                        id: holidayCard
-                        readonly property var todayEvent: Holidays.getTodayEvent()
-                        readonly property var eventMeta: Holidays.getEventMeta(todayEvent)
-
-                        visible: todayEvent !== null
-                        Layout.fillWidth: true
-                        implicitHeight: 52
-                        radius: Appearance.rounding.small
-                        color: Qt.alpha(eventMeta?.color ?? Colours.palette.m3outline, 0.2)
-                        border.width: 1
-                        border.color: Qt.alpha(eventMeta?.color ?? Colours.palette.m3outline, 0.3)
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: Appearance.padding.small
-                            spacing: Appearance.spacing.normal
-
-                            Rectangle {
-                                width: 4
-                                Layout.fillHeight: true
-                                radius: 2
-                                color: holidayCard.eventMeta?.color ?? Colours.palette.m3outline
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                StyledText {
-                                    Layout.fillWidth: true
-                                    text: holidayCard.todayEvent?.name ?? ""
-                                    font.pointSize: Appearance.font.size.normal
-                                    font.weight: Font.Medium
-                                    color: Colours.palette.m3onSurface
-                                    elide: Text.ElideRight
-                                    maximumLineCount: 1
-                                }
-
-                                StyledText {
-                                    text: holidayCard.todayEvent?.isNationalHoliday ? qsTr("National Holiday") : qsTr("Observance")
-                                    font.pointSize: Appearance.font.size.smaller
-                                    color: holidayCard.eventMeta?.color ?? Colours.palette.m3outline
-                                }
-                            }
-
-                            MaterialIcon {
-                                text: holidayCard.eventMeta?.icon ?? "event"
-                                font.pointSize: Appearance.font.size.large
-                                color: holidayCard.eventMeta?.color ?? Colours.palette.m3outline
-                            }
-                        }
-                    }
-
-                    // ───────────────────────────────────────────────
-                    // PLANIFY TODAY TASKS
-                    // ───────────────────────────────────────────────
-                    Repeater {
-                        model: Planify.todayTasks.length > 0 ? Planify.todayTasks : [null]
-
-                        StyledRect {
-                            id: taskCard
-                            required property var modelData
-                            required property int index
-
-                            readonly property bool isEmpty: modelData === null
-                            readonly property var priorityColors: [
-                                Colours.palette.m3outline,
-                                Colours.palette.m3primary,
-                                Colours.palette.m3tertiary,
-                                Colours.palette.m3error
-                            ]
-
-                            Layout.fillWidth: true
-                            implicitHeight: 52
-                            radius: Appearance.rounding.small
-                            color: Colours.palette.m3surfaceContainerHigh
-                            border.width: 1
-                            border.color: Qt.alpha(Colours.palette.m3onSurface, 0.05)
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: Appearance.padding.small
-                                spacing: Appearance.spacing.normal
-
-                                Rectangle {
-                                    width: 4
-                                    Layout.fillHeight: true
-                                    radius: 2
-                                    color: taskCard.isEmpty 
-                                        ? Colours.palette.m3primary 
-                                        : taskCard.priorityColors[Math.min((taskCard.modelData?.priority ?? 1) - 1, 3)]
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-
-                                    StyledText {
-                                        Layout.fillWidth: true
-                                        text: taskCard.isEmpty ? qsTr("No upcoming tasks") : taskCard.modelData.content
-                                        font.pointSize: Appearance.font.size.normal
-                                        font.weight: Font.Medium
-                                        color: Colours.palette.m3onSurface
-                                        elide: Text.ElideRight
-                                        maximumLineCount: 1
-                                    }
-
-                                    StyledText {
-                                        visible: taskCard.isEmpty || taskCard.modelData?.dueDate
-                                        text: taskCard.isEmpty 
-                                            ? qsTr("Enjoy your day!") 
-                                            : (taskCard.modelData?.isToday ? qsTr("Today") : taskCard.modelData?.dueDate ?? "")
-                                        font.pointSize: Appearance.font.size.smaller
-                                        color: Colours.palette.m3outline
-                                    }
-                                }
-
-                                MaterialIcon {
-                                    text: taskCard.isEmpty ? "event_available" : "task_alt"
-                                    font.pointSize: Appearance.font.size.large
-                                    color: taskCard.isEmpty 
-                                        ? Colours.palette.m3primary 
-                                        : taskCard.priorityColors[Math.min((taskCard.modelData?.priority ?? 1) - 1, 3)]
-                                }
-                            }
-                        }
-                    }
-
-                    // ───────────────────────────────────────────────
-                    // UPCOMING EVENTS SECTION
-                    // ───────────────────────────────────────────────
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.topMargin: Appearance.spacing.small
-                        spacing: Appearance.spacing.small
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Colours.palette.m3outlineVariant
-                        }
-
-                        StyledText {
-                            text: qsTr("Upcoming")
-                            font.pointSize: Appearance.font.size.smaller
-                            font.weight: Font.Medium
-                            // font.letterSpacing: 2
-                            color: Colours.palette.m3outline
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            height: 1
-                            color: Colours.palette.m3outlineVariant
-                        }
-                    }
-
-                    // Upcoming events cards (max 3)
+                    // EVENTS CARDS (upcoming + today's events)
                     Repeater {
                         model: Holidays.upcomingEvents.slice(0, 3)
 
-                        UpcomingEventCard {
+                        StyledRect {
+                            id: eventCard
                             required property var modelData
                             required property int index
 
                             Layout.fillWidth: true
-                            event: modelData
-                            onClicked: rootWrapper.eventsListMode = true
+
+                            readonly property var eventMeta: Holidays.getEventMeta(modelData)
+                            readonly property color accentColor: eventMeta.color
+                            readonly property bool isToday: modelData?.isToday ?? false
+
+                            implicitHeight: eventCardContent.implicitHeight + Appearance.padding.normal * 2
+                            radius: Appearance.rounding.small
+                            // Same color as hero and calendar strip
+                            color: Colours.palette.m3surfaceContainerHigh
+
+                            RowLayout {
+                                id: eventCardContent
+                                anchors.fill: parent
+                                anchors.margins: Appearance.padding.normal
+                                spacing: Appearance.spacing.normal
+
+                                // Left accent bar - colorful based on event type
+                                Rectangle {
+                                    width: 7
+                                    Layout.fillHeight: true
+                                    radius: Appearance.rounding.small / 2
+                                    color: eventCard.accentColor
+                                }
+
+                                // Center content: countdown/today on top, title below (vertically centered)
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    Layout.alignment: Qt.AlignVCenter  // Center vertically
+                                    spacing: 2
+
+                                    // Countdown or Today indicator
+                                    StyledText {
+                                        readonly property int daysUntil: eventCard.modelData?.daysUntil ?? 0
+                                        visible: daysUntil > 0 || eventCard.isToday
+                                        text: {
+                                            if (eventCard.isToday) return "Today";
+                                            if (daysUntil === 1) return "Tomorrow";
+                                            return daysUntil + " days";
+                                        }
+                                        font.pointSize: Appearance.font.size.smaller
+                                        font.weight: Font.Medium
+                                        color: eventCard.isToday ? eventCard.accentColor : Colours.palette.m3outline
+                                    }
+
+                                    // Event title
+                                    StyledText {
+                                        Layout.fillWidth: true
+                                        text: eventCard.modelData?.name ?? ""
+                                        font.pointSize: Appearance.font.size.smaller
+                                        font.weight: Font.Normal
+                                        color: Colours.palette.m3onSurface
+                                        wrapMode: Text.Wrap
+                                    }
+                                }
+
+                                // RIGHT: Vertical date badge with background (fills height with padding)
+                                Rectangle {
+                                    readonly property string dateStr: eventCard.modelData?.date ?? ""
+                                    readonly property int day: dateStr.length >= 10 ? parseInt(dateStr.substring(8, 10)) : 0
+                                    readonly property int monthNum: dateStr.length >= 7 ? parseInt(dateStr.substring(5, 7)) : 0
+                                    readonly property var months: ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                                    readonly property string monthStr: monthNum > 0 && monthNum <= 12 ? months[monthNum] : ""
+
+                                    implicitWidth: 44
+                                    Layout.fillHeight: true
+                                    radius: Appearance.rounding.small
+                                    color: Qt.alpha(eventCard.accentColor, 0.15)
+
+                                    ColumnLayout {
+                                        anchors.centerIn: parent
+                                        spacing: 0
+
+                                        // Day number (big)
+                                        StyledText {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            text: parent.parent.day.toString()
+                                            font.weight: Font.Medium
+                                            color: eventCard.accentColor
+                                        }
+
+                                        // Month (3 letters)
+                                        StyledText {
+                                            Layout.alignment: Qt.AlignHCenter
+                                            text: parent.parent.monthStr
+                                            font.weight: Font.Medium
+                                            color: eventCard.accentColor
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    // No upcoming events - Easter egg
-                    StyledRect {
-                        visible: Holidays.upcomingEvents.length === 0
-                        Layout.fillWidth: true
-                        implicitHeight: 80
-                        radius: Appearance.rounding.small
-                        color: Qt.alpha(Colours.palette.m3tertiary, 0.1)
-                        border.width: 1
-                        border.color: Qt.alpha(Colours.palette.m3tertiary, 0.2)
 
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: Appearance.spacing.smaller
 
-                            MaterialIcon {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: "celebration"
-                                font.pointSize: 24
-                                color: Colours.palette.m3tertiary
-                            }
-
-                            StyledText {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("No upcoming holidays!")
-                                font.pointSize: Appearance.font.size.normal
-                                font.weight: Font.Medium
-                                color: Colours.palette.m3onSurface
-                            }
-
-                            // StyledText {
-                            //     Layout.alignment: Qt.AlignHCenter
-                            //     text: qsTr("Enjoy the calm 🌴")
-                            //     font.pointSize: Appearance.font.size.small
-                            //     color: Colours.palette.m3onSurfaceVariant
-                            // }
-                        }
-                    }
 
                     // ───────────────────────────────────────────────
                     // ACTION BUTTONS (Grid layout)
@@ -532,41 +453,6 @@ Item {
                                     rootWrapper.eventsListMode = true;
                                     // Auto-scroll to current/upcoming event after slide
                                     scrollToCurrentTimer.restart();
-                                }
-                            }
-                        }
-
-                        // Open Planify button
-                        StyledRect {
-                            Layout.fillWidth: true
-                            implicitHeight: 36
-                            radius: Appearance.rounding.small
-                            color: Qt.alpha(Colours.palette.m3secondary, 0.1)
-                            border.width: 1
-                            border.color: Qt.alpha(Colours.palette.m3secondary, 0.3)
-
-                            RowLayout {
-                                anchors.centerIn: parent
-                                spacing: Appearance.spacing.smaller
-
-                                MaterialIcon {
-                                    text: "open_in_new"
-                                    font.pointSize: Appearance.font.size.small
-                                    color: Colours.palette.m3secondary
-                                }
-
-                                StyledText {
-                                    text: qsTr("Planify")
-                                    font.pointSize: Appearance.font.size.smaller
-                                    color: Colours.palette.m3secondary
-                                }
-                            }
-
-                            StateLayer {
-                                radius: Appearance.rounding.small
-                                color: Colours.palette.m3secondary
-                                function onClicked(): void {
-                                    Quickshell.execDetached(["app2unit", "--", "io.github.alainm23.planify"]);
                                 }
                             }
                         }
@@ -837,7 +723,7 @@ Item {
                 }
 
                 StyledText {
-                    text: upcomingCard.isNational ? qsTr("National Holiday") : qsTr("Observance")
+                    text: upcomingCard.event?.localName ?? ""
                     font.pointSize: Appearance.font.size.smaller
                     color: upcomingCard.accentColor
                 }

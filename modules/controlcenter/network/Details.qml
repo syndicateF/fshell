@@ -18,6 +18,8 @@ Item {
     readonly property var network: session.nw.active
     readonly property bool isSaved: network?.isSaved ?? false
     readonly property bool isConnecting: Network.connecting && Network.lastConnectedSSID === (network?.ssid ?? "")
+    // Use live Network.connected state instead of stale AccessPoint.active
+    readonly property bool isActive: Network.connected && Network.activeSSID === (network?.ssid ?? "")
 
     StyledFlickable {
         anchors.fill: parent
@@ -85,7 +87,7 @@ Item {
                     implicitWidth: connectBtnContent.implicitWidth + Appearance.padding.large * 2
                     implicitHeight: connectBtnContent.implicitHeight + Appearance.padding.normal * 2
                     radius: Appearance.rounding.full
-                    color: root.network?.active ? Colours.palette.m3errorContainer : Colours.palette.m3primaryContainer
+                    color: root.isActive ? Colours.palette.m3errorContainer : Colours.palette.m3primaryContainer
 
                     CircularIndicator {
                         anchors.fill: parent
@@ -93,11 +95,11 @@ Item {
                     }
 
                     StateLayer {
-                        color: root.network?.active ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
+                        color: root.isActive ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
                         disabled: root.isConnecting
 
                         function onClicked(): void {
-                            if (root.network?.active) {
+                            if (root.isActive) {
                                 Network.disconnectFromNetwork();
                             } else if (root.isSaved) {
                                 // Saved network
@@ -124,13 +126,13 @@ Item {
                         }
 
                         MaterialIcon {
-                            text: root.network?.active ? "link_off" : root.network?.isSecure && !root.isSaved ? "key" : "link"
-                            color: root.network?.active ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
+                            text: root.isActive ? "link_off" : root.network?.isSecure && !root.isSaved ? "key" : "link"
+                            color: root.isActive ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
                         }
 
                         StyledText {
-                            text: root.isConnecting ? qsTr("Connecting...") : root.network?.active ? qsTr("Disconnect") : qsTr("Connect")
-                            color: root.network?.active ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
+                            text: root.isConnecting ? qsTr("Connecting...") : root.isActive ? qsTr("Disconnect") : qsTr("Connect")
+                            color: root.isActive ? Colours.palette.m3onErrorContainer : Colours.palette.m3onPrimaryContainer
                         }
                     }
                 }
@@ -209,16 +211,16 @@ Item {
                             implicitHeight: statusIcon.implicitHeight + Appearance.padding.normal * 2
 
                             radius: Appearance.rounding.normal
-                            color: root.network?.active ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainerHigh
+                            color: root.isActive ? Colours.palette.m3primaryContainer : Colours.tPalette.m3surfaceContainerHigh
 
                             MaterialIcon {
                                 id: statusIcon
 
                                 anchors.centerIn: parent
-                                text: root.network?.active ? "wifi" : "wifi_off"
-                                color: root.network?.active ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
+                                text: root.isActive ? "wifi" : "wifi_off"
+                                color: root.isActive ? Colours.palette.m3onPrimaryContainer : Colours.palette.m3outline
                                 font.pointSize: Appearance.font.size.large
-                                fill: root.network?.active ? 1 : 0
+                                fill: root.isActive ? 1 : 0
 
                                 Behavior on fill {
                                     Anim {}
@@ -231,12 +233,12 @@ Item {
                             spacing: 0
 
                             StyledText {
-                                text: root.network?.active ? qsTr("Connected") : root.isSaved ? qsTr("Saved - Not connected") : qsTr("Not connected")
+                                text: root.isActive ? qsTr("Connected") : root.isSaved ? qsTr("Saved - Not connected") : qsTr("Not connected")
                                 font.weight: 500
                             }
 
                             StyledText {
-                                text: root.network?.active ? qsTr("You are connected to this network") : root.isSaved ? qsTr("Tap Connect to join this network") : qsTr("Enter password to connect")
+                                text: root.isActive ? qsTr("You are connected to this network") : root.isSaved ? qsTr("Tap Connect to join this network") : qsTr("Enter password to connect")
                                 color: Colours.palette.m3outline
                                 font.pointSize: Appearance.font.size.small
                             }
@@ -430,19 +432,19 @@ Item {
                 text: qsTr("Network traffic")
                 font.pointSize: Appearance.font.size.larger
                 font.weight: 500
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
             }
 
             StyledText {
                 text: qsTr("Current transfer speeds")
                 color: Colours.palette.m3outline
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
             }
 
             StyledRect {
                 Layout.fillWidth: true
                 implicitHeight: trafficInfo.implicitHeight + Appearance.padding.large * 2
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
 
                 radius: Appearance.rounding.normal
                 color: Colours.tPalette.m3surfaceContainer
@@ -552,19 +554,19 @@ Item {
                 text: qsTr("Connection details")
                 font.pointSize: Appearance.font.size.larger
                 font.weight: 500
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
             }
 
             StyledText {
                 text: qsTr("IP and network information")
                 color: Colours.palette.m3outline
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
             }
 
             StyledRect {
                 Layout.fillWidth: true
                 implicitHeight: connectionDetails.implicitHeight + Appearance.padding.large * 2
-                visible: root.network?.active ?? false
+                visible: root.isActive ?? false
 
                 radius: Appearance.rounding.normal
                 color: Colours.tPalette.m3surfaceContainer
@@ -664,7 +666,7 @@ Item {
                 readonly property bool isConnect: modelData.action === "connect"
                 readonly property bool shouldShow: {
                     if (isForget) return root.isSaved;
-                    if (isConnect) return !root.network?.active;
+                    if (isConnect) return !root.isActive;
                     return true;
                 }
 

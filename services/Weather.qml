@@ -11,33 +11,63 @@ import QtQuick
 // Cache: ~/.cache/x-shell/weather.json
 // Data updated by x-fetch daemon (systemd timer)
 // UI reactively updates via FileView watchChanges
+// NOTE: Pure subscriber - all logic in backend, UI just reads
 Singleton {
     id: root
 
-    // Weather data from cache
+    // Current weather data from cache
     property string city: ""
     property int tempC: 0
-    property int tempF: 0
     property int feelsLikeC: 0
-    property int feelsLikeF: 0
     property int humidity: 0
     property int weatherCode: 0
     property string description: ""
+    property bool isDay: true           // NEW: for day/night icons
+    property real windSpeedKmh: 0       // NEW
+    property real uvIndex: 0            // NEW
+    
+    // Daily forecast (7 days) - array of objects
+    property var dailyForecast: []
+    
+    // Hourly forecast (24 hours) - array of objects
+    property var hourlyForecast: []
+    
+    // Version counter to force reactive binding updates when arrays change
+    property int forecastVersion: 0
+    
+    // Convenience accessors for today's data from daily[0]
+    readonly property string sunrise: dailyForecast[0]?.sunrise ?? ""
+    readonly property string sunset: dailyForecast[0]?.sunset ?? ""
+    readonly property int todayTempMax: dailyForecast[0]?.temp_max_c ?? 0
+    readonly property int todayTempMin: dailyForecast[0]?.temp_min_c ?? 0
+    
+    // Cache state from backend (fresh/stale/unavailable)
+    property string cacheState: ""  // Backend decides, UI just reads
+    property string lastError: ""   // Reason for stale state
     
     // Status properties
     property bool loading: false
     property bool hasError: false
     readonly property bool hasData: city !== ""
+    readonly property bool isStale: cacheState === "stale"
     
     // Computed properties for display
-    readonly property string icon: hasData ? Icons.getWeatherIcon(weatherCode) : (hasError ? "cloud_off" : "cloud_alert")
-    readonly property string temp: Config.services.useFahrenheit ? `${tempF}°F` : `${tempC}°C`
-    readonly property string feelsLike: Config.services.useFahrenheit ? `${feelsLikeF}°F` : `${feelsLikeC}°C`
+    readonly property string icon: hasData ? Icons.getWeatherIcon(weatherCode, isDay) : (hasError ? "cloud_off" : "cloud_alert")
+    readonly property string temp: `${tempC}°C`
+    readonly property string feelsLike: `${feelsLikeC}°C`
     readonly property string displayDescription: hasData ? description : (hasError ? qsTr("Offline") : qsTr("Loading..."))
 
     // Cache file path
     readonly property string cachePath: `${Paths.home}/.cache/x-shell/weather.json`
     readonly property string helperPath: `${Paths.home}/.local/bin/x-fetch`
+    
+    // Get daily forecast by day offset (0 = today)
+    function getDailyForecast(dayOffset) {
+        if (dayOffset >= 0 && dayOffset < dailyForecast.length) {
+            return dailyForecast[dayOffset];
+        }
+        return null;
+    }
     
     // Force refresh from network (bypasses cache TTL)
     // Only needed for manual refresh button - normal updates are via timer
@@ -56,7 +86,23 @@ Singleton {
         helperProc.running = true;
     }
     
-    // Internal: parse cache JSON
+    // Check and refresh - calls backend without --force
+    // Backend decides if refresh needed based on cache TTL
+    // Called when popout opens for more real-time weather data
+    function checkAndRefresh(): void {
+        if (helperProc.running) return;
+        
+        let cmd = [root.helperPath, "weather"];  // No --force, let backend decide
+        const hasConfigLocation = Config.services.weatherLocation && Config.services.weatherLocation !== "";
+        if (hasConfigLocation) {
+            cmd.push("--city=" + Config.services.weatherLocation);
+        }
+        
+        helperProc.command = cmd;
+        helperProc.running = true;
+    }
+    
+    // Internal: parse cache JSON (read-only, no logic)
     function _parseCache(text: string): void {
         if (!text || !text.trim()) return;
         
@@ -64,21 +110,31 @@ Singleton {
             const json = JSON.parse(text);
             const data = json.data;
             
+            // Read cache metadata (backend decides state, UI just reads)
+            cacheState = json.state || "";
+            lastError = json.last_error || "";
+            
             if (data) {
                 city = data.city || "";
                 tempC = data.temp_c || 0;
-                tempF = data.temp_f || 0;
                 feelsLikeC = data.feels_like_c || 0;
-                feelsLikeF = data.feels_like_f || 0;
                 humidity = data.humidity || 0;
                 weatherCode = data.weather_code || 0;
                 description = data.description || "";
+                isDay = data.is_day ?? true;
+                windSpeedKmh = data.wind_speed_kmh || 0;
+                uvIndex = data.uv_index || 0;
                 hasError = false;
                 loading = false;
             }
+            
+            // Read forecast arrays and increment version to trigger reactive binding updates
+            dailyForecast = json.daily || [];
+            hourlyForecast = json.hourly || [];
+            forecastVersion++;
+            
         } catch (e) {
             console.warn("Weather: Failed to parse cache:", e);
-            // Don't set hasError - cache parse failure != network failure
         }
     }
 

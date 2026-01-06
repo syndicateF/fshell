@@ -64,6 +64,7 @@ Searcher {
     FileView {
         path: root.currentNamePath
         watchChanges: true
+        blockLoading: true  // Ensure path is loaded before UI bindings access it
         onFileChanged: reload()
         onLoaded: {
             root.actualCurrent = text().trim();

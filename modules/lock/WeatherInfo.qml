@@ -33,6 +33,26 @@ RowLayout {
             text: Weather.icon
             font.pointSize: Appearance.font.size.extraLarge
             color: Weather.hasError ? Colours.palette.m3error : Colours.palette.m3tertiary
+            opacity: Weather.isStale ? 0.6 : 1.0  // Dim when stale
+        }
+        
+        // Stale indicator badge
+        Rectangle {
+            visible: Weather.isStale && Weather.hasData
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.margins: 4
+            width: 16
+            height: 16
+            radius: 8
+            color: Colours.palette.m3errorContainer
+            
+            MaterialIcon {
+                anchors.centerIn: parent
+                text: "sync_problem"
+                font.pointSize: 10
+                color: Colours.palette.m3onErrorContainer
+            }
         }
     }
 
@@ -50,6 +70,7 @@ RowLayout {
             font.family: Appearance.font.family.clock
             font.weight: Font.Bold
             color: Colours.palette.m3onSurface
+            opacity: Weather.isStale ? 0.7 : 1.0  // Slightly dim when stale
         }
 
         StyledText {

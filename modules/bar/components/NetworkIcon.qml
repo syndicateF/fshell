@@ -2,25 +2,39 @@ pragma ComponentBehavior: Bound
 
 import qs.services
 import qs.config
+import qs.components
 import QtQuick
 
-// Network icon - iOS style dengan signal bars
+// Network icon - iOS style WiFi bars OR USB icon when tethering
 Item {
     id: root
 
     implicitWidth: Config.bar.sizes.innerWidth
-    implicitHeight: wifiIOS.implicitHeight
+    implicitHeight: Math.max(wifiIOS.implicitHeight, usbIcon.implicitHeight)
 
+    // USB tethering takes priority over WiFi display
+    readonly property bool showUsb: Network.usbTetheringConnected
+    readonly property bool showWifi: !showUsb
+
+    // WiFi icon (iOS style signal bars)
     Item {
         id: wifiIOS
         anchors.centerIn: parent
         implicitWidth: 20
         implicitHeight: 16
+        
+        // Smooth hide when USB connected
+        opacity: root.showWifi ? 1 : 0
+        scale: root.showWifi ? 1 : 0.8
+        visible: opacity > 0
+        
+        Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 
         readonly property bool connected: Network.active !== null
         readonly property int strength: connected ? (Network.active.strength ?? 0) : 0
         readonly property int bars: Math.ceil(strength / 34)  // 0-3 bars
-        readonly property color activeColor: Colours.palette.m3primary  // Accent color
+        readonly property color activeColor: Colours.palette.m3primary
         readonly property color inactiveColor: Colours.palette.m3outline
 
         // Base dot (always visible when connected)
@@ -31,8 +45,6 @@ Item {
             height: 3
             radius: 1.5
             color: wifiIOS.connected ? wifiIOS.activeColor : wifiIOS.inactiveColor
-            // REMOVED: Breathing animation that was causing 40% GPU load!
-            // Signal strength is already shown via the bars - no need for pulsing.
 
             Behavior on color {
                 ColorAnimation { duration: 300; easing.type: Easing.OutBack }
@@ -89,5 +101,22 @@ Item {
                 ColorAnimation { duration: 500; easing.type: Easing.OutBack; easing.overshoot: 1.2 }
             }
         }
+    }
+
+    // USB tethering icon (Material icon)
+    MaterialIcon {
+        id: usbIcon
+        anchors.centerIn: parent
+        text: "usb"
+        font.pointSize: 14
+        color: Colours.palette.m3primary
+        
+        // Smooth show when USB connected
+        opacity: root.showUsb ? 1 : 0
+        scale: root.showUsb ? 1 : 0.5
+        visible: opacity > 0
+        
+        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
     }
 }

@@ -187,7 +187,7 @@ Item {
 
     Comp {
         shouldBeActive: root.detachedMode === "any"
-        asynchronous: false  // Sync load to prevent first-open shrink
+        asynchronous: false
         anchors.centerIn: parent
 
         sourceComponent: ControlCenter {
@@ -211,10 +211,8 @@ Item {
         enabled: root.implicitWidth > 0
 
         Anim {
-            // 350ms matches CalendarPopout rootWrapper Behavior for content height changes
-            // animLength for open/close transitions
-            duration: root.heightAnimEnabled ? root.animLength : 350
-            easing.bezierCurve: root.heightAnimEnabled ? root.animCurve : Appearance.anim.curves.emphasized
+            duration: root.animLength
+            easing.bezierCurve: root.animCurve
         }
     }
 

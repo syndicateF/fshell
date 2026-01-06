@@ -17,8 +17,7 @@ Item {
 
     required property Session session
 
-    // Refresh power data when pane is created (Clean Architecture)
-    Component.onCompleted: Power.refresh()
+    // Power data is managed by singleton service (no refresh needed here)
 
     StyledFlickable {
         anchors.fill: parent

@@ -22,6 +22,7 @@ Item {
     Component.onCompleted: {
         if (Network.pendingNetworkFromBar && Network.openPasswordDialogOnPanelOpen) {
             root.session.nw.pendingNetwork = Network.pendingNetworkFromBar;
+            Network.clearWarning(); // Clear any stale error
             root.session.nw.connectDialogOpen = true;
             Network.pendingNetworkFromBar = null;
             Network.openPasswordDialogOnPanelOpen = false;
@@ -33,6 +34,7 @@ Item {
         function onOpenPasswordDialogOnPanelOpenChanged() {
             if (Network.openPasswordDialogOnPanelOpen && Network.pendingNetworkFromBar) {
                 root.session.nw.pendingNetwork = Network.pendingNetworkFromBar;
+                Network.clearWarning(); // Clear any stale error
                 root.session.nw.connectDialogOpen = true;
                 Network.pendingNetworkFromBar = null;
                 Network.openPasswordDialogOnPanelOpen = false;
@@ -209,10 +211,10 @@ Item {
                     id: network
 
                     required property var modelData
-                    readonly property bool isActive: modelData.active
+                    readonly property bool isActive: Network.connected && Network.activeSSID === modelData.ssid
                     readonly property bool isSecure: modelData.isSecure
                     readonly property bool isSaved: modelData.isSaved
-                    readonly property bool isConnecting: Network.connecting && Network.lastConnectedSSID === modelData.ssid
+                    readonly property bool isConnecting: Network.connectingSSID === modelData.ssid && Network.connectingSSID !== ""
 
                     anchors.left: parent?.left
                     anchors.right: parent?.right
@@ -359,6 +361,7 @@ Item {
                                 } else if (network.isSecure) {
                                     // New secured network - need password
                                     root.session.nw.pendingNetwork = network.modelData;
+                                    Network.clearWarning(); // Clear any stale error
                                     root.session.nw.connectDialogOpen = true;
                                 } else {
                                     // Open network (not saved) - use wifi connect
@@ -733,7 +736,7 @@ Item {
                                     background: Item {}
 
                                     onAccepted: {
-                                        if (text.length >= 8) {
+                                        if (text.length >= 8 && root.session.nw.pendingNetwork) {
                                             Network.connectToNewNetwork(root.session.nw.pendingNetwork.ssid, text);
                                             passwordInput.focus = false;
                                             root.session.nw.connectDialogOpen = false;
@@ -831,7 +834,7 @@ Item {
                             disabled: passwordInput.text.length < 8
 
                             function onClicked(): void {
-                                if (passwordInput.text.length >= 8) {
+                                if (passwordInput.text.length >= 8 && root.session.nw.pendingNetwork) {
                                     Network.connectToNewNetwork(root.session.nw.pendingNetwork.ssid, passwordInput.text);
                                     passwordInput.focus = false;
                                     root.session.nw.connectDialogOpen = false;

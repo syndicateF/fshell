@@ -7,55 +7,66 @@ import Quickshell.Services.Notifications
 Singleton {
     id: root
 
-    readonly property var weatherIcons: ({
-            "113": "clear_day",
-            "116": "partly_cloudy_day",
-            "119": "cloud",
-            "122": "cloud",
-            "143": "foggy",
-            "176": "rainy",
-            "179": "rainy",
-            "182": "rainy",
-            "185": "rainy",
-            "200": "thunderstorm",
-            "227": "cloudy_snowing",
-            "230": "snowing_heavy",
-            "248": "foggy",
-            "260": "foggy",
-            "263": "rainy",
-            "266": "rainy",
-            "281": "rainy",
-            "284": "rainy",
-            "293": "rainy",
-            "296": "rainy",
-            "299": "rainy",
-            "302": "weather_hail",
-            "305": "rainy",
-            "308": "weather_hail",
-            "311": "rainy",
-            "314": "rainy",
-            "317": "rainy",
-            "320": "cloudy_snowing",
-            "323": "cloudy_snowing",
-            "326": "cloudy_snowing",
-            "329": "snowing_heavy",
-            "332": "snowing_heavy",
-            "335": "snowing",
-            "338": "snowing_heavy",
-            "350": "rainy",
-            "353": "rainy",
-            "356": "rainy",
-            "359": "weather_hail",
-            "362": "rainy",
-            "365": "rainy",
-            "368": "cloudy_snowing",
-            "371": "snowing",
-            "374": "rainy",
-            "377": "rainy",
-            "386": "thunderstorm",
-            "389": "thunderstorm",
-            "392": "thunderstorm",
-            "395": "snowing"
+    // WMO Weather codes (Open-Meteo standard)
+    readonly property var wmoWeatherIcons: ({
+            // Day icons
+            "0_day": "clear_day",
+            "1_day": "clear_day",
+            "2_day": "partly_cloudy_day",
+            "3_day": "cloud",
+            "45_day": "foggy",
+            "48_day": "foggy",
+            "51_day": "rainy",
+            "53_day": "rainy",
+            "55_day": "rainy",
+            "56_day": "rainy",
+            "57_day": "rainy",
+            "61_day": "rainy",
+            "63_day": "rainy",
+            "65_day": "weather_hail",
+            "66_day": "rainy",
+            "67_day": "rainy",
+            "71_day": "cloudy_snowing",
+            "73_day": "cloudy_snowing",
+            "75_day": "snowing_heavy",
+            "77_day": "snowing",
+            "80_day": "rainy",
+            "81_day": "rainy",
+            "82_day": "weather_hail",
+            "85_day": "cloudy_snowing",
+            "86_day": "snowing_heavy",
+            "95_day": "thunderstorm",
+            "96_day": "thunderstorm",
+            "99_day": "thunderstorm",
+            // Night icons
+            "0_night": "clear_night",
+            "1_night": "clear_night",
+            "2_night": "partly_cloudy_night",
+            "3_night": "cloud",
+            "45_night": "foggy",
+            "48_night": "foggy",
+            "51_night": "rainy",
+            "53_night": "rainy",
+            "55_night": "rainy",
+            "56_night": "rainy",
+            "57_night": "rainy",
+            "61_night": "rainy",
+            "63_night": "rainy",
+            "65_night": "weather_hail",
+            "66_night": "rainy",
+            "67_night": "rainy",
+            "71_night": "cloudy_snowing",
+            "73_night": "cloudy_snowing",
+            "75_night": "snowing_heavy",
+            "77_night": "snowing",
+            "80_night": "rainy",
+            "81_night": "rainy",
+            "82_night": "weather_hail",
+            "85_night": "cloudy_snowing",
+            "86_night": "snowing_heavy",
+            "95_night": "thunderstorm",
+            "96_night": "thunderstorm",
+            "99_night": "thunderstorm"
         })
 
     readonly property var categoryIcons: ({
@@ -141,10 +152,18 @@ Singleton {
         return "bluetooth";
     }
 
-    function getWeatherIcon(code: string): string {
-        if (weatherIcons.hasOwnProperty(code))
-            return weatherIcons[code];
-        return "air";
+    function getWeatherIcon(code, isDay) {
+        // Default to day if isDay not provided
+        if (isDay === undefined) isDay = true;
+        const suffix = isDay ? "_day" : "_night";
+        const key = code.toString() + suffix;
+        if (wmoWeatherIcons.hasOwnProperty(key))
+            return wmoWeatherIcons[key];
+        // Fallback to day variant if night not found
+        const dayKey = code.toString() + "_day";
+        if (wmoWeatherIcons.hasOwnProperty(dayKey))
+            return wmoWeatherIcons[dayKey];
+        return "cloud";
     }
 
     function getNotifIcon(summary: string, urgency: int): string {

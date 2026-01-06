@@ -13,8 +13,11 @@ ColumnLayout {
 
     required property Item wrapper
 
-    // Refresh power data when popout is created (Clean Architecture)
-    Component.onCompleted: Power.refresh()
+    // Power data is managed by singleton service:
+    // - Auto-refreshes on startup
+    // - Watches sysfs for external changes (FN+Q, CLI, etc.)
+    // - Refreshes after each action
+    // UI just binds to service properties (reactive)
 
     // Computed properties for UPower
     readonly property bool isCharging: [

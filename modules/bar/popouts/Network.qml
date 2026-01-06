@@ -370,6 +370,75 @@ ColumnLayout {
     }
 
     // ═══════════════════════════════════════════════════
+    // USB Tethering Section (shows when USB detected)
+    // ═══════════════════════════════════════════════════
+    StyledRect {
+        visible: Network.usbInterfaceDetected
+        Layout.fillWidth: true
+        implicitHeight: usbContent.height + Appearance.padding.small * 2
+        radius: Appearance.rounding.small
+        color: Network.usbTetheringConnected 
+            ? Colours.palette.m3primaryContainer 
+            : Colours.palette.m3surfaceContainerHigh
+
+        RowLayout {
+            id: usbContent
+            anchors.centerIn: parent
+            width: parent.width - Appearance.padding.normal * 2
+            spacing: Appearance.spacing.small
+
+            MaterialIcon {
+                text: "usb"
+                font.pointSize: Appearance.font.size.normal
+                color: Network.usbTetheringConnected 
+                    ? Colours.palette.m3onPrimaryContainer 
+                    : Colours.palette.m3onSurface
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                StyledText {
+                    text: Network.usbTetheringConnected 
+                        ? qsTr("USB Tethering") 
+                        : Network.usbTetheringAvailable 
+                            ? qsTr("USB Ready") 
+                            : qsTr("USB Detected")
+                    font.pointSize: Appearance.font.size.small
+                    font.weight: Font.Medium
+                    color: Network.usbTetheringConnected 
+                        ? Colours.palette.m3onPrimaryContainer 
+                        : Colours.palette.m3onSurface
+                }
+
+                StyledText {
+                    visible: Network.usbInterfaceName !== ""
+                    text: Network.usbInterfaceName
+                    font.pointSize: Appearance.font.size.smaller
+                    color: Colours.palette.m3outline
+                }
+            }
+
+            // Status indicator
+            Rectangle {
+                width: 8
+                height: 8
+                radius: 4
+                color: Network.usbTetheringConnected 
+                    ? Colours.palette.m3primary 
+                    : Network.usbTetheringAvailable 
+                        ? Colours.palette.m3tertiary 
+                        : Colours.palette.m3outline
+
+                Behavior on color {
+                    ColorAnimation { duration: 300 }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════
     // Connected Section
     // ═══════════════════════════════════════════════════
     RowLayout {
