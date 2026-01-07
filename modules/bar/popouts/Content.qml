@@ -16,13 +16,13 @@ Item {
     anchors.centerIn: parent
 
     implicitWidth: (currentPopout?.implicitWidth ?? 0) + Appearance.padding.large * 2 + Config.border.thickness
-    implicitHeight: (currentPopout?.implicitHeight ?? 0) + Appearance.padding.large * 2
+    implicitHeight: (currentPopout?.implicitHeight ?? 0) + Appearance.padding.large + Appearance.padding.normal * 2
 
     Item {
         id: content
 
         anchors.fill: parent
-        anchors.margins: Appearance.padding.large
+        anchors.margins: Appearance.padding.normal
 
         Popout {
             name: "activewindow"

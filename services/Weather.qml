@@ -2,7 +2,7 @@ pragma Singleton
 
 import qs.config
 import qs.utils
-import Caelestia
+import XShell
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -69,30 +69,19 @@ Singleton {
         return null;
     }
     
-    // Force refresh from network (bypasses cache TTL)
-    // Only needed for manual refresh button - normal updates are via timer
+    // Force refresh from network (user clicked refresh button)
+    // Uses reason=manual which always bypasses policy
     function forceRefresh(): void {
-        if (helperProc.running) return;
-        loading = true;
-        hasError = false;
-        
-        let cmd = [root.helperPath, "weather", "--force"];
-        const hasConfigLocation = Config.services.weatherLocation && Config.services.weatherLocation !== "";
-        if (hasConfigLocation) {
-            cmd.push("--city=" + Config.services.weatherLocation);
-        }
-        
-        helperProc.command = cmd;
-        helperProc.running = true;
+        triggerRefresh("manual");
     }
     
-    // Check and refresh - calls backend without --force
-    // Backend decides if refresh needed based on cache TTL
-    // Called when popout opens for more real-time weather data
-    function checkAndRefresh(): void {
+    // Trigger refresh with reason
+    // UI only emits reason, backend decides based on policy table
+    // Valid reasons: startup, resume, popout, manual
+    function triggerRefresh(reason: string): void {
         if (helperProc.running) return;
         
-        let cmd = [root.helperPath, "weather"];  // No --force, let backend decide
+        let cmd = [root.helperPath, "weather", "--reason=" + reason];
         const hasConfigLocation = Config.services.weatherLocation && Config.services.weatherLocation !== "";
         if (hasConfigLocation) {
             cmd.push("--city=" + Config.services.weatherLocation);
@@ -184,7 +173,13 @@ Singleton {
         }
     }
     
-    // Load cache on startup (sync with existing data if available)
+    // NOTE: Resume refresh now handled by x-network daemon
+    // See: internal/netlink/watcher.go - triggers x-fetch on IPv4 assignment after resume
+    
+    // NOTE: Startup refresh also handled by x-network daemon
+    // Triggers x-fetch when first IPv4 is assigned after boot
+    
+    // Load cache on startup (refresh handled by x-network)
     Component.onCompleted: {
         cacheFile.reload();
     }

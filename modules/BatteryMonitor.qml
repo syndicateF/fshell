@@ -1,6 +1,6 @@
 import qs.config
 import qs.services
-import Caelestia
+import XShell
 import Quickshell
 import Quickshell.Services.UPower
 import QtQuick

@@ -1,8 +1,8 @@
 pragma Singleton
 
 import qs.config
-import Caelestia.Services
-import Caelestia
+import XShell.Services
+import XShell
 import Quickshell
 import Quickshell.Services.Pipewire
 import QtQuick

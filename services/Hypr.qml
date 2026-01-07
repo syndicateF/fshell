@@ -2,8 +2,8 @@ pragma Singleton
 
 import qs.components.misc
 import qs.config
-import Caelestia
-import Caelestia.Internal
+import XShell
+import XShell.Internal
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io

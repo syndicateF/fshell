@@ -1,7 +1,7 @@
 pragma Singleton
 
 import qs.utils
-import Caelestia
+import XShell
 import Quickshell
 import Quickshell.Io
 

@@ -1,7 +1,7 @@
 pragma Singleton
 
 import qs.utils
-import Caelestia
+import XShell
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -52,6 +52,10 @@ Singleton {
         return getEvent(new Date());
     }
 
+    // NOTE: daysUntil and isToday are computed by x-fetch backend
+    // x-fetch holidays has a systemd timer that runs at midnight to refresh these values
+    // UI is pure subscriber - no time computation here
+
     // Get meta (icon + color) based on event type from api.co.id
     // Types: "Public Holiday", "Joint Holiday", "Observance", "National Holiday"
     function getEventMeta(event: var): var {
@@ -78,29 +82,38 @@ Singleton {
         return { icon: "event", color: Colours.palette.m3outline, type: "other" };
     }
     
-    // Force refresh from network (bypasses cache TTL)
+    // Force refresh from network (user clicked refresh button)
     function forceRefresh(): void {
+        triggerRefresh("manual");
+    }
+    
+    // Trigger refresh with reason
+    // UI only emits reason, backend decides based on policy table
+    function triggerRefresh(reason: string): void {
         if (helperProc.running) return;
-        loading = true;
-        hasError = false;
-        helperProc.command = [root.helperPath, "holidays", "--force"];
+        helperProc.command = [root.helperPath, "holidays", "--reason=" + reason];
         helperProc.running = true;
     }
     
     // Pre-computed arrays from backend - UI is PURE SUBSCRIBER
-    property var upcomingEvents: []
+    property var allEvents: []         // All events for the year
+    property var upcomingEvents: []    // Next 10 upcoming events
+    property var topUpcomingEvents: [] // Next 3 upcoming events (for main panel)
     property var thisMonthEvents: []
     property var todayEvent: null
     
     // Helper to convert snake_case JSON to camelCase object
+    // All values come from cache - UI is pure subscriber
     function _mapEvent(ev: var): var {
         return {
             date: ev.date,
             dateFormatted: ev.date_formatted,
             name: ev.name,
             type: ev.type,
-            daysUntil: ev.days_until,
-            isToday: ev.is_today,
+            daysUntil: ev.days_until,        // From cache (refreshed by x-fetch timer)
+            dayNum: ev.day_num,
+            monthShort: ev.month_short,
+            isToday: ev.is_today,            // From cache (refreshed by x-fetch timer)
             isHoliday: ev.is_holiday,
             isJointHoliday: ev.is_joint_holiday,
             isObservance: ev.is_observance
@@ -121,11 +134,14 @@ Singleton {
             // Map all events to camelCase
             const allRaw = json.all_events || [];
             const upcomingRaw = json.upcoming_events || [];
+            const topUpcomingRaw = json.top_upcoming_events || [];
             const thisMonthRaw = json.this_month_events || [];
             const todayRaw = json.today_event;
             
             upcomingEvents = upcomingRaw.map(_mapEvent);
+            topUpcomingEvents = topUpcomingRaw.map(_mapEvent);
             thisMonthEvents = thisMonthRaw.map(_mapEvent);
+            allEvents = allRaw.map(_mapEvent);
             todayEvent = todayRaw ? _mapEvent(todayRaw) : null;
             
             // Keep events map for getEvent() lookup
@@ -187,7 +203,10 @@ Singleton {
         }
     }
     
-    // Load cache on startup
+    // NOTE: Resume and startup refresh now handled by x-network daemon
+    // Triggers x-fetch (weather + holidays) when IPv4 is assigned
+    
+    // Load cache on startup (refresh handled by x-network)
     Component.onCompleted: {
         cacheFile.reload();
     }
