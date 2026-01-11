@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import "bluetooth"
 import "network"
 import "monitor"
-import "power"
+import "hardware"
 import qs.components
 import qs.services
 import qs.config
@@ -47,7 +47,7 @@ ClippingRectangle {
 
         Pane {
             index: 3
-            sourceComponent: PowerPane {
+            sourceComponent: HardwarePane {
                 session: root.session
             }
         }

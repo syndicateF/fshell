@@ -250,7 +250,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
     
     Process {
@@ -263,7 +262,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
     
     Process {
@@ -276,7 +274,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
     
     Process {
@@ -289,7 +286,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
     
     Process {
@@ -302,7 +298,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
     
     Process {
@@ -315,7 +310,6 @@ Singleton {
                 }
             }
         }
-        onExited: root._busy = false
     }
 
     // =====================================================

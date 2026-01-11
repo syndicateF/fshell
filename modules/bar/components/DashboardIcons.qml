@@ -19,7 +19,7 @@ StyledRect {
     required property var popouts
 
     readonly property alias items: iconsColumn
-    property color colour: Colours.palette.m3yellow
+    property color colour: Colours.palette.m3peach
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Config.border.rounding

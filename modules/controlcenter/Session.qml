@@ -2,7 +2,7 @@ import Quickshell.Bluetooth
 import QtQuick
 
 QtObject {
-    readonly property list<string> panes: ["network", "bluetooth", "monitor", "power"]
+    readonly property list<string> panes: ["network", "bluetooth", "monitor", "hardware"]
 
     required property var root
     property bool floating: false
@@ -13,6 +13,7 @@ QtObject {
     readonly property Bt bt: Bt {}
     readonly property Nw nw: Nw {}
     readonly property Mon mon: Mon {}
+    readonly property Hw hw: Hw {}
 
     onActiveChanged: activeIndex = panes.indexOf(active)
     onActiveIndexChanged: active = panes[activeIndex]
@@ -40,5 +41,9 @@ QtObject {
 
     component Mon: QtObject {
         property bool fabMenuOpen: false
+    }
+
+    component Hw: QtObject {
+        property string active: ""  // "power" or "rgb" - empty = show list
     }
 }

@@ -10,7 +10,8 @@ import QtQuick.Layouts
 StyledRect {
     id: root
 
-    property color colour: Colours.palette.m3tertiary
+    // property color colour: Colours.palette.m3blue
+    property color colour: Colours.palette.m3peach
     
     // Time format
     property string timeString: Time.format(Config.services.useTwelveHourClock ? "hh:mm" : "HH:mm")
@@ -48,19 +49,19 @@ StyledRect {
             }
             
             // AM/PM indicator
-            Text {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.topMargin: 2
-                visible: Config.services.useTwelveHourClock
-                text: Time.format("AP")
-                font.pointSize: 8
-                font.family: Appearance.font.family.sans
-                font.hintingPreference: Font.PreferDefaultHinting
-                font.variableAxes: ({ "wght": 500 })
-                color: root.colour
-                opacity: 0.7
-                renderType: Text.NativeRendering
-            }
+            // Text {
+            //     Layout.alignment: Qt.AlignHCenter
+            //     Layout.topMargin: 2
+            //     visible: Config.services.useTwelveHourClock
+            //     text: Time.format("AP")
+            //     font.pointSize: 8
+            //     font.family: Appearance.font.family.sans
+            //     font.hintingPreference: Font.PreferDefaultHinting
+            //     font.variableAxes: ({ "wght": 500 })
+            //     color: root.colour
+            //     opacity: 0.7
+            //     renderType: Text.NativeRendering
+            // }
         }
 
         // Divider
@@ -68,7 +69,7 @@ StyledRect {
             Layout.fillWidth: true
             implicitHeight: 1
             color: root.colour
-            // opacity: 0.5
+            opacity: 0.5
         }
 
         // Weather section - vertical (icon above, temp below)
