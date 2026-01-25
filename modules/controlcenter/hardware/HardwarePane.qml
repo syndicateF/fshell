@@ -118,44 +118,88 @@ RowLayout {
             radius: rightBorder.innerRadius
             color: "transparent"
 
-            // No selection placeholder
-            ColumnLayout {
-                anchors.centerIn: parent
-                visible: root.session.hw.active === ""
-                spacing: Appearance.spacing.normal
-
-                MaterialIcon {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: "touch_app"
-                    font.pointSize: Appearance.font.size.extraLarge * 2
-                    color: Colours.palette.m3outline
-                }
-
-                StyledText {
-                    Layout.alignment: Qt.AlignHCenter
-                    text: qsTr("Select a hardware item")
-                    color: Colours.palette.m3outline
-                }
-            }
-
-            // Power detail
-            Loader {
+            // Horizontal sliding panes
+            Item {
+                id: horizontalPanes
+                
                 anchors.fill: parent
-                active: root.session.hw.active === "power"
-                asynchronous: true
-
-                sourceComponent: PowerPane {
-                    session: root.session
+                clip: true
+                
+                // 0 = placeholder, 1 = power, 2 = rgb
+                property int activePane: {
+                    if (root.session.hw.active === "power") return 1;
+                    if (root.session.hw.active === "rgb") return 2;
+                    return 0;
                 }
-            }
+                
+                RowLayout {
+                    id: paneRow
+                    
+                    spacing: 0
+                    x: -horizontalPanes.activePane * horizontalPanes.width
+                    
+                    // Pane 0: No selection placeholder
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            spacing: Appearance.spacing.normal
 
-            // RGB detail
-            Loader {
-                anchors.fill: parent
-                active: root.session.hw.active === "rgb"
-                asynchronous: true
+                            MaterialIcon {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: "touch_app"
+                                font.pointSize: Appearance.font.size.extraLarge * 2
+                                color: Colours.palette.m3outline
+                            }
 
-                sourceComponent: RgbPane {}
+                            StyledText {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: qsTr("Select a hardware item")
+                                color: Colours.palette.m3outline
+                            }
+                        }
+                    }
+                    
+                    // Pane 1: Power detail
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        Loader {
+                            anchors.fill: parent
+                            active: root.session.hw.active === "power" || horizontalPanes.activePane === 1
+                            asynchronous: true
+
+                            sourceComponent: PowerPane {
+                                session: root.session
+                            }
+                        }
+                    }
+                    
+                    // Pane 2: RGB detail
+                    Item {
+                        Layout.preferredWidth: horizontalPanes.width
+                        Layout.preferredHeight: horizontalPanes.height
+                        
+                        Loader {
+                            anchors.fill: parent
+                            active: root.session.hw.active === "rgb" || horizontalPanes.activePane === 2
+                            asynchronous: true
+
+                            sourceComponent: RgbPane {}
+                        }
+                    }
+                    
+                    Behavior on x {
+                        NumberAnimation {
+                            duration: Appearance.anim.durations.expressiveDefaultSpatial
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+                        }
+                    }
+                }
             }
         }
 

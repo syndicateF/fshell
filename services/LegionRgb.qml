@@ -97,6 +97,56 @@ Singleton {
     }
     
     /**
+     * Preview zone color - apply to hardware WITHOUT persisting
+     * Used by color picker for live preview
+     */
+    function previewZoneColor(zoneIndex: int, color: string): void {
+        const colors = _colors.slice();
+        colors[zoneIndex] = color.toLowerCase().replace("#", "");
+        _colors = colors;
+        previewProc.command = ["sh", "-c", `echo 'static ${colors.join(" ")} --brightness ${_brightness}' | nc -U /run/legion-rgb.sock`];
+        previewProc.running = true;
+    }
+    
+    /**
+     * Apply full state - build explicit command from state object
+     * Used for both Apply (current state) and Cancel (snapshot)
+     */
+    function applyFullState(state: var): void {
+        const colorStr = state.colors.join(" ");
+        let cmd = "";
+        switch (state.effect) {
+            case "static":
+                cmd = `static ${colorStr} --brightness ${state.brightness}`;
+                break;
+            case "breath":
+                cmd = `breath ${colorStr} --speed ${state.speed} --brightness ${state.brightness}`;
+                break;
+            case "wave":
+                cmd = `wave ${state.direction || "rtl"} --speed ${state.speed} --brightness ${state.brightness}`;
+                break;
+            case "hue":
+                cmd = `hue --speed ${state.speed} --brightness ${state.brightness}`;
+                break;
+            case "off":
+                cmd = "off";
+                break;
+            default:
+                return;
+        }
+        
+        // Update local state
+        _effect = state.effect;
+        _colors = state.colors.slice();
+        _brightness = state.brightness;
+        _speed = state.speed;
+        _direction = state.direction || "rtl";
+        
+        // Send command
+        _sendRaw(cmd);
+    }
+    
+    /**
      * Switch effect (preserves current colors/settings)
      */
     function switchEffect(newEffect: string): void {
@@ -329,6 +379,12 @@ Singleton {
                 }
             }
         }
+    }
+    
+    // Preview process - no busy state, no refresh (ephemeral)
+    Process {
+        id: previewProc
+        // Silent - preview doesn't affect UI state
     }
     
     // =====================================================

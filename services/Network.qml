@@ -526,7 +526,7 @@ Singleton {
         readonly property int frequency: lastIpcObject.frequency ?? 0
         readonly property bool active: lastIpcObject.active ?? false
         readonly property string security: lastIpcObject.security ?? ""
-        readonly property bool isSecure: security.length > 0
+        readonly property bool isSecure: security.length > 0 && security !== "open"
         readonly property bool isSaved: root.savedConnections.some(c => c.name === ssid)
         readonly property bool is5GHz: frequency > 5000
     }
