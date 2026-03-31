@@ -363,8 +363,6 @@ Variants {
                 }
             }
 
-            // AI Chat Widget - REMOVED (run helpers/x-ai/uninstall.sh --restore to re-enable)
-
         }
     }
 }

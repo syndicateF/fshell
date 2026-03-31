@@ -24,7 +24,8 @@ Loader {
             name: "background"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Background
-            color: "black"
+            // kalo ndada wp
+            color: "red"
 
             anchors.top: true
             anchors.bottom: true

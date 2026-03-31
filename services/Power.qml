@@ -31,13 +31,12 @@ Singleton {
     property bool eppAvailable: true  // NEW: Whether EPP feature exists
     property var availableGpuProfiles: []  // Dynamic from backend: [{id, name}, ...]
     
-    // NEW: Capability properties from daemon V2
+    // Capability properties from daemon
     property string kernelVersion: "unknown"
     property string amdPstateMode: "unknown"
     property int policyCount: 0
     property int cpuCount: 0
     property string cpuDriver: "unknown"
-    
     
     // Battery properties
     property bool batteryAvailable: false
@@ -54,6 +53,41 @@ Singleton {
     property var availableChargeTypes: []
     property string chargeType: "unknown"
     property bool chargeTypeWritable: false
+    
+    // v3: Power source monitoring
+    property string powerSource: "unknown"  // "ac", "battery", "unknown"
+    property int batteryCapacity: 0
+    property string batteryStatus: "Unknown"
+    property bool acAdapterAvailable: false
+    
+    // v3: Temperature sensors
+    property real cpuTemp: -1
+    property real gpuTemp: -1
+    property bool cpuTempAvailable: false
+    property bool gpuTempAvailable: false
+    
+    // v3: Auto AC/Battery switching
+    property bool autoSwitchEnabled: false
+    property string acPresetProfile: ""
+    property string acPresetGovernor: ""
+    property string acPresetEpp: ""
+    property bool acPresetBoost: true
+    property int acPresetGpu: 0
+    property string batteryPresetProfile: ""
+    property string batteryPresetGovernor: ""
+    property string batteryPresetEpp: ""
+    property bool batteryPresetBoost: false
+    property int batteryPresetGpu: 0
+    
+    // v3: Lenovo features
+    property bool fanModeAvailable: false
+    property int fanMode: 0
+    property bool cameraPowerAvailable: false
+    property bool cameraPower: false
+    property bool usbChargingAvailable: false
+    property bool usbCharging: false
+    property bool fnLockAvailable: false
+    property bool fnLock: false
     
     // Internal
     property bool _initialized: false
@@ -117,8 +151,72 @@ Singleton {
         setChargeTypeProc.running = true;
     }
     
+    function setAutoSwitch(enabled: bool): void {
+        setAutoSwitchProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetAutoSwitch", "b", enabled ? "true" : "false"];
+        setAutoSwitchProc.running = true;
+    }
+    
+    // Pass-through: send raw user-selected values to daemon
+    function setAcProfile(profile: string, governor: string, epp: string, boost: bool, gpu: int): void {
+        setAcProfileProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetAcProfile", "sssbu",
+            profile, governor, epp, boost ? "true" : "false", gpu.toString()];
+        setAcProfileProc.running = true;
+    }
+    
+    function setBatteryProfile(profile: string, governor: string, epp: string, boost: bool, gpu: int): void {
+        setBatteryProfileProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetBatteryProfile", "sssbu",
+            profile, governor, epp, boost ? "true" : "false", gpu.toString()];
+        setBatteryProfileProc.running = true;
+    }
+    
+    function setFanMode(mode: int): void {
+        if (_busy) return;
+        _busy = true;
+        setFanModeProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetFanMode", "u", mode.toString()];
+        setFanModeProc.running = true;
+    }
+    
+    function setCameraPower(enabled: bool): void {
+        if (_busy) return;
+        _busy = true;
+        setCameraPowerProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetCameraPower", "b", enabled ? "true" : "false"];
+        setCameraPowerProc.running = true;
+    }
+    
+    function setUsbCharging(enabled: bool): void {
+        if (_busy) return;
+        _busy = true;
+        setUsbChargingProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetUsbCharging", "b", enabled ? "true" : "false"];
+        setUsbChargingProc.running = true;
+    }
+    
+    function setFnLock(enabled: bool): void {
+        if (_busy) return;
+        _busy = true;
+        setFnLockProc.command = ["busctl", "--system", "call",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "SetFnLock", "b", enabled ? "true" : "false"];
+        setFnLockProc.running = true;
+    }
+    
     function refresh(): void {
         refreshProc.running = true;
+    }
+    
+    function refreshTemps(): void {
+        tempRefreshProc.running = true;
     }
 
     // =====================================================
@@ -155,10 +253,10 @@ Singleton {
         }
     }
 
-    // Watch sysfs governor for external changes (FALLBACK for LTS kernel without platform_profile)
-    // Only active when platform profile is NOT available (to avoid watching both)
+    // Watch sysfs governor for changes (auto-switch, external tools, etc.)
+    // Governor changes affect EppControllable (governor=performance → EPP locked)
     Loader {
-        active: root._initialized && root.availableProfiles.length === 0 && root.availableGovernors.length > 0
+        active: root._initialized && root.availableGovernors.length > 0
         sourceComponent: FileView {
             id: governorWatcher
             path: "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor"
@@ -171,10 +269,28 @@ Singleton {
         }
     }
 
-    // Debounce timer to avoid rapid refresh spam
+    // Watch sysfs EPP for changes (auto-switch applies EPP after governor)
+    // Without this, EPP value stays stale in UI after auto-switch preset changes
+    Loader {
+        active: root._initialized && root.eppAvailable
+        sourceComponent: FileView {
+            id: eppWatcher
+            path: "/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference"
+            watchChanges: true
+            onFileChanged: {
+                if (!root._busy && !refreshDebounce.running) {
+                    refreshDebounce.start();
+                }
+            }
+        }
+    }
+
+    // Debounce timer - sysfs watchers restart this on each change.
+    // 1000ms ensures apply_preset (300ms between steps × 4) completes
+    // before a single clean refresh, avoiding intermediate state flicker.
     Timer {
         id: refreshDebounce
-        interval: 100
+        interval: 1000
         onTriggered: root.refresh()
     }
     
@@ -189,8 +305,16 @@ Singleton {
             "AvailableAmdGpuProfiles",
             // Battery properties
             "BatteryAvailable", "BatteryInfo", "AvailableChargeTypes", "ChargeType", "ChargeTypeWritable",
-            // NEW: Capability properties
-            "EppAvailable", "KernelVersion", "AmdPstateMode", "PolicyCount", "CpuCount", "CpuDriver"]
+            // Capability properties
+            "EppAvailable", "KernelVersion", "AmdPstateMode", "PolicyCount", "CpuCount", "CpuDriver",
+            // v3: Power source + temps + auto-switch + Lenovo
+            "PowerSource", "BatteryCapacity", "BatteryStatus", "AcAdapterAvailable",
+            "CpuTemp", "GpuTemp", "CpuTempAvailable", "GpuTempAvailable",
+            "AutoSwitchEnabled",
+            "AcPresetProfile", "AcPresetGovernor", "AcPresetEpp", "AcPresetBoost", "AcPresetGpu",
+            "BatteryPresetProfile", "BatteryPresetGovernor", "BatteryPresetEpp", "BatteryPresetBoost", "BatteryPresetGpu",
+            "FanModeAvailable", "FanMode", "CameraPowerAvailable", "CameraPower",
+            "UsbChargingAvailable", "UsbCharging", "FnLockAvailable", "FnLock"]
         stdout: StdioCollector {
             onStreamFinished: {
                 const lines = text.trim().split("\n");
@@ -213,7 +337,7 @@ Singleton {
                     root.availableChargeTypes = parseDbusStringArray(lines[14]);
                     root.chargeType = parseDbusString(lines[15]);
                     root.chargeTypeWritable = parseDbusBoolean(lines[16]);
-                    // NEW: Capability properties
+                    // Capability properties
                     root.eppAvailable = parseDbusBoolean(lines[17]);
                     root.kernelVersion = parseDbusString(lines[18]);
                     root.amdPstateMode = parseDbusString(lines[19]);
@@ -221,9 +345,69 @@ Singleton {
                     root.cpuCount = parseDbusInt(lines[21]);
                     root.cpuDriver = parseDbusString(lines[22]);
                 }
+                // v3 properties (23+)
+                if (lines.length >= 50) {
+                    root.powerSource = parseDbusString(lines[23]);
+                    root.batteryCapacity = parseDbusInt(lines[24]);
+                    root.batteryStatus = parseDbusString(lines[25]);
+                    root.acAdapterAvailable = parseDbusBoolean(lines[26]);
+                    root.cpuTemp = parseDbusDouble(lines[27]);
+                    root.gpuTemp = parseDbusDouble(lines[28]);
+                    root.cpuTempAvailable = parseDbusBoolean(lines[29]);
+                    root.gpuTempAvailable = parseDbusBoolean(lines[30]);
+                    root.autoSwitchEnabled = parseDbusBoolean(lines[31]);
+                    // Stored presets (32-41)
+                    root.acPresetProfile = parseDbusString(lines[32]);
+                    root.acPresetGovernor = parseDbusString(lines[33]);
+                    root.acPresetEpp = parseDbusString(lines[34]);
+                    root.acPresetBoost = parseDbusBoolean(lines[35]);
+                    root.acPresetGpu = parseDbusInt(lines[36]);
+                    root.batteryPresetProfile = parseDbusString(lines[37]);
+                    root.batteryPresetGovernor = parseDbusString(lines[38]);
+                    root.batteryPresetEpp = parseDbusString(lines[39]);
+                    root.batteryPresetBoost = parseDbusBoolean(lines[40]);
+                    root.batteryPresetGpu = parseDbusInt(lines[41]);
+                    // Lenovo features (42-49)
+                    root.fanModeAvailable = parseDbusBoolean(lines[42]);
+                    root.fanMode = parseDbusInt(lines[43]);
+                    root.cameraPowerAvailable = parseDbusBoolean(lines[44]);
+                    root.cameraPower = parseDbusBoolean(lines[45]);
+                    root.usbChargingAvailable = parseDbusBoolean(lines[46]);
+                    root.usbCharging = parseDbusBoolean(lines[47]);
+                    root.fnLockAvailable = parseDbusBoolean(lines[48]);
+                    root.fnLock = parseDbusBoolean(lines[49]);
+                }
                 root._initialized = true;
             }
         }
+    }
+    
+    // Temperature refresh (polled separately, more frequently)
+    Process {
+        id: tempRefreshProc
+        command: ["busctl", "--system", "get-property",
+            "org.xshell.Power", "/org/xshell/Power", "org.xshell.Power",
+            "CpuTemp", "GpuTemp", "PowerSource", "BatteryCapacity", "BatteryStatus"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                if (lines.length >= 5) {
+                    root.cpuTemp = parseDbusDouble(lines[0]);
+                    root.gpuTemp = parseDbusDouble(lines[1]);
+                    root.powerSource = parseDbusString(lines[2]);
+                    root.batteryCapacity = parseDbusInt(lines[3]);
+                    root.batteryStatus = parseDbusString(lines[4]);
+                }
+            }
+        }
+    }
+    
+    // Poll temperatures and power status every 10s
+    Timer {
+        interval: 10000
+        running: root._initialized && root.available
+        repeat: true
+        onTriggered: root.refreshTemps()
     }
 
     
@@ -311,6 +495,67 @@ Singleton {
             }
         }
     }
+    
+    Process {
+        id: setAutoSwitchProc
+        stdout: StdioCollector {
+            onStreamFinished: root.refresh()
+        }
+    }
+    
+    Process {
+        id: setAcProfileProc
+        stdout: StdioCollector {
+            onStreamFinished: root.refresh()
+        }
+    }
+    
+    Process {
+        id: setBatteryProfileProc
+        stdout: StdioCollector {
+            onStreamFinished: root.refresh()
+        }
+    }
+    
+    Process {
+        id: setFanModeProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root._busy = false;
+                root.refresh();
+            }
+        }
+    }
+    
+    Process {
+        id: setCameraPowerProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root._busy = false;
+                root.refresh();
+            }
+        }
+    }
+    
+    Process {
+        id: setUsbChargingProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root._busy = false;
+                root.refresh();
+            }
+        }
+    }
+    
+    Process {
+        id: setFnLockProc
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root._busy = false;
+                root.refresh();
+            }
+        }
+    }
 
     // =====================================================
     // HELPERS
@@ -337,6 +582,12 @@ Singleton {
         // Format: u 0
         const match = line.match(/^u\s+(\d+)/);
         return match ? parseInt(match[1]) : 0;
+    }
+    
+    function parseDbusDouble(line: string): real {
+        // Format: d 41.25
+        const match = line.match(/^d\s+([\d.-]+)/);
+        return match ? parseFloat(match[1]) : -1;
     }
     
     function parseDbusGpuProfiles(line: string): var {
