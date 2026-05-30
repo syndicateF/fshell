@@ -10,121 +10,107 @@ Item {
 
     required property ShellScreen screen
     required property PersistentProperties visibilities
-    required property var panels
 
-    readonly property bool shouldBeActive: visibilities.launcher && Config.launcher.enabled
-    property int contentHeight
+    signal exitAnimationDone()
 
-    readonly property real maxHeight: {
-        let max = screen.height - Config.border.thickness * 2 - Appearance.spacing.large;
-        if (visibilities.overview)
-            max -= panels.overview.nonAnimHeight;
-        return max;
+    anchors.fill: parent
+    visible: opacity > 0
+    opacity: 0
+    scale: 0.95
+
+    // Called by Drawers.qml container to trigger close animation
+    function closeWithAnimation(): void {
+        showAnim.stop();
+        hideAnim.start();
     }
 
-    onMaxHeightChanged: timer.start()
-
-    visible: height > 0
-    implicitHeight: 0
-    implicitWidth: content.implicitWidth
-
-    onShouldBeActiveChanged: {
-        if (shouldBeActive) {
-            timer.stop();
-            hideAnim.stop();
-            showAnim.start();
-        } else {
-            showAnim.stop();
-            hideAnim.start();
-        }
+    // Auto-show when component is loaded (Drawers loads us when shouldShow=true)
+    Component.onCompleted: {
+        hideAnim.stop();
+        showAnim.start();
     }
 
-    SequentialAnimation {
+    // ═══════════════════════════════════════════════════════════════
+    // SHOW ANIMATION: Fade in + scale up with expressive overshoot
+    // ═══════════════════════════════════════════════════════════════
+    ParallelAnimation {
         id: showAnim
 
-        Anim {
+        NumberAnimation {
             target: root
-            property: "implicitHeight"
-            to: root.contentHeight
+            property: "opacity"
+            to: 1
+            duration: Appearance.anim.durations.expressiveDefaultSpatial
+            easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+        }
+
+        NumberAnimation {
+            target: root
+            property: "scale"
+            to: 1
             duration: Appearance.anim.durations.expressiveDefaultSpatial
             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
         }
-        ScriptAction {
-            script: root.implicitHeight = Qt.binding(() => content.implicitHeight)
-        }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // HIDE ANIMATION: Fade out + scale down
+    // ═══════════════════════════════════════════════════════════════
     SequentialAnimation {
         id: hideAnim
 
-        ScriptAction {
-            script: root.implicitHeight = root.implicitHeight
-        }
-        Anim {
-            target: root
-            property: "implicitHeight"
-            to: 0
-            easing.bezierCurve: Appearance.anim.curves.emphasized
-        }
-    }
+        ParallelAnimation {
+            NumberAnimation {
+                target: root
+                property: "opacity"
+                to: 0
+                duration: Appearance.anim.durations.small
+                easing.bezierCurve: Appearance.anim.curves.emphasizedAccel
+            }
 
-    Connections {
-        target: Config.launcher
-
-        function onEnabledChanged(): void {
-            timer.start();
-        }
-
-        function onMaxShownChanged(): void {
-            timer.start();
-        }
-    }
-
-    Connections {
-        target: DesktopEntries.applications
-
-        function onValuesChanged(): void {
-            if (DesktopEntries.applications.values.length < Config.launcher.maxShown)
-                timer.start();
-        }
-    }
-
-    Timer {
-        id: timer
-
-        interval: Appearance.anim.durations.extraLarge
-        onRunningChanged: {
-            if (running && !root.shouldBeActive) {
-                content.visible = false;
-                content.active = true;
-            } else {
-                root.contentHeight = Math.min(root.maxHeight, content.implicitHeight);
-                content.active = Qt.binding(() => root.shouldBeActive || root.visible);
-                content.visible = true;
-                if (showAnim.running) {
-                    showAnim.stop();
-                    showAnim.start();
-                }
+            NumberAnimation {
+                target: root
+                property: "scale"
+                to: 0.95
+                duration: Appearance.anim.durations.small
+                easing.bezierCurve: Appearance.anim.curves.emphasizedAccel
             }
         }
+
+        ScriptAction {
+            script: root.exitAnimationDone()
+        }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // SEMI-TRANSPARENT BACKDROP
+    // ═══════════════════════════════════════════════════════════════
+    Rectangle {
+        id: backdrop
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.45)
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: root.visibilities.launcher = false
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CENTERED CONTENT
+    // ═══════════════════════════════════════════════════════════════
     Loader {
         id: content
 
-        anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: parent.height * 0.2
 
-        visible: false
-        active: false
-        Component.onCompleted: timer.start()
+        active: root.visible
 
         sourceComponent: Content {
             visibilities: root.visibilities
-            panels: root.panels
-            maxHeight: root.maxHeight
-
-            Component.onCompleted: root.contentHeight = implicitHeight
+            screen: root.screen
         }
     }
 }

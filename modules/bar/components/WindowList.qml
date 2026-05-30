@@ -161,7 +161,7 @@ StyledRect {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             implicitSize: root.emptyIconSize
-            source: Icons.getAppIcon("", "desktop")
+            source: "image://icon/org.quickshell"
             
             onStatusChanged: {
                 if (status === Image.Ready) {

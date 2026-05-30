@@ -8,6 +8,7 @@ import qs.modules.bar as Bar
 import qs.modules.overview as Overview
 import qs.modules.session as Session
 import qs.modules.keybinds as KeybindsModule
+import qs.modules.launcher as Launcher
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -57,10 +58,10 @@ Variants {
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             // Switch to Overlay layer when fullscreen overlay is active (above all Hyprland windows)
-            WlrLayershell.layer: (visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? WlrLayer.Overlay : WlrLayer.Top
 
             // Disable mask when fullscreen overlay is active (keybinds needs full screen input)
-            mask: (visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? null : normalMask
+            mask: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? null : normalMask
 
             Region {
                 id: normalMask
@@ -358,6 +359,50 @@ Variants {
                         onExitAnimationDone: {
                             keybindsContainer.isLoaded = false
                             keybindsContainer.isAnimatingOut = false
+                        }
+                    }
+                }
+            }
+
+            // Launcher Overlay - Full-screen overlay (ii-style)
+            Item {
+                id: launcherOverlayContainer
+                anchors.fill: parent
+                
+                property bool shouldShow: visibilities.launcher && Config.launcher.enabled
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+                
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        if (!isLoaded) {
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        if (isLoaded && !isAnimatingOut && launcherOverlayLoader.item) {
+                            isAnimatingOut = true
+                            launcherOverlayLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+                
+                Loader {
+                    id: launcherOverlayLoader
+                    anchors.fill: parent
+                    active: launcherOverlayContainer.isLoaded
+                    visible: active
+                    
+                    sourceComponent: Launcher.Wrapper {
+                        screen: scope.modelData
+                        visibilities: visibilities
+                        
+                        onExitAnimationDone: {
+                            launcherOverlayContainer.isLoaded = false
+                            launcherOverlayContainer.isAnimatingOut = false
+                            visibilities.launcher = false
                         }
                     }
                 }

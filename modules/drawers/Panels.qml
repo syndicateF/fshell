@@ -1,7 +1,6 @@
 import qs.config
 import qs.modules.osd as Osd
 import qs.modules.notifications as Notifications
-import qs.modules.launcher as Launcher
 import qs.modules.overview as Overview
 import qs.modules.bar.popouts as BarPopouts
 import qs.modules.utilities as Utilities
@@ -20,7 +19,7 @@ Item {
 
     readonly property alias osd: osd
     readonly property alias notifications: notifications
-    readonly property alias launcher: launcher
+    readonly property alias launcher: launcherDummy
     readonly property alias overview: overview
     readonly property alias popouts: popouts
     readonly property alias utilities: utilities
@@ -56,18 +55,13 @@ Item {
         anchors.rightMargin: -Config.border.thickness
     }
 
-    // Session is now handled as fullscreen overlay in Drawers.qml
-
-    Launcher.Wrapper {
-        id: launcher
-
-        screen: root.screen
-        visibilities: root.visibilities
-        panels: root
-
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: -Config.border.thickness
+    // Launcher is now a full-screen overlay in Drawers.qml
+    // Keep dummy item for backward compatibility with Interactions.qml
+    Item {
+        id: launcherDummy
+        visible: false
+        width: 0
+        height: 0
     }
 
     Overview.Wrapper {

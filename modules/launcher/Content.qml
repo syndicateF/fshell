@@ -1,8 +1,11 @@
 pragma ComponentBehavior: Bound
 
+import "items"
 import "services"
 import qs.components
 import qs.components.controls
+import qs.components.effects
+import qs.components.images
 import qs.services
 import qs.config
 import Quickshell
@@ -12,351 +15,684 @@ Item {
     id: root
 
     required property PersistentProperties visibilities
-    required property var panels
-    required property real maxHeight
+    required property ShellScreen screen
 
-    readonly property int padding: 40
-    readonly property int rounding: Appearance.rounding.large
-    readonly property int innerPadding: Appearance.padding.large
+    // Current mode: "apps" | "schemes" | "variants" | "wallpapers"
+    property string currentMode: "apps"
+    property string searchText: ""
 
-    // Tab state: 0=Apps, 1=Commands, 2=Calc, 3=Schemes, 4=Wallpapers, 5=Variants
-    property int currentTab: 0
-    
-    // Throttle for key HOLD repeat (not for manual fast presses)
-    property bool tabRepeatAllowed: true
-    Timer {
-        id: tabRepeatThrottle
-        interval: 300  // Match animation speed
-        onTriggered: root.tabRepeatAllowed = true
-    }
+    readonly property int contentWidth: 500
+    readonly property int maxResultsHeight: 550
+    readonly property int searchBarHeight: 48
 
-    // Dynamic width/height based on content
-    implicitWidth: gridContent.implicitWidth + padding * 2
-    implicitHeight: searchWrapper.implicitHeight + gridContent.implicitHeight + tabBar.implicitHeight + padding * 2 + Appearance.spacing.large * 2
+    implicitWidth: contentWidth + searchBarPadding * 2
+    implicitHeight: searchWrapper.implicitHeight + (resultsWrapper.visible ? resultsWrapper.implicitHeight + Appearance.spacing.normal : 0)
 
     // Smooth animation for height changes
     Behavior on implicitHeight {
         enabled: root.visibilities.launcher
         Anim {
-            duration: Appearance.anim.durations.large
-            easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+            duration: Appearance.anim.durations.expressiveDefaultSpatial
+            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
         }
     }
 
+    readonly property int searchBarPadding: 8
 
-    // Reset tab when launcher OPENS (not closes) to avoid visible jump during close animation
+    // Reset when launcher opens
     Connections {
         target: root.visibilities
 
         function onLauncherChanged(): void {
             if (root.visibilities.launcher) {
-                // Reset to apps tab when launcher opens
-                root.currentTab = 0;
-                // Reset visited tabs flags to free memory from lazy-loaded components
-                gridContent.tab1Visited = false;
-                gridContent.tab2Visited = false;
-                gridContent.tab3Visited = false;
-                gridContent.tab4Visited = false;
-                gridContent.tab5Visited = false;
+                root.currentMode = "apps";
+                search.text = "";
+                root.searchText = "";
+                search.forceActiveFocus();
             }
         }
     }
 
+    // Reload schemes when entering schemes mode
+    onCurrentModeChanged: {
+        if (currentMode === "schemes")
+            Schemes.reload();
+        // Clear search when switching modes
+        search.text = "";
+        root.searchText = "";
+    }
+
     // ═══════════════════════════════════════════════════════════════
-    // SEARCH BAR (TOP)
+    // SEARCH BAR CONTAINER (pill-shaped, with shadow)
     // ═══════════════════════════════════════════════════════════════
+    Elevation {
+        anchors.fill: searchWrapper
+        radius: searchWrapper.radius
+        level: 3
+    }
+
     StyledRect {
         id: searchWrapper
-
-        color: Colours.tPalette.m3surfaceContainer
-        radius: Appearance.rounding.full
 
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: root.padding
 
-        implicitHeight: Math.max(searchIcon.implicitHeight, search.implicitHeight, clearIcon.implicitHeight)
+        color: Colours.tPalette.m3surfaceContainer
+        radius: Appearance.rounding.full
 
-        MaterialIcon {
-            id: searchIcon
+        implicitHeight: searchRow.implicitHeight + searchBarPadding * 2
 
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left
-            anchors.leftMargin: Config.launcher.sizes.padding.searchBarHorizontal
+        Row {
+            id: searchRow
 
-            text: "search"
-            font.pointSize: Config.launcher.sizes.font.searchBarIcon
-            color: Colours.palette.m3onSurfaceVariant
-        }
+            anchors.fill: parent
+            anchors.leftMargin: Appearance.padding.large
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.topMargin: root.searchBarPadding
+            anchors.bottomMargin: root.searchBarPadding
 
-        StyledTextField {
-            id: search
+            spacing: Appearance.spacing.small
 
-            anchors.left: searchIcon.right
-            anchors.right: clearIcon.left
-            anchors.leftMargin: Appearance.spacing.small
-            anchors.rightMargin: Appearance.spacing.small
+            // ═══════════════════════════════════════════════════════════════
+            // DYNAMIC SEARCH ICON (morphs based on mode)
+            // ═══════════════════════════════════════════════════════════════
+            MaterialIcon {
+                id: searchIcon
 
-            topPadding: Appearance.padding.normal
-            bottomPadding: Appearance.padding.normal
+                anchors.verticalCenter: parent.verticalCenter
 
-            placeholderText: {
-                const tabNames = ["apps", "commands", "calculator", "schemes", "wallpapers", "variants"];
-                return qsTr("Search %1...").arg(tabNames[root.currentTab] || "");
-            }
+                text: {
+                    switch (root.currentMode) {
+                        case "schemes": return "palette";
+                        case "variants": return "colors";
+                        case "wallpapers": return "image";
+                        default: return "search";
+                    }
+                }
+                font.pointSize: Config.launcher.sizes.font.searchBarIcon
+                color: {
+                    if (root.currentMode !== "apps")
+                        return Colours.palette.m3primary;
+                    return Colours.palette.m3onSurfaceVariant;
+                }
 
-            onAccepted: {
-                const currentItem = gridContent.currentList?.currentItem;
-                if (currentItem) {
-                    switch (root.currentTab) {
-                        case 0: // Apps - ONLY apps close launcher
-                            Apps.launch(currentItem.modelData);
-                            root.visibilities.launcher = false;
-                            break;
-                        case 1: // Commands
-                            currentItem.modelData.onClicked(gridContent);
-                            break;
-                        case 2: // Calc
-                            currentItem.onClicked();
-                            break;
-                        case 3: // Schemes - don't close
-                            currentItem.modelData.onClicked(gridContent);
-                            break;
-                        case 4: // Wallpapers - don't close
-                            if (Colours.scheme === "dynamic" && currentItem.modelData.path !== Wallpapers.actualCurrent)
-                                Wallpapers.previewColourLock = true;
-                            Wallpapers.setWallpaper(currentItem.modelData.path);
-                            break;
-                        case 5: // Variants - don't close
-                            currentItem.modelData.onClicked(gridContent);
-                            break;
+                Behavior on color {
+                    CAnim {
+                        duration: Appearance.anim.durations.small
                     }
                 }
             }
 
-            // Grid navigation
-            Keys.onUpPressed: gridContent.navigateUp()
-            Keys.onDownPressed: gridContent.navigateDown()
-            Keys.onLeftPressed: gridContent.navigateLeft()
-            Keys.onRightPressed: gridContent.navigateRight()
+            // ═══════════════════════════════════════════════════════════════
+            // SEARCH TEXT FIELD
+            // ═══════════════════════════════════════════════════════════════
+            StyledTextField {
+                id: search
 
-            Keys.onEscapePressed: root.visibilities.launcher = false
+                width: parent.width - searchIcon.implicitWidth - utilityButtons.implicitWidth - clearIcon.implicitWidth - parent.spacing * 4
+                anchors.verticalCenter: parent.verticalCenter
 
-            Keys.onPressed: event => {
-                // Tab switching with Shift + < / >
-                // Manual presses (isAutoRepeat=false): always work
-                // Key hold repeat (isAutoRepeat=true): throttled via tabRepeatAllowed
-                if (event.modifiers & Qt.ShiftModifier) {
-                    if (event.key === Qt.Key_Greater || event.key === Qt.Key_Period) {
-                        // Throttle auto-repeat, allow manual press
-                        if (event.isAutoRepeat && !root.tabRepeatAllowed) {
-                            event.accepted = true;
-                            return;
+                topPadding: Appearance.padding.small
+                bottomPadding: Appearance.padding.small
+
+                placeholderText: {
+                    switch (root.currentMode) {
+                        case "schemes": return qsTr("Search schemes...");
+                        case "variants": return qsTr("Search variants...");
+                        case "wallpapers": return qsTr("Search wallpapers...");
+                        default: return qsTr("Search apps...");
+                    }
+                }
+
+                onTextChanged: root.searchText = text
+
+                onAccepted: {
+                    if (root.currentMode === "apps") {
+                        // Launch the first/selected app
+                        if (appResultsList.currentItem?.modelData) {
+                            Apps.launch(appResultsList.currentItem.modelData);
+                            root.visibilities.launcher = false;
                         }
-                        // Shift + > : Next tab
-                        root.currentTab = (root.currentTab + 1) % 6;
-                        if (event.isAutoRepeat) {
-                            root.tabRepeatAllowed = false;
-                            tabRepeatThrottle.restart();
+                    } else if (root.currentMode === "schemes") {
+                        if (schemesGrid.currentItem?.modelData) {
+                            schemesGrid.currentItem.modelData.onClicked(root);
                         }
-                        event.accepted = true;
-                        return;
-                    } else if (event.key === Qt.Key_Less || event.key === Qt.Key_Comma) {
-                        // Throttle auto-repeat, allow manual press
-                        if (event.isAutoRepeat && !root.tabRepeatAllowed) {
-                            event.accepted = true;
-                            return;
+                    } else if (root.currentMode === "variants") {
+                        if (variantsGrid.currentItem?.modelData) {
+                            variantsGrid.currentItem.modelData.onClicked(root);
                         }
-                        // Shift + < : Previous tab
-                        root.currentTab = (root.currentTab + 5) % 6;
-                        if (event.isAutoRepeat) {
-                            root.tabRepeatAllowed = false;
-                            tabRepeatThrottle.restart();
+                    } else if (root.currentMode === "wallpapers") {
+                        if (wallpapersList.currentItem?.modelData) {
+                            if (Colours.scheme === "dynamic" && wallpapersList.currentItem.modelData.path !== Wallpapers.actualCurrent)
+                                Wallpapers.previewColourLock = true;
+                            Wallpapers.setWallpaper(wallpapersList.currentItem.modelData.path);
                         }
-                        event.accepted = true;
-                        return;
+                    }
+                }
+
+                // List navigation
+                Keys.onUpPressed: {
+                    if (root.currentMode === "apps" && appResultsList.currentIndex > 0)
+                        appResultsList.currentIndex--;
+                    else if (root.currentMode === "schemes" && schemesGrid.currentIndex > 0)
+                        schemesGrid.currentIndex--;
+                    else if (root.currentMode === "variants" && variantsGrid.currentIndex > 0)
+                        variantsGrid.currentIndex--;
+                }
+                Keys.onDownPressed: {
+                    if (root.currentMode === "apps" && appResultsList.currentIndex < appResultsList.count - 1)
+                        appResultsList.currentIndex++;
+                    else if (root.currentMode === "schemes" && schemesGrid.currentIndex < schemesGrid.count - 1)
+                        schemesGrid.currentIndex++;
+                    else if (root.currentMode === "variants" && variantsGrid.currentIndex < variantsGrid.count - 1)
+                        variantsGrid.currentIndex++;
+                }
+
+                Keys.onEscapePressed: {
+                    if (root.currentMode !== "apps") {
+                        root.currentMode = "apps";
+                        search.text = "";
+                    } else {
+                        root.visibilities.launcher = false;
                     }
                 }
 
                 // Vim keybinds
-                if (Config.launcher.vimKeybinds) {
-                    if (event.modifiers & Qt.ControlModifier) {
+                Keys.onPressed: event => {
+                    if (Config.launcher.vimKeybinds && (event.modifiers & Qt.ControlModifier)) {
                         if (event.key === Qt.Key_J) {
-                            gridContent.navigateDown();
+                            if (root.currentMode === "apps" && appResultsList.currentIndex < appResultsList.count - 1)
+                                appResultsList.currentIndex++;
                             event.accepted = true;
                         } else if (event.key === Qt.Key_K) {
-                            gridContent.navigateUp();
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_H) {
-                            gridContent.navigateLeft();
-                            event.accepted = true;
-                        } else if (event.key === Qt.Key_L) {
-                            gridContent.navigateRight();
+                            if (root.currentMode === "apps" && appResultsList.currentIndex > 0)
+                                appResultsList.currentIndex--;
                             event.accepted = true;
                         }
                     }
                 }
+
+                Component.onCompleted: forceActiveFocus()
+
+                Connections {
+                    target: root.visibilities
+
+                    function onLauncherChanged(): void {
+                        if (root.visibilities.launcher)
+                            search.forceActiveFocus();
+                    }
+                }
             }
 
-            Component.onCompleted: forceActiveFocus()
+            // ═══════════════════════════════════════════════════════════════
+            // CLEAR BUTTON
+            // ═══════════════════════════════════════════════════════════════
+            MaterialIcon {
+                id: clearIcon
 
-            Connections {
-                target: root.visibilities
+                anchors.verticalCenter: parent.verticalCenter
 
-                function onLauncherChanged(): void {
-                    if (!root.visibilities.launcher)
-                        search.text = "";
-                    else
-                        search.forceActiveFocus();
+                width: search.text ? implicitWidth : 0
+                opacity: search.text ? 1 : 0
+                visible: opacity > 0
+                clip: true
+
+                text: "close"
+                font.pointSize: Config.launcher.sizes.font.searchBarIcon
+                color: Colours.palette.m3onSurfaceVariant
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: search.text = ""
                 }
 
-                function onFullscreenSessionChanged(): void {
-                    if (!root.visibilities.fullscreenSession)
-                        search.forceActiveFocus();
+                Behavior on width {
+                    Anim { duration: Appearance.anim.durations.small }
+                }
+                Behavior on opacity {
+                    Anim { duration: Appearance.anim.durations.small }
+                }
+            }
+
+            // ═══════════════════════════════════════════════════════════════
+            // UTILITY BUTTONS (Schemes, Variants, Wallpapers)
+            // ═══════════════════════════════════════════════════════════════
+            Row {
+                id: utilityButtons
+
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 2
+
+                // Separator
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: 24
+                    color: Colours.palette.m3outlineVariant
+                    opacity: 0.5
+                }
+
+                UtilityButton {
+                    icon: "palette"
+                    tooltip: qsTr("Color Schemes")
+                    isActive: root.currentMode === "schemes"
+                    onClicked: root.currentMode = root.currentMode === "schemes" ? "apps" : "schemes"
+                }
+
+                UtilityButton {
+                    icon: "colors"
+                    tooltip: qsTr("M3 Variants")
+                    isActive: root.currentMode === "variants"
+                    onClicked: root.currentMode = root.currentMode === "variants" ? "apps" : "variants"
+                }
+
+                UtilityButton {
+                    icon: "image"
+                    tooltip: qsTr("Wallpapers")
+                    isActive: root.currentMode === "wallpapers"
+                    onClicked: root.currentMode = root.currentMode === "wallpapers" ? "apps" : "wallpapers"
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // RESULTS AREA (below search bar)
+    // ═══════════════════════════════════════════════════════════════
+    Elevation {
+        anchors.fill: resultsWrapper
+        radius: resultsWrapper.radius
+        level: 2
+        visible: resultsWrapper.visible
+    }
+
+    StyledRect {
+        id: resultsWrapper
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: searchWrapper.bottom
+        anchors.topMargin: Appearance.spacing.normal
+
+        color: Colours.tPalette.m3surfaceContainer
+        radius: Appearance.rounding.large
+
+        visible: hasContent
+        readonly property bool hasContent: {
+            if (root.currentMode !== "apps") return true;
+            return root.searchText.length > 0;
+        }
+
+        implicitHeight: resultsContent.implicitHeight
+
+        Behavior on implicitHeight {
+            enabled: root.visibilities.launcher
+            Anim {
+                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+            }
+        }
+
+        clip: true
+
+        Item {
+            id: resultsContent
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+
+            implicitHeight: Math.min(root.maxResultsHeight, innerContent.implicitHeight + Appearance.padding.normal * 2)
+
+            Item {
+                id: innerContent
+
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal
+
+                implicitHeight: {
+                    switch (root.currentMode) {
+                        case "apps": return appResultsList.contentHeight;
+                        case "schemes": return schemesGrid.contentHeight;
+                        case "variants": return variantsGrid.contentHeight;
+                        case "wallpapers": return wallpapersList.contentHeight;
+                        default: return appResultsList.contentHeight;
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // APP RESULTS (Vertical List)
+                // ═══════════════════════════════════════════════════════════════
+                ListView {
+                    id: appResultsList
+
+                    anchors.fill: parent
+                    visible: root.currentMode === "apps"
+
+                    clip: true
+                    spacing: 2
+                    boundsBehavior: Flickable.StopAtBounds
+                    highlightMoveDuration: 100
+
+                    model: ScriptModel {
+                        values: root.currentMode === "apps" ? Apps.search(root.searchText) : []
+                        onValuesChanged: appResultsList.currentIndex = 0
+                    }
+
+                    delegate: SearchResultItem {
+                        id: resultDelegate
+
+                        width: appResultsList.width
+                        isSelected: ListView.isCurrentItem
+                        searchQuery: root.searchText
+
+                        onClicked: {
+                            appResultsList.currentIndex = resultDelegate.index;
+                            Apps.launch(resultDelegate.modelData);
+                            root.visibilities.launcher = false;
+                        }
+
+                        onHovered: appResultsList.currentIndex = resultDelegate.index
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // SCHEMES GRID
+                // ═══════════════════════════════════════════════════════════════
+                GridView {
+                    id: schemesGrid
+
+                    anchors.fill: parent
+                    visible: root.currentMode === "schemes"
+
+                    cellWidth: Config.launcher.sizes.itemWidth
+                    cellHeight: Config.launcher.sizes.itemHeight
+
+                    clip: true
+                    interactive: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    model: ScriptModel {
+                        values: root.currentMode === "schemes" ? Schemes.query(root.searchText) : []
+                        onValuesChanged: schemesGrid.currentIndex = 0
+                    }
+
+                    highlight: StyledRect {
+                        radius: Appearance.rounding.small
+                        color: Colours.palette.m3primaryContainer
+                        x: schemesGrid.currentItem?.x ?? 0
+                        y: schemesGrid.currentItem?.y ?? 0
+                        width: Config.launcher.sizes.itemWidth
+                        height: Config.launcher.sizes.itemHeight
+
+                        Behavior on x { Anim { duration: Appearance.anim.durations.expressiveDefaultSpatial; easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial } }
+                        Behavior on y { Anim { duration: Appearance.anim.durations.expressiveDefaultSpatial; easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial } }
+                    }
+                    highlightFollowsCurrentItem: false
+
+                    delegate: GridSchemeItem {
+                        id: schemeDelegate
+                        width: Config.launcher.sizes.itemWidth
+                        height: Config.launcher.sizes.itemHeight
+                        isSelected: GridView.isCurrentItem
+                        visibilities: root.visibilities
+
+                        onClicked: {
+                            schemesGrid.currentIndex = schemeDelegate.index;
+                            schemeDelegate.modelData.onClicked(root);
+                        }
+                        onHovered: schemesGrid.currentIndex = schemeDelegate.index
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // VARIANTS GRID
+                // ═══════════════════════════════════════════════════════════════
+                GridView {
+                    id: variantsGrid
+
+                    anchors.fill: parent
+                    visible: root.currentMode === "variants"
+
+                    cellWidth: Config.launcher.sizes.itemWidth
+                    cellHeight: Config.launcher.sizes.itemHeight
+
+                    clip: true
+                    interactive: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    model: ScriptModel {
+                        values: root.currentMode === "variants" ? M3Variants.query(root.searchText) : []
+                        onValuesChanged: variantsGrid.currentIndex = 0
+                    }
+
+                    highlight: StyledRect {
+                        radius: Appearance.rounding.small
+                        color: Colours.palette.m3primaryContainer
+                        x: variantsGrid.currentItem?.x ?? 0
+                        y: variantsGrid.currentItem?.y ?? 0
+                        width: Config.launcher.sizes.itemWidth
+                        height: Config.launcher.sizes.itemHeight
+
+                        Behavior on x { Anim { duration: Appearance.anim.durations.expressiveDefaultSpatial; easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial } }
+                        Behavior on y { Anim { duration: Appearance.anim.durations.expressiveDefaultSpatial; easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial } }
+                    }
+                    highlightFollowsCurrentItem: false
+
+                    delegate: GridVariantItem {
+                        id: variantDelegate
+                        width: Config.launcher.sizes.itemWidth
+                        height: Config.launcher.sizes.itemHeight
+                        isSelected: GridView.isCurrentItem
+                        visibilities: root.visibilities
+
+                        onClicked: {
+                            variantsGrid.currentIndex = variantDelegate.index;
+                            variantDelegate.modelData.onClicked(root);
+                        }
+                        onHovered: variantsGrid.currentIndex = variantDelegate.index
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // WALLPAPERS LIST
+                // ═══════════════════════════════════════════════════════════════
+                GridView {
+                    id: wallpapersList
+
+                    anchors.fill: parent
+                    visible: root.currentMode === "wallpapers"
+
+                    readonly property int wpWidth: 160
+                    readonly property int wpHeight: 100
+
+                    cellWidth: wpWidth + Appearance.padding.normal
+                    cellHeight: wpHeight + Appearance.font.size.normal * 3
+
+                    clip: true
+                    interactive: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    model: ScriptModel {
+                        values: root.currentMode === "wallpapers" ? Wallpapers.query(root.searchText) : []
+                    }
+
+                    delegate: Item {
+                        id: wpDelegate
+
+                        required property var modelData
+                        required property int index
+
+                        width: wallpapersList.cellWidth
+                        height: wallpapersList.cellHeight
+
+                        StyledRect {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            radius: Appearance.rounding.normal
+                            color: wpMouse.containsMouse ? Colours.tPalette.m3primaryContainer : "transparent"
+
+                            Behavior on color { CAnim { duration: Appearance.anim.durations.small } }
+
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: Appearance.padding.small
+                                spacing: Appearance.spacing.small / 2
+
+                                StyledClippingRect {
+                                    width: wallpapersList.wpWidth - Appearance.padding.normal
+                                    height: wallpapersList.wpHeight - Appearance.padding.normal
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    radius: Appearance.rounding.small
+                                    color: Colours.tPalette.m3surfaceContainer
+
+                                    CachingImage {
+                                        path: wpDelegate.modelData.path
+                                        anchors.fill: parent
+                                    }
+                                }
+
+                                StyledText {
+                                    width: parent.width
+                                    horizontalAlignment: Text.AlignHCenter
+                                    elide: Text.ElideRight
+                                    text: wpDelegate.modelData.relativePath
+                                    font.pointSize: Appearance.font.size.small
+                                }
+                            }
+
+                            MouseArea {
+                                id: wpMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (Colours.scheme === "dynamic" && wpDelegate.modelData.path !== Wallpapers.actualCurrent)
+                                        Wallpapers.previewColourLock = true;
+                                    Wallpapers.setWallpaper(wpDelegate.modelData.path);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════════
+                // EMPTY STATE
+                // ═══════════════════════════════════════════════════════════════
+                Row {
+                    id: emptyState
+
+                    anchors.centerIn: parent
+                    spacing: Appearance.spacing.small
+                    visible: {
+                        if (root.currentMode === "apps")
+                            return appResultsList.count === 0 && root.searchText.length > 0;
+                        if (root.currentMode === "schemes")
+                            return schemesGrid.count === 0;
+                        if (root.currentMode === "variants")
+                            return variantsGrid.count === 0;
+                        if (root.currentMode === "wallpapers")
+                            return wallpapersList.count === 0;
+                        return false;
+                    }
+                    opacity: visible ? 1 : 0
+
+                    MaterialIcon {
+                        text: "manage_search"
+                        color: Colours.palette.m3onSurfaceVariant
+                        font.pointSize: Appearance.font.size.large
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    StyledText {
+                        text: qsTr("No results")
+                        color: Colours.palette.m3onSurfaceVariant
+                        font.pointSize: Appearance.font.size.normal
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Behavior on opacity { Anim {} }
+                }
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // UTILITY BUTTON COMPONENT
+    // ═══════════════════════════════════════════════════════════════
+    component UtilityButton: Item {
+        id: utilBtn
+
+        required property string icon
+        required property string tooltip
+        required property bool isActive
+
+        signal clicked()
+
+        implicitWidth: 36
+        implicitHeight: 36
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Appearance.rounding.full
+            color: {
+                if (utilBtn.isActive)
+                    return Colours.palette.m3primary;
+                if (utilMouse.containsMouse)
+                    return Colours.tPalette.m3surfaceContainerHigh;
+                return "transparent";
+            }
+
+            Behavior on color {
+                CAnim {
+                    duration: Appearance.anim.durations.small
                 }
             }
         }
 
         MaterialIcon {
-            id: clearIcon
-
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            anchors.rightMargin: Config.launcher.sizes.padding.searchBarHorizontal
-
-            width: search.text ? implicitWidth : implicitWidth / 2
-            opacity: {
-                if (!search.text)
-                    return 0;
-                if (clearMouse.pressed)
-                    return 0.7;
-                if (clearMouse.containsMouse)
-                    return 0.8;
-                return 1;
-            }
-
-            text: "close"
-            font.pointSize: Config.launcher.sizes.font.searchBarIcon
-            color: Colours.palette.m3onSurfaceVariant
-
-            MouseArea {
-                id: clearMouse
-
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: search.text ? Qt.PointingHandCursor : undefined
-
-                onClicked: search.text = ""
-            }
-
-            Behavior on width {
-                Anim {
-                    duration: Appearance.anim.durations.small
-                }
-            }
-
-            Behavior on opacity {
-                Anim {
-                    duration: Appearance.anim.durations.small
-                }
-            }
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // TAB BAR (BOTTOM)
-    // ═══════════════════════════════════════════════════════════════
-    TabBar {
-        id: tabBar
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: root.padding
-        anchors.rightMargin: root.padding
-        anchors.bottomMargin: root.padding
-
-        currentTab: root.currentTab
-
-        onTabChanged: index => {
-            root.currentTab = index;
-            search.forceActiveFocus();
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // GRID CONTENT (MIDDLE - BETWEEN SEARCH AND TAB BAR)
-    // ═══════════════════════════════════════════════════════════════
-    Item {
-        id: gridWrapper
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: searchWrapper.bottom
-        anchors.bottom: tabBar.top
-        anchors.leftMargin: root.padding
-        anchors.rightMargin: root.padding
-        anchors.topMargin: Appearance.spacing.large
-        anchors.bottomMargin: Appearance.spacing.large
-
-        // Use gridContent's actual dimensions
-        implicitWidth: gridContent.implicitWidth
-        implicitHeight: gridContent.implicitHeight
-        height: implicitHeight
-
-        clip: true
-
-        GridContent {
-            id: gridContent
-
-            width: implicitWidth
-            height: implicitHeight
-
-            content: root
-            visibilities: root.visibilities
-            panels: root.panels
-            search: search
-            currentTab: root.currentTab
-            padding: root.padding
-            rounding: root.rounding
-        }
-
-        // Empty state
-        Row {
-            id: empty
-
-            opacity: gridContent.currentList?.count === 0 ? 1 : 0
-            scale: gridContent.currentList?.count === 0 ? 1 : 0.5
-            visible: opacity > 0
-
-            spacing: Appearance.spacing.small
-            padding: Appearance.padding.normal
-
             anchors.centerIn: parent
+            text: utilBtn.icon
+            font.pointSize: 12
+            color: utilBtn.isActive ? Colours.palette.m3onPrimary : Colours.palette.m3onSurfaceVariant
 
-            MaterialIcon {
-                text: "manage_search"
-                color: Colours.palette.m3onSurfaceVariant
-                font.pointSize: Appearance.font.size.large
-
-                anchors.verticalCenter: parent.verticalCenter
+            Behavior on color {
+                CAnim {
+                    duration: Appearance.anim.durations.small
+                }
             }
+        }
+
+        MouseArea {
+            id: utilMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: utilBtn.clicked()
+        }
+
+        // Tooltip on hover
+        StyledRect {
+            id: tooltipRect
+            visible: utilMouse.containsMouse
+            anchors.top: parent.bottom
+            anchors.topMargin: 4
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: Colours.palette.m3inverseSurface
+            radius: Appearance.rounding.small
+            implicitWidth: tooltipText.implicitWidth + Appearance.padding.normal * 2
+            implicitHeight: tooltipText.implicitHeight + Appearance.padding.small * 2
+            z: 100
 
             StyledText {
-                text: qsTr("No results")
-                color: Colours.palette.m3onSurfaceVariant
-                font.pointSize: Appearance.font.size.normal
-
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Behavior on opacity {
-                Anim {}
-            }
-
-            Behavior on scale {
-                Anim {}
+                id: tooltipText
+                anchors.centerIn: parent
+                text: utilBtn.tooltip
+                font.pointSize: Appearance.font.size.small
+                color: Colours.palette.m3inverseOnSurface
             }
         }
     }

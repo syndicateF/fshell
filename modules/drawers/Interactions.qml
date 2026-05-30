@@ -79,8 +79,7 @@ CustomMouseArea {
             if (!utilitiesShortcutActive)
                 visibilities.utilities = false;
 
-            if (!visibilities.launcherShortcutActive && Config.launcher.showOnHover)
-                visibilities.launcher = false;
+            // Launcher is now a full-screen overlay - no hover-to-show
 
             if (!overviewShortcutActive && !visibilities.overviewClickPending)
                 visibilities.overview = false;
@@ -164,21 +163,8 @@ CustomMouseArea {
                 visibilities.sidebar = false;
         }
 
-        // Show launcher on hover, or show/hide on drag if hover is disabled
-        if (Config.launcher.showOnHover) {
-            const showLauncher = inBottomPanel(panels.launcher, x, y);
-            if (!visibilities.launcherShortcutActive) {
-                visibilities.launcher = showLauncher;
-            } else if (showLauncher) {
-                // If hovering over launcher area while in shortcut mode, transition to hover control
-                visibilities.launcherShortcutActive = false;
-            }
-        } else if (pressed && inBottomPanel(panels.launcher, dragStart.x, dragStart.y) && withinPanelWidth(panels.launcher, x, y)) {
-            if (dragY < -Config.launcher.dragThreshold)
-                visibilities.launcher = true;
-            else if (dragY > Config.launcher.dragThreshold)
-                visibilities.launcher = false;
-        }
+        // Launcher is now a full-screen overlay triggered by keyboard shortcuts
+        // No hover/drag trigger needed
 
         // Show dashboard on hover
         const showDashboard = Config.dashboard.showOnHover && inTopPanel(panels.dashboard, x, y);
