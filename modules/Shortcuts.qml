@@ -96,6 +96,17 @@ Scope {
         }
     }
 
+    CustomShortcut {
+        name: "wallpicker"
+        description: "Toggle wallpaper picker"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            visibilities.wallpicker = !visibilities.wallpicker;
+        }
+    }
+
     // AI Chat shortcut - DISABLED
     // CustomShortcut {
     //     name: "aiChat"

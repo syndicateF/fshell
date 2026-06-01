@@ -9,6 +9,7 @@ import qs.modules.overview as Overview
 import qs.modules.session as Session
 import qs.modules.keybinds as KeybindsModule
 import qs.modules.launcher as Launcher
+import qs.modules.wallpicker as WallPicker
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -51,17 +52,18 @@ Variants {
             onHasFullscreenChanged: {
                 visibilities.launcher = false;
                 visibilities.dashboard = false;
+                visibilities.wallpicker = false;
             }
 
             screen: scope.modelData
             name: "drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             // Switch to Overlay layer when fullscreen overlay is active (above all Hyprland windows)
-            WlrLayershell.layer: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? WlrLayer.Overlay : WlrLayer.Top
 
-            // Disable mask when fullscreen overlay is active (keybinds needs full screen input)
-            mask: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds) ? null : normalMask
+            // Disable mask when fullscreen overlay is active
+            mask: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? null : normalMask
 
             Region {
                 id: normalMask
@@ -98,7 +100,7 @@ Variants {
             HyprlandFocusGrab {
                 id: focusGrab
 
-                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
+                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
                 windows: [win]
                 onCleared: {
                     visibilities.launcher = false;
@@ -109,6 +111,7 @@ Variants {
                     visibilities.spiralOverview = false;
                     visibilities.fullscreenSession = false;
                     visibilities.keybinds = false;
+                    visibilities.wallpicker = false;
                     panels.popouts.hasCurrent = false;
                     bar.closeTray();
                 }
@@ -177,6 +180,7 @@ Variants {
                 property bool overview
                 property bool spiralOverview
                 property bool fullscreenSession
+                property bool wallpicker
                 property bool topworkspaces
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
@@ -403,6 +407,50 @@ Variants {
                             launcherOverlayContainer.isLoaded = false
                             launcherOverlayContainer.isAnimatingOut = false
                             visibilities.launcher = false
+                        }
+                    }
+                }
+            }
+
+            // Wallpaper Picker Overlay
+            Item {
+                id: wallpickerContainer
+                anchors.fill: parent
+
+                property bool shouldShow: visibilities.wallpicker
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        if (!isLoaded) {
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        if (isLoaded && !isAnimatingOut && wallpickerLoader.item) {
+                            isAnimatingOut = true
+                            wallpickerLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+
+                Loader {
+                    id: wallpickerLoader
+                    anchors.fill: parent
+                    active: wallpickerContainer.isLoaded
+                    visible: active
+
+                    sourceComponent: WallPicker.Wrapper {
+                        screen: scope.modelData
+                        visibilities: visibilities
+
+                        onExitAnimationDone: {
+                            wallpickerContainer.isLoaded = false
+                            wallpickerContainer.isAnimatingOut = false
+                            visibilities.wallpicker = false
                         }
                     }
                 }
