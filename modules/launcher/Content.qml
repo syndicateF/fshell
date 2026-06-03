@@ -49,6 +49,59 @@ Item {
         }
     }
 
+    function getWindowResults(): list<var> {
+        const arr = [];
+        const tls = Hypr.toplevels.values;
+        for (let i = 0; i < tls.length; i++) {
+            const tl = tls[i];
+            const className = tl.lastIpcObject?.class || tl.initialClass || "";
+            
+            if (!tl.title && !className) continue;
+            
+            let iconName = "";
+            let lowerClass = className.toLowerCase();
+            
+            // 1. Try heuristic lookup
+            if (className) {
+                const lookup = DesktopEntries.heuristicLookup(className);
+                if (lookup && lookup.icon) {
+                    iconName = lookup.icon;
+                }
+            }
+            
+            // 2. Fallback search in Apps.list
+            if (!iconName && lowerClass.length > 0) {
+                const appList = Apps.list;
+                for (let j = 0; j < appList.length; j++) {
+                    const app = appList[j];
+                    if (!app) continue;
+                    
+                    const id = (app.id || "").toLowerCase();
+                    const name = (app.name || "").toLowerCase();
+                    
+                    if ((id.length > 0 && id.includes(lowerClass)) || 
+                        (name.length > 0 && name.includes(lowerClass)) || 
+                        (id.length > 0 && lowerClass.includes(id))) {
+                        iconName = app.icon;
+                        break;
+                    }
+                }
+            }
+            
+            if (!iconName) iconName = lowerClass || "application-x-executable";
+
+            arr.push({
+                isWindow: true,
+                toplevel: tl,
+                name: tl.title || className,
+                icon: iconName,
+                categories: ["Open Window"],
+                comment: qsTr("Workspace %1").arg(tl.workspace?.name || tl.workspace?.id || "?")
+            });
+        }
+        return arr;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // SHADOW — under the single outer container
     // ═══════════════════════════════════════════════════════════════
@@ -75,7 +128,7 @@ Item {
         // Height = search bar + results (if visible)
         height: searchBarBorder.height
                 + root.outerPadding * 2
-                + ((root.searchText.length > 0 || root.showAll) ? resultsArea.height : 0)
+                + (resultsArea.visible ? resultsArea.height : 0)
 
         Behavior on height {
             enabled: root.visibilities.launcher
@@ -135,7 +188,7 @@ Item {
                     topPadding:    Appearance.padding.small
                     bottomPadding: Appearance.padding.small
 
-                    placeholderText: qsTr("Type to search apps or type \"?\" for more options...")
+                    placeholderText: qsTr("Type to search apps or click right button to show all program")
 
                     onTextChanged: {
                         root.searchText = text;
@@ -144,7 +197,12 @@ Item {
 
                     onAccepted: {
                         if (appResultsList.currentItem?.modelData) {
-                            Apps.launch(appResultsList.currentItem.modelData);
+                            const data = appResultsList.currentItem.modelData;
+                            if (data.isWindow) {
+                                Hypr.dispatch(`focuswindow address:0x${data.toplevel.address}`);
+                            } else {
+                                Apps.launch(data);
+                            }
                             root.visibilities.launcher = false;
                         }
                     }
@@ -246,7 +304,7 @@ Item {
             anchors.right: parent.right
             anchors.top:   searchBarBorder.bottom
 
-            visible: root.searchText.length > 0 || root.showAll
+            visible: appResultsList.count > 0
             opacity: visible ? 1 : 0
 
             Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
@@ -271,7 +329,10 @@ Item {
                 highlightMoveDuration: 100
 
                 model: ScriptModel {
-                    values: (root.showAll && root.searchText.length === 0) ? Apps.list : Apps.search(root.searchText)
+                    property bool show: root.showAll
+                    property string query: root.searchText
+                    
+                    values: query.length > 0 ? Apps.search(query) : (show ? Apps.list : root.getWindowResults())
                     onValuesChanged: appResultsList.currentIndex = 0
                 }
 
@@ -284,7 +345,12 @@ Item {
 
                     onClicked: {
                         appResultsList.currentIndex = resultDelegate.index;
-                        Apps.launch(resultDelegate.modelData);
+                        const data = resultDelegate.modelData;
+                        if (data.isWindow) {
+                            Hypr.dispatch(`focuswindow address:0x${data.toplevel.address}`);
+                        } else {
+                            Apps.launch(data);
+                        }
                         root.visibilities.launcher = false;
                     }
 

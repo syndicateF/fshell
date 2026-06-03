@@ -11,7 +11,7 @@ import QtQuick
 Item {
     id: root
 
-    required property DesktopEntry modelData
+    required property var modelData
     required property int index
     required property bool isSelected
     required property string searchQuery
