@@ -25,7 +25,7 @@ Loader {
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Background
             // kalo ndada wp
-            color: "red"
+            color: "transparent"
 
             anchors.top: true
             anchors.bottom: true
