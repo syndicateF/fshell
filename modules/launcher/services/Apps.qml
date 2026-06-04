@@ -8,20 +8,20 @@ import Quickshell
 Searcher {
     id: root
 
-    function launch(entry: DesktopEntry): void {
-        appDb.incrementFrequency(entry.id);
+function launch(entry: DesktopEntry): void {
+    appDb.incrementFrequency(entry.id);
 
-        if (entry.runInTerminal)
-            Quickshell.execDetached({
-                command: ["app2unit", "--", ...Config.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...entry.command],
-                workingDirectory: entry.workingDirectory
-            });
-        else
-            Quickshell.execDetached({
-                command: ["app2unit", "--", ...entry.command],
-                workingDirectory: entry.workingDirectory
-            });
-    }
+    if (entry.runInTerminal)
+        Quickshell.execDetached({
+            command: ["app2unit", "--", ...Config.general.apps.terminal, `${Quickshell.shellDir}/assets/wrap_term_launch.sh`, ...entry.command],
+            workingDirectory: entry.workingDirectory
+        });
+    else
+        Quickshell.execDetached({
+            command: ["app2unit", "--", ...entry.command],
+            workingDirectory: entry.workingDirectory
+        });
+}
 
     function search(search: string): list<var> {
         const prefix = Config.launcher.specialPrefix;

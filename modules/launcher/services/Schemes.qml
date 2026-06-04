@@ -14,11 +14,9 @@ Searcher {
     property string currentScheme
     property string currentVariant
 
-    // Signals for real-time checkmark updates
     signal currentVariantPropertyChanged()
 
     function transformSearch(search: string): string {
-        // No longer need to strip prefix since we use tabs now
         return search;
     }
 
@@ -30,7 +28,6 @@ Searcher {
         getCurrent.running = true;
     }
 
-    // Listen to Colours service changes for real-time checkmark updates
     Connections {
         target: Colours
 
@@ -100,11 +97,8 @@ Searcher {
         readonly property var colours: modelData.colours
 
         function onClicked(gridContent: var): void {
-            // Optimistically update current scheme for immediate checkmark feedback
             root.currentScheme = `${name} ${flavour}`;
-            // Don't close launcher - let user see the change
             Quickshell.execDetached(["caelestia", "scheme", "set", "-n", name, "-f", flavour]);
-            // Trigger starship reload in all fish shells
             Quickshell.execDetached(["pkill", "-USR1", "fish"]);
         }
     }

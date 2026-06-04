@@ -18,21 +18,16 @@ Item {
     opacity: 0
     scale: 0.95
 
-    // Called by Drawers.qml container to trigger close animation
     function closeWithAnimation(): void {
         showAnim.stop();
         hideAnim.start();
     }
 
-    // Auto-show when component is loaded (Drawers loads us when shouldShow=true)
     Component.onCompleted: {
         hideAnim.stop();
         showAnim.start();
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // SHOW ANIMATION: Fade in + scale up with expressive overshoot
-    // ═══════════════════════════════════════════════════════════════
     ParallelAnimation {
         id: showAnim
 
@@ -53,9 +48,6 @@ Item {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // HIDE ANIMATION: Fade out + scale down
-    // ═══════════════════════════════════════════════════════════════
     SequentialAnimation {
         id: hideAnim
 
@@ -81,10 +73,6 @@ Item {
             script: root.exitAnimationDone()
         }
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    // SEMI-TRANSPARENT BACKDROP
-    // ═══════════════════════════════════════════════════════════════
     Rectangle {
         id: backdrop
         anchors.fill: parent
@@ -96,9 +84,6 @@ Item {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // CENTERED CONTENT
-    // ═══════════════════════════════════════════════════════════════
     Loader {
         id: content
 

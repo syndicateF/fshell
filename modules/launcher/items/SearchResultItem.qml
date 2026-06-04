@@ -19,14 +19,10 @@ Item {
     signal clicked()
     signal hovered()
 
-    // ── COSMIC-style sizing ──────────────────────────────────────────
-    readonly property int horizontalMargin: 6    // was 10
-    readonly property int buttonPadding:    14   // was Appearance.padding.normal (~8-10)
-    readonly property int iconSize:         40   // was 32 — matches COSMIC's larger icon
+    readonly property int horizontalMargin: 6
+    readonly property int buttonPadding:    14
+    readonly property int iconSize:         40
 
-    // ── Safely extract the first category from DesktopEntry ─────────
-    // DesktopEntry.categories can be a list<string> OR a "Foo;Bar;" string
-    // depending on the Quickshell build — this handles both.
     readonly property string primaryCategory: {
         const cats = root.modelData?.categories;
         if (!cats) return "";
@@ -41,9 +37,6 @@ Item {
     implicitWidth:  parent?.width ?? 400
     implicitHeight: contentRow.implicitHeight + buttonPadding * 2
 
-    // ═══════════════════════════════════════════════════════════════
-    // FUZZY MATCH HIGHLIGHTING  (unchanged)
-    // ═══════════════════════════════════════════════════════════════
     function highlightFuzzyMatch(content: string, query: string): string {
         if (!query || query.length === 0 || !content)
             return escapeHtml(content);
@@ -74,9 +67,6 @@ Item {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // BACKGROUND  (unchanged)
-    // ═══════════════════════════════════════════════════════════════
     Rectangle {
         id: bgRect
 
@@ -98,9 +88,6 @@ Item {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // BOTTOM SEPARATOR  (NEW — mirrors COSMIC's divider between items)
-    // ═══════════════════════════════════════════════════════════════
     Rectangle {
         anchors.bottom:      parent.bottom
         anchors.left:        parent.left
@@ -112,9 +99,6 @@ Item {
         opacity: 0.2
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // MOUSE INTERACTION  (unchanged)
-    // ═══════════════════════════════════════════════════════════════
     MouseArea {
         id: mouseArea
 
@@ -128,9 +112,6 @@ Item {
         onClicked: root.clicked()
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // CONTENT ROW
-    // ═══════════════════════════════════════════════════════════════
     Row {
         id: contentRow
 
@@ -142,7 +123,6 @@ Item {
 
         spacing: Appearance.spacing.normal
 
-        // ── App icon (40px, up from 32px) ──────────────────────────
         IconImage {
             id: appIcon
 
@@ -151,13 +131,9 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
 
-        // ── App name + category subtitle ───────────────────────────
         Column {
             anchors.verticalCenter: parent.verticalCenter
 
-            // Width accounts for icon + spacing on left and shortcut hint on right.
-            // Use shortcutHint.implicitWidth only when the hint is visible to avoid
-            // a binding loop through shortcutHint.width → implicitWidth → width.
             readonly property real hintReserved: root.index < 9
                 ? shortcutHint.implicitWidth + parent.spacing
                 : 0
@@ -166,7 +142,6 @@ Item {
                    - appIcon.implicitWidth - parent.spacing
                    - hintReserved
 
-            // App name with fuzzy-match colour highlights
             Text {
                 id: nameText
 
@@ -182,8 +157,6 @@ Item {
                 elide:       Text.ElideRight
             }
 
-            // COSMIC-style subtitle: "Category - description"
-            // Falls back gracefully if category or description is missing.
             Text {
                 id: subtitleText
 
@@ -204,19 +177,11 @@ Item {
             }
         }
 
-        // ── Ctrl+N keyboard shortcut hint (NEW) ────────────────────
-        // Shows "Ctrl + 1" … "Ctrl + 9" for the first 9 results,
-        // exactly like COSMIC's launcher. The item is hidden (not
-        // collapsed to width:0) for items beyond index 8 so we avoid
-        // a binding loop between `width` and `implicitWidth`.
         Text {
             id: shortcutHint
 
             anchors.verticalCenter: parent.verticalCenter
 
-            // Hide instead of collapsing to width:0 — setting
-            // width: implicitWidth causes a binding loop because Qt
-            // derives implicitWidth from the laid-out width.
             visible: root.index < 9
 
             text: root.index < 9 ? "Ctrl + " + (root.index + 1) : ""
@@ -224,7 +189,6 @@ Item {
             font.pointSize: Appearance.font.size.small
             font.family:    Appearance.font.family.sans
 
-            // Slightly brighter on selected row, muted otherwise
             color:   root.isSelected
                          ? Colours.palette.m3onPrimaryContainer
                          : Colours.palette.m3onSurfaceVariant

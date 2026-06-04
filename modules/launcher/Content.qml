@@ -22,7 +22,7 @@ Item {
     readonly property int contentWidth:     640
     readonly property int maxResultsHeight: 550
     readonly property int searchBarPadding: 8
-    readonly property int outerPadding:     8
+    readonly property int outerPadding:     18
 
     implicitWidth:  contentWidth
     implicitHeight: outerContainer.height
@@ -35,7 +35,6 @@ Item {
         }
     }
 
-    // Reset when launcher opens
     Connections {
         target: root.visibilities
 
@@ -61,7 +60,6 @@ Item {
             let iconName = "";
             let lowerClass = className.toLowerCase();
             
-            // 1. Try heuristic lookup
             if (className) {
                 const lookup = DesktopEntries.heuristicLookup(className);
                 if (lookup && lookup.icon) {
@@ -69,7 +67,6 @@ Item {
                 }
             }
             
-            // 2. Fallback search in Apps.list
             if (!iconName && lowerClass.length > 0) {
                 const appList = Apps.list;
                 for (let j = 0; j < appList.length; j++) {
@@ -102,18 +99,12 @@ Item {
         return arr;
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // SHADOW — under the single outer container
-    // ═══════════════════════════════════════════════════════════════
     Elevation {
         anchors.fill: outerContainer
         radius:       outerContainer.radius
         level:        3
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // OUTER CONTAINER — one background wrapping search + results
-    // ═══════════════════════════════════════════════════════════════
     StyledRect {
         id: outerContainer
 
@@ -125,10 +116,9 @@ Item {
         radius: Appearance.rounding.large
         clip:   true
 
-        // Height = search bar + results (if visible)
         height: searchBarBorder.height
                 + root.outerPadding * 2
-                + (resultsArea.visible ? resultsArea.height : 0)
+                + (root.showAll ? appGridArea.height : (resultsArea.visible ? resultsArea.height : 0))
 
         Behavior on height {
             enabled: root.visibilities.launcher
@@ -138,7 +128,6 @@ Item {
             }
         }
 
-        // ── Search bar: outline-only, no background ─────────────────
         Rectangle {
             id: searchBarBorder
 
@@ -166,7 +155,6 @@ Item {
                 anchors.bottomMargin: root.searchBarPadding
                 spacing:              Appearance.spacing.small
 
-                // Search icon
                 MaterialIcon {
                     id: searchIcon
                     anchors.verticalCenter: parent.verticalCenter
@@ -175,7 +163,6 @@ Item {
                     color:          Colours.palette.m3onSurfaceVariant
                 }
 
-                // Search text field
                 StyledTextField {
                     id: search
 
@@ -243,7 +230,6 @@ Item {
                     }
                 }
 
-                // Clear button
                 MaterialIcon {
                     id: clearIcon
 
@@ -269,7 +255,6 @@ Item {
                     Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
                 }
 
-                // Show all apps button
                 MaterialIcon {
                     id: appsIcon
                     
@@ -296,7 +281,6 @@ Item {
             }
         }
 
-        // ── Results list — sits directly inside outerContainer ───────
         Item {
             id: resultsArea
 
@@ -304,13 +288,11 @@ Item {
             anchors.right: parent.right
             anchors.top:   searchBarBorder.bottom
 
-            visible: appResultsList.count > 0
+            visible: !root.showAll && appResultsList.count > 0
             opacity: visible ? 1 : 0
 
             Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
 
-            // Use a plain property to compute desired height — avoids
-            // assigning to read-only implicitHeight on Item
             readonly property int desiredHeight: Math.min(
                 root.maxResultsHeight,
                 appResultsList.contentHeight + Appearance.padding.normal * 2
@@ -332,7 +314,7 @@ Item {
                     property bool show: root.showAll
                     property string query: root.searchText
                     
-                    values: query.length > 0 ? Apps.search(query) : (show ? Apps.list : root.getWindowResults())
+                    values: query.length > 0 ? Apps.search(query) : (show ? [] : root.getWindowResults())
                     onValuesChanged: appResultsList.currentIndex = 0
                 }
 
@@ -358,7 +340,6 @@ Item {
                 }
             }
 
-            // Empty state
             Row {
                 anchors.centerIn: parent
                 spacing: Appearance.spacing.small
@@ -381,6 +362,28 @@ Item {
 
                 Behavior on opacity { Anim {} }
             }
+        }
+        
+        AppGrid {
+            id: appGridArea
+
+            anchors.left:  parent.left
+            anchors.right: parent.right
+            anchors.top:   searchBarBorder.bottom
+            
+            height: root.maxResultsHeight
+
+            visible: root.showAll
+            opacity: visible ? 1 : 0
+            
+            appList: Apps.list
+            
+            onAppLaunched: app => {
+              Apps.launch(app);
+              root.visibilities.launcher = false;
+            }
+
+            Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
         }
     }
 }
