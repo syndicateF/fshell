@@ -13,12 +13,20 @@ Item {
 
     signal exitAnimationDone()
 
+    readonly property bool isFullscreen: content.item ? content.item.showAll : false
+
+    // Transition animations are DISABLED during initial load.
+    // They are enabled ONLY after the show animation completes,
+    // preventing the "slide from left" bug on launcher open.
+    property bool _transitionsEnabled: false
+
     anchors.fill: parent
     visible: opacity > 0
     opacity: 0
     scale: 0.95
 
     function closeWithAnimation(): void {
+        root._transitionsEnabled = false;
         showAnim.stop();
         hideAnim.start();
     }
@@ -28,23 +36,30 @@ Item {
         showAnim.start();
     }
 
-    ParallelAnimation {
+    SequentialAnimation {
         id: showAnim
 
-        NumberAnimation {
-            target: root
-            property: "opacity"
-            to: 1
-            duration: Appearance.anim.durations.expressiveDefaultSpatial
-            easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+        ParallelAnimation {
+            NumberAnimation {
+                target: root
+                property: "opacity"
+                to: 1
+                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                easing.bezierCurve: Appearance.anim.curves.emphasizedDecel
+            }
+
+            NumberAnimation {
+                target: root
+                property: "scale"
+                to: 1
+                duration: Appearance.anim.durations.expressiveDefaultSpatial
+                easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+            }
         }
 
-        NumberAnimation {
-            target: root
-            property: "scale"
-            to: 1
-            duration: Appearance.anim.durations.expressiveDefaultSpatial
-            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+        // Enable mode-switch transitions only after the launcher is fully visible
+        ScriptAction {
+            script: root._transitionsEnabled = true
         }
     }
 
@@ -73,10 +88,13 @@ Item {
             script: root.exitAnimationDone()
         }
     }
+
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.45)
+        color: Qt.rgba(0, 0, 0, root.isFullscreen ? 0.75 : 0.45)
+
+        Behavior on color { ColorAnimation { duration: 300 } }
 
         MouseArea {
             anchors.fill: parent
@@ -87,15 +105,35 @@ Item {
     Loader {
         id: content
 
+        // Always horizontally centered — works for both modes:
+        //   compact:    centered with implicitWidth (640px)
+        //   fullscreen: centered with root.width (full screen → x=0)
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: parent.height * 0.2
+        anchors.topMargin: root.isFullscreen ? 0 : parent.height * 0.2
+
+        width:  root.isFullscreen ? root.width  : implicitWidth
+        height: root.isFullscreen ? root.height : implicitHeight
 
         active: root.visible
 
         sourceComponent: Content {
             visibilities: root.visibilities
             screen: root.screen
+        }
+
+        // Smooth transitions — only enabled after show animation finishes
+        Behavior on anchors.topMargin {
+            enabled: root._transitionsEnabled
+            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+        }
+        Behavior on width {
+            enabled: root._transitionsEnabled
+            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+        }
+        Behavior on height {
+            enabled: root._transitionsEnabled
+            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
         }
     }
 }

@@ -24,11 +24,16 @@ Item {
     readonly property int searchBarPadding: 8
     readonly property int outerPadding:     18
 
+    // In fullscreen, center the search bar with a max-width
+    readonly property real _searchBarHMargin: showAll
+        ? Math.max(outerPadding, (width - contentWidth) / 2)
+        : outerPadding
+
     implicitWidth:  contentWidth
     implicitHeight: outerContainer.height
 
     Behavior on implicitHeight {
-        enabled: root.visibilities.launcher
+        enabled: root.visibilities.launcher && !root.showAll
         Anim {
             duration:           Appearance.anim.durations.expressiveDefaultSpatial
             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
@@ -103,6 +108,9 @@ Item {
         anchors.fill: outerContainer
         radius:       outerContainer.radius
         level:        3
+        visible:      !root.showAll
+        opacity:      root.showAll ? 0 : 1
+        Behavior on opacity { Anim { duration: 200 } }
     }
 
     StyledRect {
@@ -112,16 +120,20 @@ Item {
         anchors.right: parent.right
         anchors.top:   parent.top
 
-        color:  Colours.palette.m3surface
-        radius: Appearance.rounding.large
+        color:  root.showAll ? "transparent" : Colours.palette.m3surface
+        radius: root.showAll ? 0 : Appearance.rounding.large
         clip:   true
 
-        height: searchBarBorder.height
-                + root.outerPadding * 2
-                + (root.showAll ? appGridArea.height : (resultsArea.visible ? resultsArea.height : 0))
+        Behavior on color  { ColorAnimation { duration: 300 } }
+
+        height: root.showAll
+                ? root.height
+                : (searchBarBorder.height
+                   + root.outerPadding * 2
+                   + (resultsArea.visible ? resultsArea.height : 0))
 
         Behavior on height {
-            enabled: root.visibilities.launcher
+            enabled: root.visibilities.launcher && !root.showAll
             Anim {
                 duration:           Appearance.anim.durations.expressiveDefaultSpatial
                 easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
@@ -134,8 +146,8 @@ Item {
             anchors.left:   parent.left
             anchors.right:  parent.right
             anchors.top:    parent.top
-            anchors.leftMargin:  root.outerPadding
-            anchors.rightMargin: root.outerPadding
+            anchors.leftMargin:  root._searchBarHMargin
+            anchors.rightMargin: root._searchBarHMargin
             anchors.topMargin:   root.outerPadding
 
             height: searchBarRow.implicitHeight + root.searchBarPadding * 2
@@ -203,7 +215,13 @@ Item {
                             appResultsList.currentIndex++;
                     }
 
-                    Keys.onEscapePressed: root.visibilities.launcher = false
+                    Keys.onEscapePressed: {
+                        if (root.showAll) {
+                            root.showAll = false;
+                        } else {
+                            root.visibilities.launcher = false;
+                        }
+                    }
 
                     Keys.onPressed: event => {
                         if (Config.launcher.vimKeybinds && (event.modifiers & Qt.ControlModifier)) {
@@ -260,9 +278,9 @@ Item {
                     
                     anchors.verticalCenter: parent.verticalCenter
                     
-                    text:           "apps"
+                    text:           root.showAll ? "arrow_back" : "apps"
                     font.pointSize: Config.launcher.sizes.font.searchBarIcon
-                    color:          root.showAll && root.searchText.length === 0 ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                    color:          root.showAll ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
                     
                     MouseArea {
                         anchors.fill: parent
@@ -370,14 +388,17 @@ Item {
             anchors.left:  parent.left
             anchors.right: parent.right
             anchors.top:   searchBarBorder.bottom
-            
-            height: root.maxResultsHeight
+            anchors.topMargin: Appearance.padding.small
+
+            height: root.showAll
+                ? (outerContainer.height - searchBarBorder.y - searchBarBorder.height - Appearance.padding.small - root.outerPadding)
+                : root.maxResultsHeight
 
             visible: root.showAll
             opacity: visible ? 1 : 0
-            
+
             appList: Apps.list
-            
+
             onAppLaunched: app => {
               Apps.launch(app);
               root.visibilities.launcher = false;
