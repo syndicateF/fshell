@@ -16,6 +16,15 @@ JsonObject {
     property UseFuzzy useFuzzy: UseFuzzy {}
     property Sizes sizes: Sizes {}
     property Tabs tabs: Tabs {}
+    property AppGridConfig appGrid: AppGridConfig {}
+
+    // Fullscreen app grid layout
+    component AppGridConfig: JsonObject {
+        property int columns:  8    // Number of columns
+        property int rows:     3    // Visible rows before scrolling
+        property int iconSize: 56   // App icon size in pixels
+        property int spacing:  18    // Gap between items in ALL directions (px)
+    }
 
     component UseFuzzy: JsonObject {
         property bool apps: false

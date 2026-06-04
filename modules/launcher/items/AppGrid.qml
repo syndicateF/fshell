@@ -10,11 +10,9 @@ import QtQuick
 /**
  * AppGrid — clean fullscreen app grid.
  *
- * Layout driven by `spacing` from config:
+ * Layout driven by config (columns, rows, iconSize, spacing):
  *   - Cell size = content size + spacing
  *   - Grid is auto-centered in available area
- *   - spacing: 0  → items touching
- *   - spacing: 20 → 20px gap between items
  */
 Item {
     id: root
@@ -45,11 +43,8 @@ Item {
     readonly property int _spacing: Config.launcher.appGrid.spacing
 
     // ── Cell size = content + spacing ─────────────────────────────────
-    // Content area: icon + text label + small internal padding
     readonly property int _contentW: _iconSz + 48
     readonly property int _contentH: _iconSz + 52
-
-    // Cell = content + spacing (gap between items)
     readonly property int _cellW: _contentW + _spacing
     readonly property int _cellH: _contentH + _spacing
 
@@ -96,7 +91,7 @@ Item {
             visible: grid.count === 0
 
             Column {
-                anchors.centerIn: parent             
+                anchors.centerIn: parent
                 spacing: Appearance.spacing.normal
 
                 MaterialIcon {
