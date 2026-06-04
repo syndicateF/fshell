@@ -14,23 +14,34 @@ Item {
     required property var modelData
     required property int index
     required property bool isSelected
+    property int iconSize: 56
 
     signal clicked()
     signal hovered()
 
-    implicitWidth: 96
-    implicitHeight: 110
-
+    // Hover pill — sized relative to cell
     Rectangle {
         id: bg
-        anchors.fill: parent
-        radius: Appearance.rounding.normal
+        anchors.centerIn: parent
+        width:  Math.min(root.width - 8, root.iconSize + 52)
+        height: Math.min(root.height - 6, root.iconSize + 64)
+        radius: 14
+
         color: {
-            if (mouseArea.pressed) return Colours.palette.m3primaryContainer;
-            if (root.isSelected || mouseArea.containsMouse) return Colours.tPalette.m3primaryContainer;
+            if (mouseArea.pressed)
+                return Colours.palette.m3primaryContainer;
+            if (root.isSelected || mouseArea.containsMouse)
+                return Colours.tPalette.m3primaryContainer;
             return "transparent";
         }
-        Behavior on color { CAnim { duration: Appearance.anim.durations.small } }
+        opacity: {
+            if (mouseArea.pressed) return 0.9;
+            if (root.isSelected || mouseArea.containsMouse) return 0.55;
+            return 0;
+        }
+
+        Behavior on color   { CAnim { duration: 120 } }
+        Behavior on opacity { NumberAnimation { duration: 120 } }
     }
 
     MouseArea {
@@ -42,34 +53,42 @@ Item {
         onClicked: root.clicked()
     }
 
+    // Gentle scale on hover & press
+    transform: Scale {
+        origin.x: root.width / 2
+        origin.y: root.height / 2
+        xScale: mouseArea.pressed ? 0.93 : (mouseArea.containsMouse ? 1.04 : 1.0)
+        yScale: xScale
+        Behavior on xScale {
+            NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+        }
+    }
+
     Column {
-        id: col
-        width: root.width
         anchors.centerIn: parent
-        spacing: Appearance.spacing.small
+        width: Math.min(root.width - 16, root.iconSize + 40)
+        spacing: 6
 
         IconImage {
-            id: appIcon
             source: Quickshell.iconPath(
                 (root.modelData?.entry ?? root.modelData)?.icon,
                 "application-x-executable")
-            implicitSize: 48
-            width: 48
-            height: 48
-            x: (col.width - 48) / 2
+            implicitSize: root.iconSize
+            width:  root.iconSize
+            height: root.iconSize
+            anchors.horizontalCenter: parent.horizontalCenter
         }
 
         Text {
-            width: col.width
+            width: parent.width
             text: root.modelData?.name ?? ""
-            font.pointSize: Appearance.font.size.smaller
+            font.pointSize: Appearance.font.size.small
             font.family: Appearance.font.family.sans
             color: Colours.palette.m3onSurface
             renderType: Text.NativeRendering
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            maximumLineCount: 2
+            wrapMode: Text.NoWrap
         }
     }
 }

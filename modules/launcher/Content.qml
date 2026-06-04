@@ -148,7 +148,7 @@ Item {
             anchors.top:    parent.top
             anchors.leftMargin:  root._searchBarHMargin
             anchors.rightMargin: root._searchBarHMargin
-            anchors.topMargin:   root.outerPadding
+             anchors.topMargin:   root.outerPadding
 
             height: searchBarRow.implicitHeight + root.searchBarPadding * 2
 
