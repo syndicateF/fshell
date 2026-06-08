@@ -16,8 +16,6 @@ Item {
     readonly property bool isFullscreen: content.item ? content.item.showAll : false
 
     // Transition animations are DISABLED during initial load.
-    // They are enabled ONLY after the show animation completes,
-    // preventing the "slide from left" bug on launcher open.
     property bool _transitionsEnabled: false
 
     anchors.fill: parent
@@ -57,7 +55,6 @@ Item {
             }
         }
 
-        // Enable mode-switch transitions only after the launcher is fully visible
         ScriptAction {
             script: root._transitionsEnabled = true
         }
@@ -89,10 +86,13 @@ Item {
         }
     }
 
+    // ── Backdrop ──────────────────────────────────────────────────────
+    // In fullscreen: opacity > 0.57 (ignorealpha threshold) → Hyprland blur kicks in
+    // In compact:    opacity < 0.57 → no blur, just dim overlay
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, root.isFullscreen ? 0.75 : 0.45)
+        color: Qt.rgba(0, 0, 0, root.isFullscreen ? 0.6 : 0.45)
 
         Behavior on color { ColorAnimation { duration: 300 } }
 
@@ -102,12 +102,10 @@ Item {
         }
     }
 
+    // ── Content Loader ────────────────────────────────────────────────
     Loader {
         id: content
 
-        // Always horizontally centered — works for both modes:
-        //   compact:    centered with implicitWidth (640px)
-        //   fullscreen: centered with root.width (full screen → x=0)
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: root.isFullscreen ? 0 : parent.height * 0.2

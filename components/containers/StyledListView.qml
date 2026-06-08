@@ -11,4 +11,11 @@ ListView {
             properties: "x,y"
         }
     }
+
+    WheelHandler {
+        acceptedDevices:   PointerDevice.Mouse | PointerDevice.TouchPad
+        acceptedModifiers: Qt.NoModifier
+        property:          "contentY"
+        rotationScale:     4
+    }
 }
