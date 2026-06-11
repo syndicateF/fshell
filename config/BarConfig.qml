@@ -20,13 +20,15 @@ JsonObject {
     ]
     
     property list<var> centerEntries: [
-        { id: "dashboardIcons", enabled: true },
+        { id: "clock", enabled: true },
         { id: "activeWindow", enabled: true },
-        { id: "clock", enabled: true }
+        { id: "bluetooth", enabled: true },
+        { id: "media", enabled: true }
     ]
     
     property list<var> bottomEntries: [
         { id: "statusIcons", enabled: true },
+        { id: "dashboardIcons", enabled: false },
         { id: "powerProfile", enabled: true },
         { id: "batteryIcon", enabled: true },
         { id: "power", enabled: false }

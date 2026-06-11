@@ -259,9 +259,11 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: "file://" + (delegateRoot.modelData?.path ?? "")
-                    sourceSize: Qt.size(1, 1)
+                    sourceSize: Qt.size(16, 16)
                     fillMode: Image.Stretch
                     asynchronous: true
+                    opacity: status === Image.Ready ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                 }
 
                 // Main image content (clipped inside border)
@@ -276,6 +278,7 @@ Item {
                     }
 
                     Image {
+                        id: mainImage
                         anchors.centerIn: parent
                         // Counter-skew offset so image looks straight
                         anchors.horizontalCenterOffset: -(root.cardHeight * Math.abs(root.skewFactor)) / 2
@@ -286,6 +289,8 @@ Item {
                         source: "file://" + (delegateRoot.modelData?.path ?? "")
                         asynchronous: true
                         sourceSize: Qt.size(800, 600)
+                        opacity: status === Image.Ready ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
                         // Counter-skew to make image appear straight
                         transform: Matrix4x4 {

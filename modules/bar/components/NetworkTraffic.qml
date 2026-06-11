@@ -16,6 +16,8 @@ StyledRect {
     radius: Appearance.rounding.small
     // color: Colours.palette.m3surfaceContainerHigh
     color: Colours.tPalette.m3surfaceContainer
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.08)
 
     // Check if network is connected (WiFi OR USB tethering)
     readonly property bool isConnected: Network.active !== null || Network.usbTetheringConnected

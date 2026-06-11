@@ -6,24 +6,33 @@ import qs.config
 import Quickshell.Services.SystemTray
 import QtQuick
 
-// Tray - tanpa background
-Item {
+// Tray - glassmorphic background container
+StyledRect {
     id: root
 
     readonly property alias layout: layout
     readonly property alias items: items
     readonly property alias expandIcon: expandIcon
 
-    readonly property int padding: 0
+    readonly property int padding: Config.bar.sizes.itemPadding
     readonly property int spacing: 0
 
     property bool expanded
 
+    readonly property bool hasContent: items.count > 0
+
     readonly property real nonAnimHeight: {
+        if (!hasContent)
+            return 0;
         if (!Config.bar.tray.compact)
-            return layout.implicitHeight;
-        return (expanded ? expandIcon.implicitHeight + layout.implicitHeight : expandIcon.implicitHeight);
+            return layout.implicitHeight + padding * 2;
+        return (expanded ? expandIcon.implicitHeight + layout.implicitHeight + padding * 2 : expandIcon.implicitHeight + padding * 2);
     }
+
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.08)
 
     clip: true
     visible: height > 0

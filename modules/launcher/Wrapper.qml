@@ -5,6 +5,10 @@ import qs.config
 import Quickshell
 import QtQuick
 
+/**
+ * Launcher Wrapper — compact search overlay only.
+ * App grid is now a separate module (appgrid).
+ */
 Item {
     id: root
 
@@ -13,18 +17,12 @@ Item {
 
     signal exitAnimationDone()
 
-    readonly property bool isFullscreen: content.item ? content.item.showAll : false
-
-    // Transition animations are DISABLED during initial load.
-    property bool _transitionsEnabled: false
-
     anchors.fill: parent
     visible: opacity > 0
     opacity: 0
     scale: 0.95
 
     function closeWithAnimation(): void {
-        root._transitionsEnabled = false;
         showAnim.stop();
         hideAnim.start();
     }
@@ -53,10 +51,6 @@ Item {
                 duration: Appearance.anim.durations.expressiveDefaultSpatial
                 easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
             }
-        }
-
-        ScriptAction {
-            script: root._transitionsEnabled = true
         }
     }
 
@@ -87,14 +81,10 @@ Item {
     }
 
     // ── Backdrop ──────────────────────────────────────────────────────
-    // In fullscreen: opacity > 0.57 (ignorealpha threshold) → Hyprland blur kicks in
-    // In compact:    opacity < 0.57 → no blur, just dim overlay
     Rectangle {
         id: backdrop
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, root.isFullscreen ? 0.6 : 0.45)
-
-        Behavior on color { ColorAnimation { duration: 300 } }
+        color: Qt.rgba(0, 0, 0, 0.45)
 
         MouseArea {
             anchors.fill: parent
@@ -102,36 +92,19 @@ Item {
         }
     }
 
-    // ── Content Loader ────────────────────────────────────────────────
+    // ── Content ───────────────────────────────────────────────────────
     Loader {
         id: content
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: root.isFullscreen ? 0 : parent.height * 0.2
-
-        width:  root.isFullscreen ? root.width  : implicitWidth
-        height: root.isFullscreen ? root.height : implicitHeight
+        anchors.topMargin: parent.height * 0.2
 
         active: root.visible
 
         sourceComponent: Content {
             visibilities: root.visibilities
             screen: root.screen
-        }
-
-        // Smooth transitions — only enabled after show animation finishes
-        Behavior on anchors.topMargin {
-            enabled: root._transitionsEnabled
-            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
-        }
-        Behavior on width {
-            enabled: root._transitionsEnabled
-            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
-        }
-        Behavior on height {
-            enabled: root._transitionsEnabled
-            NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
         }
     }
 }

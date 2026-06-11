@@ -7,22 +7,36 @@ import qs.config
 import QtQuick
 import QtQuick.Layouts
 
-// StatusIcons - stripped version (lockstatus, audio, mic, kblayout only)
-// Tanpa background
-Item {
+// Glassmorphic background container
+StyledRect {
     id: root
 
     property color colour: Colours.palette.m3secondary
     readonly property alias items: iconColumn
 
+    readonly property bool hasContent: iconColumn.implicitHeight > 0
+
+    clip: true
+    visible: height > 0
+
     implicitWidth: Config.bar.sizes.innerWidth
-    implicitHeight: iconColumn.implicitHeight
+    implicitHeight: hasContent ? iconColumn.implicitHeight + Config.bar.sizes.itemPadding * 2 : 0
+    
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.08)
+
+    Behavior on implicitHeight {
+        Anim {
+            duration: Appearance.anim.durations.expressiveDefaultSpatial
+            easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
+        }
+    }
 
     ColumnLayout {
         id: iconColumn
-
-        anchors.horizontalCenter: parent.horizontalCenter
-
+        anchors.centerIn: parent
         spacing: 0
 
         // Lock keys status

@@ -53,6 +53,9 @@ Item {
     implicitWidth: container.implicitWidth - Config.border.thickness
     implicitHeight: container.implicitHeight
 
+    width: implicitWidth
+    height: implicitHeight
+
     // Position update timer
     Timer {
         running: Players.active?.isPlaying ?? false
@@ -69,11 +72,10 @@ Item {
     // Main container with blurred album background
     StyledClippingRect {
         id: container
+        anchors.fill: parent
         implicitWidth: 300
         
-        implicitHeight: root.lyricsMode 
-            ? 520
-            : mainContent.implicitHeight + Appearance.padding.normal * 2 + 40
+        implicitHeight: mainContent.implicitHeight + Appearance.padding.normal * 2 + 40
         
         radius: Appearance.rounding.normal
         color: Colours.tPalette.m3surfaceContainer
@@ -143,7 +145,7 @@ Item {
                     // Album Art (extracted component)
                     Media.AlbumArtCard {
                         Layout.alignment: Qt.AlignHCenter
-                        visible: !root.lyricsMode
+                        visible: true
                         
                         artUrl: Players.active?.trackArtUrl ?? ""
                         iconColor: root.albumOnSurfaceVariant

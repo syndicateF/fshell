@@ -17,23 +17,17 @@ Item {
     required property ShellScreen screen
 
     property string searchText: ""
-    property bool showAll: false
 
     readonly property int contentWidth:     640
     readonly property int maxResultsHeight: 550
     readonly property int searchBarPadding: 8
     readonly property int outerPadding:     18
 
-    // In fullscreen, center the search bar with a max-width
-    readonly property real _searchBarHMargin: showAll
-        ? Math.max(outerPadding, (width - contentWidth) / 2)
-        : outerPadding
-
     implicitWidth:  contentWidth
     implicitHeight: outerContainer.height
 
     Behavior on implicitHeight {
-        enabled: root.visibilities.launcher && !root.showAll
+        enabled: root.visibilities.launcher
         Anim {
             duration:           Appearance.anim.durations.expressiveDefaultSpatial
             easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
@@ -47,7 +41,6 @@ Item {
             if (root.visibilities.launcher) {
                 search.text     = "";
                 root.searchText = "";
-                root.showAll    = false;
                 search.forceActiveFocus();
             }
         }
@@ -104,14 +97,11 @@ Item {
         return arr;
     }
 
-    Elevation {
-        anchors.fill: outerContainer
-        radius:       outerContainer.radius
-        level:        3
-        visible:      !root.showAll
-        opacity:      root.showAll ? 0 : 1
-        Behavior on opacity { Anim { duration: 200 } }
-    }
+    // Elevation {
+    //     anchors.fill: outerContainer
+    //     radius:       outerContainer.radius
+    //     level:        3
+    // }
 
     StyledRect {
         id: outerContainer
@@ -120,20 +110,17 @@ Item {
         anchors.right: parent.right
         anchors.top:   parent.top
 
-        color:  root.showAll ? "transparent" : Colours.palette.m3surface
-        radius: root.showAll ? 0 : Appearance.rounding.large
+        // color:  Colours.palette.m3surface
+        color: Qt.alpha(Colours.palette.m3surface, 0.8)
+        radius: Appearance.rounding.normal
         clip:   true
 
-        Behavior on color  { ColorAnimation { duration: 300 } }
-
-        height: root.showAll
-                ? root.height
-                : (searchBarBorder.height
-                   + root.outerPadding * 2
-                   + (resultsArea.visible ? resultsArea.height : 0))
+        height: searchBarBorder.height
+                + root.outerPadding * 2
+                + (resultsArea.visible ? resultsArea.height : 0)
 
         Behavior on height {
-            enabled: root.visibilities.launcher && !root.showAll
+            enabled: root.visibilities.launcher
             Anim {
                 duration:           Appearance.anim.durations.expressiveDefaultSpatial
                 easing.bezierCurve: Appearance.anim.curves.expressiveDefaultSpatial
@@ -146,8 +133,8 @@ Item {
             anchors.left:   parent.left
             anchors.right:  parent.right
             anchors.top:    parent.top
-            anchors.leftMargin:  root._searchBarHMargin
-            anchors.rightMargin: root._searchBarHMargin
+            anchors.leftMargin:  root.outerPadding
+            anchors.rightMargin: root.outerPadding
             anchors.topMargin:   root.outerPadding
 
             height: searchBarRow.implicitHeight + root.searchBarPadding * 2
@@ -191,7 +178,6 @@ Item {
 
                     onTextChanged: {
                         root.searchText = text;
-                        if (text.length > 0) root.showAll = false;
                     }
 
                     onAccepted: {
@@ -216,11 +202,7 @@ Item {
                     }
 
                     Keys.onEscapePressed: {
-                        if (root.showAll) {
-                            root.showAll = false;
-                        } else {
-                            root.visibilities.launcher = false;
-                        }
+                        root.visibilities.launcher = false;
                     }
 
                     Keys.onPressed: event => {
@@ -278,21 +260,17 @@ Item {
                     
                     anchors.verticalCenter: parent.verticalCenter
                     
-                    text:           root.showAll ? "arrow_back" : "apps"
+                    text:           "apps"
                     font.pointSize: Config.launcher.sizes.font.searchBarIcon
-                    color:          root.showAll ? Colours.palette.m3primary : Colours.palette.m3onSurfaceVariant
+                    color:          Colours.palette.m3onSurfaceVariant
                     
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape:  Qt.PointingHandCursor
                         onClicked: {
-                            if (root.searchText.length === 0) {
-                                root.showAll = !root.showAll;
-                            } else {
-                                search.text = "";
-                                root.showAll = true;
-                            }
+                            root.visibilities.launcher = false;
+                            root.visibilities.appgrid = true;
                         }
                     }
                 }
@@ -306,7 +284,7 @@ Item {
             anchors.right: parent.right
             anchors.top:   searchBarBorder.bottom
 
-            visible: !root.showAll && appResultsList.count > 0
+            visible: appResultsList.count > 0
             opacity: visible ? 1 : 0
 
             Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
@@ -329,10 +307,9 @@ Item {
                 highlightMoveDuration: 100
 
                 model: ScriptModel {
-                    property bool show: root.showAll
                     property string query: root.searchText
                     
-                    values: query.length > 0 ? Apps.search(query) : (show ? [] : root.getWindowResults())
+                    values: query.length > 0 ? Apps.search(query) : root.getWindowResults()
                     onValuesChanged: appResultsList.currentIndex = 0
                 }
 
@@ -380,31 +357,6 @@ Item {
 
                 Behavior on opacity { Anim {} }
             }
-        }
-        
-        AppGrid {
-            id: appGridArea
-
-            anchors.left:  parent.left
-            anchors.right: parent.right
-            anchors.top:   searchBarBorder.bottom
-            anchors.topMargin: Appearance.padding.small
-
-            height: root.showAll
-                ? (outerContainer.height - searchBarBorder.y - searchBarBorder.height - Appearance.padding.small - root.outerPadding)
-                : root.maxResultsHeight
-
-            visible: root.showAll
-            opacity: visible ? 1 : 0
-
-            appList: Apps.list
-
-            onAppLaunched: app => {
-              Apps.launch(app);
-              root.visibilities.launcher = false;
-            }
-
-            Behavior on opacity { Anim { duration: Appearance.anim.durations.small } }
         }
     }
 }

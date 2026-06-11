@@ -62,9 +62,12 @@ Singleton {
         return Qt.hsla(baseColor.hslHue, baseColor.hslSaturation, targetLightness, 1.0);
     }
     
+    readonly property bool activeExtraction: hasPlayer && hasArt
+
     // ========== Output Palette ==========
     // Main accent (softened)
     readonly property color accent: {
+        if (!activeExtraction) return Colours.palette.m3primary;
         const newL = isDark 
             ? Math.min(0.65, sourceColor.hslLightness + 0.20)
             : Math.max(0.35, sourceColor.hslLightness - 0.10);
@@ -72,11 +75,16 @@ Singleton {
     }
     
     // Primary colors
-    readonly property color primary: toneColor(sourceColor, isDark ? 0.70 : 0.40)
-    readonly property color onPrimary: isDark ? "#1a1a1a" : "#ffffff"
+    readonly property color primary: activeExtraction 
+        ? toneColor(sourceColor, isDark ? 0.70 : 0.40) 
+        : Colours.palette.m3primary
+        
+    readonly property color onPrimary: activeExtraction 
+        ? (isDark ? "#1a1a1a" : "#ffffff") 
+        : Colours.palette.m3onPrimary
     
     // Surface variant
-    readonly property color onSurfaceVariant: isDark 
-        ? toneColor(sourceColor, 0.65) 
-        : toneColor(sourceColor, 0.35)
+    readonly property color onSurfaceVariant: activeExtraction 
+        ? (isDark ? toneColor(sourceColor, 0.65) : toneColor(sourceColor, 0.35)) 
+        : Colours.palette.m3onSurfaceVariant
 }

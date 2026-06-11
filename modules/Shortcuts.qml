@@ -9,6 +9,7 @@ Scope {
     id: root
 
     property bool launcherInterrupted
+    property real launcherPressedTime: 0
     readonly property bool hasFullscreen: Hypr.focusedWorkspace?.toplevels.values.some(t => t.lastIpcObject.fullscreen === 2) ?? false
 
     CustomShortcut {
@@ -107,20 +108,25 @@ Scope {
         }
     }
 
-    // AI Chat shortcut - DISABLED
-    // CustomShortcut {
-    //     name: "aiChat"
-    //     description: "Toggle AI chat widget"
-    //     onPressed: {
-    //         const visibilities = Visibilities.getForActive();
-    //         visibilities.aiChat = !visibilities.aiChat;
-    //     }
-    // }
+    CustomShortcut {
+        name: "appgrid"
+        description: "Toggle fullscreen app grid"
+        onPressed: {
+            if (root.hasFullscreen)
+                return;
+            const visibilities = Visibilities.getForActive();
+            if (visibilities.launcher) visibilities.launcher = false;
+            visibilities.appgrid = !visibilities.appgrid;
+        }
+    }
 
     CustomShortcut {
         name: "launcher"
         description: "Toggle launcher"
-        onPressed: root.launcherInterrupted = false
+        onPressed: {
+            root.launcherInterrupted = false;
+            root.launcherPressedTime = Date.now();
+        }
         onReleased: {
             if (!root.launcherInterrupted && !root.hasFullscreen) {
                 const visibilities = Visibilities.getForActive();
@@ -135,7 +141,14 @@ Scope {
     CustomShortcut {
         name: "launcherInterrupt"
         description: "Interrupt launcher keybind"
-        onPressed: root.launcherInterrupted = true
+        onPressed: {
+            const now = Date.now();
+            const diff = now - root.launcherPressedTime;
+            // Only interrupt if the event is not from the initial Super_L press itself (e.g. at least 50ms has passed)
+            if (diff > 50) {
+                root.launcherInterrupted = true;
+            }
+        }
     }
 
     IpcHandler {

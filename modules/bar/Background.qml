@@ -14,8 +14,12 @@ ShapePath {
     readonly property real barWidth: bar.implicitWidth
     readonly property real barX: bar.x
 
-    strokeWidth: -1
-    fillColor: Colours.palette.m3surface
+    strokeWidth: 0
+    fillColor: {
+        const baseOpacity = Colours.transparency.enabled ? Colours.transparency.base : 1.0;
+        const targetAlpha = 0.89;
+        return Qt.alpha(Colours.palette.m3surface, Math.min(1.0, targetAlpha / baseOpacity));
+    }
 
     // Start at top-left after bar's x position and after top-left arc
     startX: barX + rounding

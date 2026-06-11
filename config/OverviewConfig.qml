@@ -18,6 +18,7 @@ JsonObject {
 
     component Sizes: JsonObject {
         property real scale: 0.13  // Scale for workspace overview thumbnails
+        property real appgridStripScale: 0.18  // Scale for appgrid workspace strip (higher = sharper)
         readonly property int workspacePreviewWidth: 200
         readonly property int tabIndicatorHeight: 3
         readonly property int tabIndicatorSpacing: 5

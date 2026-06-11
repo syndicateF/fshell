@@ -9,6 +9,7 @@ import qs.modules.overview as Overview
 import qs.modules.session as Session
 import qs.modules.keybinds as KeybindsModule
 import qs.modules.launcher as Launcher
+import qs.modules.appgrid as AppGrid
 import qs.modules.wallpicker as WallPicker
 import Quickshell
 import Quickshell.Wayland
@@ -58,12 +59,12 @@ Variants {
             screen: scope.modelData
             name: "drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
-            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+            WlrLayershell.keyboardFocus: visibilities.launcher || visibilities.appgrid || visibilities.overview || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
             // Switch to Overlay layer when fullscreen overlay is active (above all Hyprland windows)
-            WlrLayershell.layer: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? WlrLayer.Overlay : WlrLayer.Top
+            WlrLayershell.layer: (visibilities.launcher || visibilities.appgrid || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? WlrLayer.Overlay : WlrLayer.Top
 
             // Disable mask when fullscreen overlay is active
-            mask: (visibilities.launcher || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? null : normalMask
+            mask: (visibilities.launcher || visibilities.appgrid || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker) ? null : normalMask
 
             Region {
                 id: normalMask
@@ -100,10 +101,11 @@ Variants {
             HyprlandFocusGrab {
                 id: focusGrab
 
-                active: (visibilities.launcher && Config.launcher.enabled) || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
+                active: (visibilities.launcher && Config.launcher.enabled) || visibilities.appgrid || (visibilities.sidebar && Config.sidebar.enabled) || (!Config.dashboard.showOnHover && visibilities.dashboard && Config.dashboard.enabled) || (visibilities.overview && Config.overview.enabled) || visibilities.spiralOverview || visibilities.fullscreenSession || visibilities.keybinds || visibilities.wallpicker || (panels.popouts.currentName.startsWith("traymenu") && panels.popouts.current?.depth > 1)
                 windows: [win]
                 onCleared: {
                     visibilities.launcher = false;
+                    visibilities.appgrid = false;
                     visibilities.launcherShortcutActive = false;
                     visibilities.sidebar = false;
                     visibilities.dashboard = false;
@@ -185,6 +187,7 @@ Variants {
                 property bool launcherShortcutActive
                 property bool overviewClickPending: false
                 property bool keybinds: false
+                property bool appgrid: false
                 // property bool aiChat: false  // AI Chat widget - DISABLED
 
                 // Timer untuk reset overviewClickPending setelah cursor warp selesai
@@ -407,6 +410,52 @@ Variants {
                             launcherOverlayContainer.isLoaded = false
                             launcherOverlayContainer.isAnimatingOut = false
                             visibilities.launcher = false
+                        }
+                    }
+                }
+            }
+
+            // App Grid Overlay — independent fullscreen grid (gesture / button)
+            Item {
+                id: appgridContainer
+                anchors.fill: parent
+
+                property bool shouldShow: visibilities.appgrid
+                property bool isLoaded: false
+                property bool isAnimatingOut: false
+
+                onShouldShowChanged: {
+                    if (shouldShow) {
+                        // Close launcher if open
+                        if (visibilities.launcher) visibilities.launcher = false;
+                        if (!isLoaded) {
+                            isLoaded = true
+                            isAnimatingOut = false
+                        } else if (isAnimatingOut) {
+                            isAnimatingOut = false
+                        }
+                    } else {
+                        if (isLoaded && !isAnimatingOut && appgridLoader.item) {
+                            isAnimatingOut = true
+                            appgridLoader.item.closeWithAnimation()
+                        }
+                    }
+                }
+
+                Loader {
+                    id: appgridLoader
+                    anchors.fill: parent
+                    active: appgridContainer.isLoaded
+                    visible: active
+
+                    sourceComponent: AppGrid.Wrapper {
+                        screen: scope.modelData
+                        visibilities: visibilities
+
+                        onExitAnimationDone: {
+                            appgridContainer.isLoaded = false
+                            appgridContainer.isAnimatingOut = false
+                            visibilities.appgrid = false
                         }
                     }
                 }

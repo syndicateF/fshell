@@ -92,18 +92,17 @@ Item {
             popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
             popouts.hasCurrent = true;
         } else if (id === "dashboardIcons") {
-            const items = item.items;
-            const icon = items.childAt(items.width / 2, mapToItem(items, 0, y).y);
-            if (icon && icon.name) {
-                popouts.currentName = icon.name;
-                popouts.currentCenter = Qt.binding(() => icon.mapToItem(root, 0, icon.implicitHeight / 2).y);
-                popouts.hasCurrent = true;
-            } else {
-                const dashPopouts = ["media", "bluetooth"];
-                if (!dashPopouts.includes(popouts.currentName)) {
-                    popouts.hasCurrent = false;
-                }
-            }
+            popouts.currentName = "performance";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
+        } else if (id === "media") {
+            popouts.currentName = "media";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
+        } else if (id === "bluetooth") {
+            popouts.currentName = "bluetooth";
+            popouts.currentCenter = item.mapToItem(root, 0, itemHeight / 2).y;
+            popouts.hasCurrent = true;
         } else if (id === "networkTraffic" && Config.bar.popouts.statusIcons) {
             // Only networkTraffic triggers network popout
             // Find networkTraffic position for popout center
@@ -228,6 +227,8 @@ Item {
                     case "logo": return logoComp
                     case "activeWindow": return activeWindowComp
                     case "dashboardIcons": return dashboardIconsComp
+                    case "media": return mediaComp
+                    case "bluetooth": return bluetoothComp
                     case "tray": return trayComp
                     case "clock": return clockComp
                     case "statusIcons": return statusIconsComp
@@ -261,6 +262,22 @@ Item {
         DashboardIcons {
             bar: root
             visibilities: root.visibilities
+            popouts: root.popouts
+        }
+    }
+
+    Component {
+        id: mediaComp
+        MediaIcon {
+            bar: root
+            popouts: root.popouts
+        }
+    }
+
+    Component {
+        id: bluetoothComp
+        BluetoothIcon {
+            bar: root
             popouts: root.popouts
         }
     }

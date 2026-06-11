@@ -82,7 +82,6 @@ Singleton {
             try {
                 root.descConfig = JSON.parse(text());
                 root.configLoaded = true;
-                console.log("[Keybinds] Loaded description config");
             } catch (e) {
                 console.error("[Keybinds] Failed to parse config:", e);
             }
@@ -663,7 +662,6 @@ Singleton {
             root.invalidate();
             // Also refresh layout option
             layoutOptionProcess.running = true;
-            console.log("[Keybinds] Config reloaded - cache invalidated");
         }
     }
 
@@ -698,7 +696,6 @@ Singleton {
                     root.lastRefresh = Date.now();
                     root.isLoading = false;
                     root.bindsRefreshed();
-                    console.log("[Keybinds] Loaded", root.binds.length, "keybinds");
                 } catch (e) {
                     console.error("[Keybinds] Failed to parse:", e);
                     root.isLoading = false;
@@ -737,7 +734,6 @@ Singleton {
                 try {
                     const parsed = JSON.parse(root.layoutOptionBuffer);
                     root.resolveBySymbol = (parsed.int === 1) || (parsed.set === true);
-                    console.log("[Keybinds] resolve_binds_by_sym:", root.resolveBySymbol);
                 } catch (e) {
                     console.warn("[Keybinds] Failed to parse layout option:", e);
                 }

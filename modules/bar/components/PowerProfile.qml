@@ -16,6 +16,8 @@ StyledRect {
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Config.border.rounding
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.15)
     
     // Determine what mode to display: platform profile or governor (fallback)
     readonly property bool hasPlatformProfile: Power.availableProfiles.length > 0
@@ -75,7 +77,6 @@ StyledRect {
 
     readonly property real maxTitleLength: 120
 
-    clip: true
     implicitWidth: Config.bar.sizes.innerWidth
     implicitHeight: iconItem.implicitHeight + titleContainer.height + Appearance.spacing.smaller + Config.bar.sizes.itemPadding * 2
     

@@ -19,6 +19,8 @@ StyledRect {
 
     color: Colours.tPalette.m3surfaceContainer
     radius: Config.border.rounding
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.08)
 
     // Windows di workspace aktif (including special workspace)
     readonly property var workspaceWindows: {

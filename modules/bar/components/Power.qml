@@ -4,22 +4,22 @@ import qs.config
 import Quickshell
 import QtQuick
 
-Item {
+StyledRect {
     id: root
 
     required property PersistentProperties visibilities
 
-    implicitWidth: icon.implicitHeight + Config.bar.sizes.itemPadding * 2
-    implicitHeight: icon.implicitHeight
+    color: Colours.tPalette.m3surfaceContainer
+    radius: Config.border.rounding
+    border.width: 1
+    border.color: Qt.alpha(Colours.palette.m3outline, 0.08)
+
+    implicitWidth: Config.bar.sizes.innerWidth
+    implicitHeight: icon.implicitHeight + Config.bar.sizes.itemPadding * 2
 
     StateLayer {
-        // Cursed workaround to make the height larger than the parent
-        anchors.fill: undefined
-        anchors.centerIn: parent
-        implicitWidth: implicitHeight
-        implicitHeight: icon.implicitHeight + Config.bar.sizes.itemPadding * 2
-
-        radius: Appearance.rounding.full
+        anchors.fill: parent
+        radius: root.radius
 
         function onClicked(): void {
             root.visibilities.fullscreenSession = !root.visibilities.fullscreenSession;
